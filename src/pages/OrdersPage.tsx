@@ -1,0 +1,347 @@
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useAppStore } from '../store';
+import { Modal } from '../components/ui/Modal';
+import { EmptyState } from '../components/ui/EmptyState';
+import {
+  formatCurrency,
+  formatDate,
+  orderStatusLabel,
+  orderStatusColor,
+  paymentMethodLabel,
+} from '../utils/formatters';
+import type { Order, OrderStatus, PaymentMethod, OrderItem } from '../types';
+
+const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
+  { value: 'all',           label: 'Todos'          },
+  { value: 'tomado',        label: 'Tomado'         },
+  { value: 'por_recoger',   label: 'Por recoger'    },
+  { value: 'recogido',      label: 'Recogido'       },
+  { value: 'entregado',     label: 'Entregado'      },
+  { value: 'pendiente_pago',label: 'Pend. pago'     },
+  { value: 'pagado',        label: 'Pagado'         },
+  { value: 'cancelado',     label: 'Cancelado'      },
+];
+
+function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void }) {
+  const { clients, products, users, currentUser } = useAppStore();
+  const [clientId, setClientId]   = useState('');
+  const [items, setItems]         = useState<Omit<OrderItem, 'id'>[]>([{
+    productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
+  }]);
+  const [status, setStatus]       = useState<OrderStatus>('tomado');
+  const [payMethod, setPayMethod] = useState<PaymentMethod>('credito');
+  const [sellerId, setSellerId]   = useState(currentUser?.id ?? '');
+  const [deliveryId, setDeliveryId] = useState('');
+  const [orderDate, setOrderDate] = useState(new Date().toISOString().slice(0, 10));
+  const [estDelivery, setEstDelivery] = useState('');
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [notes, setNotes]         = useState('');
+
+  const addItem = () => setItems(prev => [...prev, {
+    productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
+  }]);
+
+  const setItem = (i: number, k: string, v: unknown) => {
+    setItems(prev => prev.map((it, idx) => {
+      if (idx !== i) return it;
+      const updated = { ...it, [k]: v };
+      if (k === 'productId') {
+        const prod = products.find(p => p.id === v);
+        if (prod) {
+          updated.productName = prod.name;
+          updated.category    = prod.category;
+          updated.salePrice   = prod.salePrice;
+          updated.costPrice   = prod.costPrice;
+        }
+      }
+      return updated;
+    }));
+  };
+
+  const removeItem = (i: number) => setItems(prev => prev.filter((_, idx) => idx !== i));
+
+  const totalAmount = items.reduce((s, it) => s + it.salePrice * it.quantity, 0);
+  const totalCost   = items.reduce((s, it) => s + it.costPrice * it.quantity, 0);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      clientId,
+      items: items.map((it, i) => ({ ...it, id: `item_${i}` })),
+      totalAmount,
+      totalCost,
+      amountPaid,
+      status,
+      paymentMethod: payMethod,
+      sellerId,
+      deliveryPersonId: deliveryId || undefined,
+      orderDate: new Date(orderDate).toISOString(),
+      estimatedDeliveryDate: estDelivery ? new Date(estDelivery).toISOString() : undefined,
+      notes,
+    });
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="label">Cliente *</label>
+          <select className="input-field" required value={clientId}
+            onChange={e => setClientId(e.target.value)}>
+            <option value="">Seleccionar cliente...</option>
+            {clients.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Items */}
+        <div className="col-span-2">
+          <div className="flex items-center justify-between mb-2">
+            <label className="label !mb-0">Productos *</label>
+            <button type="button" onClick={addItem}
+              className="text-xs text-primary-600 font-medium hover:underline flex items-center gap-1">
+              <Plus size={12} /> Agregar
+            </button>
+          </div>
+          <div className="space-y-2">
+            {items.map((item, i) => (
+              <div key={i} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <select className="input-field text-xs" value={item.productId}
+                      onChange={e => setItem(i, 'productId', e.target.value)}>
+                      <option value="">Producto libre...</option>
+                      {products.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.salePrice)}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {!item.productId && (
+                    <div className="col-span-2">
+                      <input className="input-field text-xs" placeholder="Nombre del producto"
+                        value={item.productName}
+                        onChange={e => setItem(i, 'productName', e.target.value)} />
+                    </div>
+                  )}
+                  <div>
+                    <input type="number" className="input-field text-xs" placeholder="Precio venta"
+                      value={item.salePrice} min={0}
+                      onChange={e => setItem(i, 'salePrice', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <input type="number" className="input-field text-xs" placeholder="Precio costo"
+                      value={item.costPrice} min={0}
+                      onChange={e => setItem(i, 'costPrice', Number(e.target.value))} />
+                  </div>
+                  <div>
+                    <input type="number" className="input-field text-xs" placeholder="Cantidad"
+                      value={item.quantity} min={1}
+                      onChange={e => setItem(i, 'quantity', Number(e.target.value))} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-500">
+                      Total: {formatCurrency(item.salePrice * item.quantity)}
+                    </span>
+                    {items.length > 1 && (
+                      <button type="button" onClick={() => removeItem(i)}
+                        className="ml-auto text-red-400 hover:text-red-600 text-xs">
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-sm font-semibold mt-2 px-1">
+            <span className="text-gray-600">Total pedido:</span>
+            <span className="text-primary-700">{formatCurrency(totalAmount)}</span>
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Estado</label>
+          <select className="input-field" value={status}
+            onChange={e => setStatus(e.target.value as OrderStatus)}>
+            {STATUS_FILTERS.filter(s => s.value !== 'all').map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Forma de pago</label>
+          <select className="input-field" value={payMethod}
+            onChange={e => setPayMethod(e.target.value as PaymentMethod)}>
+            {(['transferencia','efectivo','credito','fiado','abono'] as PaymentMethod[]).map(m => (
+              <option key={m} value={m}>{paymentMethodLabel[m]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Abono inicial ($)</label>
+          <input type="number" className="input-field" min={0} value={amountPaid}
+            onChange={e => setAmountPaid(Number(e.target.value))} />
+        </div>
+        <div>
+          <label className="label">Vendedor</label>
+          <select className="input-field" value={sellerId}
+            onChange={e => setSellerId(e.target.value)}>
+            <option value="">Sin asignar</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Repartidor</label>
+          <select className="input-field" value={deliveryId}
+            onChange={e => setDeliveryId(e.target.value)}>
+            <option value="">Sin asignar</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Fecha pedido</label>
+          <input type="date" className="input-field" value={orderDate}
+            onChange={e => setOrderDate(e.target.value)} />
+        </div>
+        <div className="col-span-2">
+          <label className="label">Fecha estimada entrega</label>
+          <input type="date" className="input-field" value={estDelivery}
+            onChange={e => setEstDelivery(e.target.value)} />
+        </div>
+        <div className="col-span-2">
+          <label className="label">Notas</label>
+          <textarea className="input-field resize-none" rows={2} value={notes}
+            onChange={e => setNotes(e.target.value)} />
+        </div>
+      </div>
+      <button type="submit" className="btn-primary w-full justify-center">
+        Guardar pedido
+      </button>
+    </form>
+  );
+}
+
+export function OrdersPage() {
+  const { orders, clients, addOrder, users } = useAppStore();
+  const [search, setSearch]       = useState('');
+  const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const filtered = orders.filter(o => {
+    const client = clients.find(c => c.id === o.clientId);
+    const matchSearch = o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (client?.name ?? '').toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === 'all' || o.status === filterStatus;
+    return matchSearch && matchStatus;
+  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="page-title">Pedidos</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{orders.length} pedidos en total</p>
+        </div>
+        <button onClick={() => setModalOpen(true)} className="btn-primary">
+          <Plus size={16} /> Nuevo pedido
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="card !p-4 space-y-3">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+          <input className="input-field pl-9" placeholder="Buscar por número o cliente..."
+            value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {STATUS_FILTERS.map(s => (
+            <button
+              key={s.value}
+              onClick={() => setFilter(s.value)}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
+                filterStatus === s.value
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={ShoppingBag}
+          title="No hay pedidos"
+          description="Registra el primer pedido del día"
+          action={
+            <button onClick={() => setModalOpen(true)} className="btn-primary">
+              <Plus size={14} /> Nuevo pedido
+            </button>
+          }
+        />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(order => {
+            const client = clients.find(c => c.id === order.clientId);
+            const seller = users.find(u => u.id === order.sellerId);
+            const balance = order.totalAmount - order.amountPaid;
+            return (
+              <div key={order.id} className="card !p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <ShoppingBag size={16} className="text-primary-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-gray-900">{order.orderNumber}</span>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[order.status]}`}>
+                        {orderStatusLabel[order.status]}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {client?.name ?? 'Cliente'} · {formatDate(order.orderDate)}
+                      {seller && ` · ${seller.name}`}
+                    </p>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                    {balance > 0 && (
+                      <p className="text-xs font-semibold text-amber-600">
+                        Debe {formatCurrency(balance)}
+                      </p>
+                    )}
+                  </div>
+                  <Link to={`/pedidos/${order.id}`} className="btn-primary !px-2.5 !py-1.5 flex-shrink-0">
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+                <div className="flex gap-1 mt-3 flex-wrap">
+                  {order.items.map((it, i) => (
+                    <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      {it.quantity}x {it.productName}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo pedido" size="lg">
+        <OrderForm onSave={data => { addOrder(data); setModalOpen(false); }} />
+      </Modal>
+    </div>
+  );
+}
