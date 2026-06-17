@@ -14,6 +14,8 @@ const ROUTE_MODULE: Record<string, PermModule> = {
   '/publicaciones': 'publicaciones',
   '/reportes':      'reportes',
   '/configuracion': 'configuracion',
+  '/finanzas':      'finanzas',
+  '/metas':         'metas',
 };
 
 // ─── Plantillas de permisos ───────────────────────────────────────────────────
@@ -36,6 +38,8 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
     entregas:     { ...FULL },
     reportes:     { ...FULL },
     configuracion:{ ...FULL },
+    finanzas:     { ...FULL },
+    metas:        { ...FULL },
   },
 
   jennifer: {
@@ -127,6 +131,17 @@ export const MODULE_ACTIONS: Record<PermModule, { action: PermAction; label: str
     { action: 'eliminar',            label: 'Eliminar usuarios' },
     { action: 'administrar_accesos', label: 'Admin. accesos' },
   ],
+  finanzas: [
+    { action: 'ver',            label: 'Ver' },
+    { action: 'exportar',       label: 'Exportar Excel' },
+    { action: 'ver_financiero', label: 'Ver montos' },
+  ],
+  metas: [
+    { action: 'ver',      label: 'Ver' },
+    { action: 'crear',    label: 'Crear' },
+    { action: 'editar',   label: 'Editar' },
+    { action: 'eliminar', label: 'Eliminar' },
+  ],
 };
 
 export const MODULE_LABELS: Record<PermModule, string> = {
@@ -140,11 +155,14 @@ export const MODULE_LABELS: Record<PermModule, string> = {
   entregas:     'Entregas',
   reportes:     'Reportes',
   configuracion:'Configuración',
+  finanzas:     'Finanzas',
+  metas:        'Metas',
 };
 
 export const ALL_MODULES: PermModule[] = [
   'dashboard','clientes','pedidos','productos','publicaciones',
   'pagos','proveedores','entregas','reportes','configuracion',
+  'finanzas','metas',
 ];
 
 // ─── Hook principal ───────────────────────────────────────────────────────────

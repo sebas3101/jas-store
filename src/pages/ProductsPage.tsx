@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Search, Package, Edit2, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -71,13 +72,11 @@ function ProductForm({
         </div>
         <div>
           <label className="label">Precio de venta *</label>
-          <input type="number" className="input-field" required min={0} value={form.salePrice}
-            onChange={e => set('salePrice', Number(e.target.value))} />
+          <CurrencyInput required value={form.salePrice} min={0} onChange={v => set('salePrice', v)} />
         </div>
         <div>
           <label className="label">Precio de costo *</label>
-          <input type="number" className="input-field" required min={0} value={form.costPrice}
-            onChange={e => set('costPrice', Number(e.target.value))} />
+          <CurrencyInput required value={form.costPrice} min={0} onChange={v => set('costPrice', v)} />
         </div>
         {form.salePrice > 0 && form.costPrice > 0 && (
           <div className="col-span-2">

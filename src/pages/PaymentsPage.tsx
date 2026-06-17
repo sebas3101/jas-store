@@ -3,6 +3,7 @@ import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp } from 'lu
 
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
@@ -113,8 +114,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Monto ($) *</label>
-          <input type="number" className="input-field" required min={1} value={amount}
-            onChange={e => setAmount(Number(e.target.value))} />
+          <CurrencyInput required min={1} value={amount} onChange={setAmount} />
         </div>
         <div>
           <label className="label">Método</label>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus, Store, Phone, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
@@ -85,8 +86,7 @@ function PurchaseForm({ supplierId, onSave }: {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label">Costo total ($) *</label>
-          <input type="number" className="input-field" required min={0} value={form.cost}
-            onChange={e => set('cost', Number(e.target.value))} />
+          <CurrencyInput required min={0} value={form.cost} onChange={v => set('cost', v)} />
         </div>
         <div>
           <label className="label">Estado</label>

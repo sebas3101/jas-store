@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
@@ -128,14 +130,14 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
                     </div>
                   )}
                   <div>
-                    <input type="number" className="input-field text-xs" placeholder="Precio venta"
+                    <CurrencyInput className="text-xs" placeholder="Precio venta"
                       value={item.salePrice} min={0}
-                      onChange={e => setItem(i, 'salePrice', Number(e.target.value))} />
+                      onChange={v => setItem(i, 'salePrice', v)} />
                   </div>
                   <div>
-                    <input type="number" className="input-field text-xs" placeholder="Precio costo"
+                    <CurrencyInput className="text-xs" placeholder="Precio costo"
                       value={item.costPrice} min={0}
-                      onChange={e => setItem(i, 'costPrice', Number(e.target.value))} />
+                      onChange={v => setItem(i, 'costPrice', v)} />
                   </div>
                   <div>
                     <input type="number" className="input-field text-xs" placeholder="Cantidad"
@@ -183,8 +185,7 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
         </div>
         <div>
           <label className="label">Abono inicial ($)</label>
-          <input type="number" className="input-field" min={0} value={amountPaid}
-            onChange={e => setAmountPaid(Number(e.target.value))} />
+          <CurrencyInput value={amountPaid} min={0} onChange={setAmountPaid} />
         </div>
         <div>
           <label className="label">Vendedor</label>
@@ -229,14 +230,33 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
   );
 }
 
+// Wrapper that captures the created order for the WhatsApp modal
+function OrderFormWithWa({ onCreated }: { onCreated: (o: Order) => void }) {
+  const { addOrder, orders } = useAppStore();
+  return (
+    <OrderForm onSave={async data => {
+      const prevCount = orders.length;
+      await addOrder(data);
+      // addOrder is async; get the new order from latest store state
+      const storeOrders = useAppStore.getState().orders;
+      if (storeOrders.length > prevCount) {
+        const newest = [...storeOrders]
+          .filter(o => o.clientId === data.clientId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+        if (newest) { onCreated(newest); return; }
+      }
+      onCreated({ ...data, id: '', orderNumber: '', createdAt: '', updatedAt: '' } as Order);
+    }} />
+  );
+}
+
 export function OrdersPage() {
   const location  = useLocation();
   const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
 
-  const { orders, clients, addOrder, users } = useAppStore();
+  const { orders, clients, users } = useAppStore();
   const { can } = usePermissions();
 
-  // Si viene el param ?cliente=<id>, pre-cargar el nombre del cliente en el buscador
   const prefilledName = clienteParam
     ? (clients.find(c => c.id === clienteParam)?.name ?? '')
     : '';
@@ -245,6 +265,7 @@ export function OrdersPage() {
   const [filterClient, setFilterClient] = useState(clienteParam);
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
   const [modalOpen, setModalOpen] = useState(false);
+  const [waOrder, setWaOrder]     = useState<Order | null>(null);
 
   const clearClientFilter = () => { setFilterClient(''); setSearch(''); };
 
@@ -367,8 +388,46 @@ export function OrdersPage() {
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo pedido" size="lg">
-        <OrderForm onSave={data => { addOrder(data); setModalOpen(false); }} />
+        <OrderFormWithWa
+          onCreated={order => { setModalOpen(false); setWaOrder(order); }}
+        />
       </Modal>
+
+      {/* Modal WhatsApp confirmación de pedido */}
+      {waOrder && (() => {
+        const client  = clients.find(c => c.id === waOrder.clientId);
+        const message = client ? buildOrderConfirmationMessage(client, waOrder) : '';
+        return (
+          <Modal isOpen={!!waOrder} onClose={() => setWaOrder(null)} title="Pedido creado">
+            <div className="space-y-4">
+              <div className="bg-emerald-50 rounded-xl p-3">
+                <p className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-1">
+                  <MessageCircle size={12} /> Mensaje de confirmación para {client?.name}
+                </p>
+                <p className="text-xs text-gray-700 whitespace-pre-line">{message}</p>
+              </div>
+              {!client?.phone && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-2">
+                  ⚠️ El cliente no tiene número de celular registrado.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button onClick={() => setWaOrder(null)} className="btn-ghost flex-1 justify-center">
+                  Cerrar
+                </button>
+                {client?.phone && (
+                  <button
+                    onClick={() => { openWhatsApp(client.phone, message); setWaOrder(null); }}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <MessageCircle size={14} /> Enviar por WhatsApp
+                  </button>
+                )}
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }

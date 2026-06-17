@@ -10,6 +10,8 @@ import {
   BarChart3,
   Settings,
   Store,
+  TrendingUp,
+  Target,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 
@@ -23,6 +25,8 @@ const ALL_NAV_ITEMS = [
   { to: '/entregas',     icon: Truck,           label: 'Entregas'  },
   { to: '/publicaciones',icon: Megaphone,       label: 'Publi.'    },
   { to: '/reportes',     icon: BarChart3,       label: 'Reportes'  },
+  { to: '/finanzas',     icon: TrendingUp,      label: 'Finanzas'  },
+  { to: '/metas',        icon: Target,          label: 'Metas'     },
   { to: '/configuracion',icon: Settings,        label: 'Config.'   },
 ];
 
