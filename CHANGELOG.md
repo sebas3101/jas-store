@@ -7,7 +7,7 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-## [Unreleased] — rama: feature/integracion-supabase
+## [1.1.0] — 2026-06-16 — rama: feature/integracion-supabase
 
 ### Agregado
 - Integración con Supabase como base de datos real en la nube.
@@ -29,10 +29,8 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 - `src/pages/LoginPage.tsx`: `login()` ahora es async (consulta Supabase).
 
 ### Pendiente
-- Ejecutar `supabase/schema.sql` en el SQL Editor de Supabase Dashboard.
 - Code splitting para reducir el bundle principal (~960 kB).
 - Pruebas unitarias e integración.
-- Migración de datos existentes en localStorage a Supabase.
 
 ---
 
