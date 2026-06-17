@@ -1,293 +1,369 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
-  User,
-  Client,
-  Product,
-  Order,
-  OrderItem,
-  Payment,
-  Supplier,
-  SupplierPurchase,
-  Publication,
+  User, Client, Product, Order, OrderItem,
+  Payment, Supplier, SupplierPurchase, Publication,
 } from '../types';
-import {
-  sampleUsers,
-  sampleClients,
-  sampleProducts,
-  sampleOrders,
-  samplePayments,
-  sampleSuppliers,
-  samplePurchases,
-  samplePublications,
-} from './sampleData';
 
-let counter = 1000;
-const genId = (prefix: string) => `${prefix}${++counter}_${Date.now()}`;
-const genOrderNumber = (orders: Order[]) => {
-  const next = orders.length + 1;
-  return `JAS-${String(next).padStart(3, '0')}`;
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const cam = (rows: any[]) => rows.map(toCamel) as any[];
+
+const genOrderNumber = (orders: Order[]) =>
+  `JAS-${String(orders.length + 1).padStart(3, '0')}`;
+
+// ─── Tipo del store ───────────────────────────────────────────────────────────
 interface AppStore {
+  // Inicialización
+  initialized: boolean;
+  isLoading: boolean;
+  error: string | null;
+  initialize: () => Promise<void>;
+
   // Auth
   currentUser: User | null;
-  login: (email: string, password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 
   // Users
   users: User[];
-  addUser: (u: Omit<User, 'id' | 'createdAt'>) => void;
-  updateUser: (id: string, u: Partial<User>) => void;
-  deleteUser: (id: string) => void;
+  addUser:    (u: Omit<User, 'id' | 'createdAt'>) => Promise<void>;
+  updateUser: (id: string, u: Partial<User>) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
 
   // Clients
   clients: Client[];
-  addClient: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateClient: (id: string, c: Partial<Client>) => void;
-  deleteClient: (id: string) => void;
+  addClient:    (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateClient: (id: string, c: Partial<Client>) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
 
   // Products
   products: Product[];
-  addProduct: (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateProduct: (id: string, p: Partial<Product>) => void;
-  deleteProduct: (id: string) => void;
+  addProduct:    (p: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateProduct: (id: string, p: Partial<Product>) => Promise<void>;
+  deleteProduct: (id: string) => Promise<void>;
 
   // Orders
   orders: Order[];
-  addOrder: (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void;
-  updateOrder: (id: string, o: Partial<Order>) => void;
-  deleteOrder: (id: string) => void;
+  addOrder:    (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateOrder: (id: string, o: Partial<Order>) => Promise<void>;
+  deleteOrder: (id: string) => Promise<void>;
 
   // Payments
   payments: Payment[];
-  addPayment: (p: Omit<Payment, 'id' | 'createdAt'>) => void;
-  updatePayment: (id: string, p: Partial<Payment>) => void;
-  deletePayment: (id: string) => void;
+  addPayment:    (p: Omit<Payment, 'id' | 'createdAt'>) => Promise<void>;
+  updatePayment: (id: string, p: Partial<Payment>) => Promise<void>;
+  deletePayment: (id: string) => Promise<void>;
 
   // Suppliers
   suppliers: Supplier[];
-  addSupplier: (s: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateSupplier: (id: string, s: Partial<Supplier>) => void;
-  deleteSupplier: (id: string) => void;
+  addSupplier:    (s: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateSupplier: (id: string, s: Partial<Supplier>) => Promise<void>;
+  deleteSupplier: (id: string) => Promise<void>;
 
   // Purchases
   purchases: SupplierPurchase[];
-  addPurchase: (p: Omit<SupplierPurchase, 'id' | 'createdAt'>) => void;
-  updatePurchase: (id: string, p: Partial<SupplierPurchase>) => void;
-  deletePurchase: (id: string) => void;
+  addPurchase:    (p: Omit<SupplierPurchase, 'id' | 'createdAt'>) => Promise<void>;
+  updatePurchase: (id: string, p: Partial<SupplierPurchase>) => Promise<void>;
+  deletePurchase: (id: string) => Promise<void>;
 
   // Publications
   publications: Publication[];
-  addPublication: (p: Omit<Publication, 'id' | 'createdAt'>) => void;
-  updatePublication: (id: string, p: Partial<Publication>) => void;
-  deletePublication: (id: string) => void;
+  addPublication:    (p: Omit<Publication, 'id' | 'createdAt'>) => Promise<void>;
+  updatePublication: (id: string, p: Partial<Publication>) => Promise<void>;
+  deletePublication: (id: string) => Promise<void>;
 
   // Computed helpers
-  getClientDebt: (clientId: string) => number;
-  getClientTotalPaid: (clientId: string) => number;
-  getClientOrders: (clientId: string) => Order[];
+  getClientDebt:     (clientId: string) => number;
+  getClientTotalPaid:(clientId: string) => number;
+  getClientOrders:   (clientId: string) => Order[];
   getClientPayments: (clientId: string) => Payment[];
-  getOrderItems: (orderId: string) => OrderItem[];
+  getOrderItems:     (orderId: string)  => OrderItem[];
 }
 
-export const useAppStore = create<AppStore>()(
-  persist(
-    (set, get) => ({
-      currentUser: null,
+// ─── Store ────────────────────────────────────────────────────────────────────
+export const useAppStore = create<AppStore>()((set, get) => ({
+  initialized: false,
+  isLoading: false,
+  error: null,
 
-      login: (email, password) => {
-        const user = get().users.find(
-          (u) => u.email === email && u.password === password && u.active
-        );
-        if (user) {
-          set({ currentUser: user });
-          return true;
-        }
-        return false;
-      },
+  // ── Inicialización: carga todos los datos desde Supabase ─────────────────
+  initialize: async () => {
+    if (get().initialized) return;
+    set({ isLoading: true, error: null });
+    try {
+      const [
+        { data: users },
+        { data: clients },
+        { data: products },
+        { data: orders },
+        { data: payments },
+        { data: suppliers },
+        { data: purchases },
+        { data: publications },
+      ] = await Promise.all([
+        supabase.from('app_users').select('*').order('created_at'),
+        supabase.from('clients').select('*').order('created_at'),
+        supabase.from('products').select('*').order('created_at'),
+        supabase.from('orders').select('*').order('created_at'),
+        supabase.from('payments').select('*').order('created_at'),
+        supabase.from('suppliers').select('*').order('created_at'),
+        supabase.from('supplier_purchases').select('*').order('created_at'),
+        supabase.from('publications').select('*').order('created_at'),
+      ]);
 
-      logout: () => set({ currentUser: null }),
-
-      users: sampleUsers,
-      addUser: (u) =>
-        set((s) => ({
-          users: [
-            ...s.users,
-            { ...u, id: genId('u'), createdAt: new Date().toISOString() },
-          ],
-        })),
-      updateUser: (id, u) =>
-        set((s) => ({ users: s.users.map((x) => (x.id === id ? { ...x, ...u } : x)) })),
-      deleteUser: (id) => set((s) => ({ users: s.users.filter((x) => x.id !== id) })),
-
-      clients: sampleClients,
-      addClient: (c) =>
-        set((s) => ({
-          clients: [
-            ...s.clients,
-            {
-              ...c,
-              id: genId('c'),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ],
-        })),
-      updateClient: (id, c) =>
-        set((s) => ({
-          clients: s.clients.map((x) =>
-            x.id === id ? { ...x, ...c, updatedAt: new Date().toISOString() } : x
-          ),
-        })),
-      deleteClient: (id) => set((s) => ({ clients: s.clients.filter((x) => x.id !== id) })),
-
-      products: sampleProducts,
-      addProduct: (p) =>
-        set((s) => ({
-          products: [
-            ...s.products,
-            {
-              ...p,
-              id: genId('p'),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ],
-        })),
-      updateProduct: (id, p) =>
-        set((s) => ({
-          products: s.products.map((x) =>
-            x.id === id ? { ...x, ...p, updatedAt: new Date().toISOString() } : x
-          ),
-        })),
-      deleteProduct: (id) =>
-        set((s) => ({ products: s.products.filter((x) => x.id !== id) })),
-
-      orders: sampleOrders,
-      addOrder: (o) =>
-        set((s) => ({
-          orders: [
-            ...s.orders,
-            {
-              ...o,
-              id: genId('o'),
-              orderNumber: genOrderNumber(s.orders),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ],
-        })),
-      updateOrder: (id, o) =>
-        set((s) => ({
-          orders: s.orders.map((x) =>
-            x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
-          ),
-        })),
-      deleteOrder: (id) => set((s) => ({ orders: s.orders.filter((x) => x.id !== id) })),
-
-      payments: samplePayments,
-      addPayment: (p) =>
-        set((s) => ({
-          payments: [
-            ...s.payments,
-            { ...p, id: genId('pay'), createdAt: new Date().toISOString() },
-          ],
-        })),
-      updatePayment: (id, p) =>
-        set((s) => ({
-          payments: s.payments.map((x) => (x.id === id ? { ...x, ...p } : x)),
-        })),
-      deletePayment: (id) =>
-        set((s) => ({ payments: s.payments.filter((x) => x.id !== id) })),
-
-      suppliers: sampleSuppliers,
-      addSupplier: (s) =>
-        set((st) => ({
-          suppliers: [
-            ...st.suppliers,
-            {
-              ...s,
-              id: genId('s'),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            },
-          ],
-        })),
-      updateSupplier: (id, s) =>
-        set((st) => ({
-          suppliers: st.suppliers.map((x) =>
-            x.id === id ? { ...x, ...s, updatedAt: new Date().toISOString() } : x
-          ),
-        })),
-      deleteSupplier: (id) =>
-        set((s) => ({ suppliers: s.suppliers.filter((x) => x.id !== id) })),
-
-      purchases: samplePurchases,
-      addPurchase: (p) =>
-        set((s) => ({
-          purchases: [
-            ...s.purchases,
-            { ...p, id: genId('sp'), createdAt: new Date().toISOString() },
-          ],
-        })),
-      updatePurchase: (id, p) =>
-        set((s) => ({
-          purchases: s.purchases.map((x) => (x.id === id ? { ...x, ...p } : x)),
-        })),
-      deletePurchase: (id) =>
-        set((s) => ({ purchases: s.purchases.filter((x) => x.id !== id) })),
-
-      publications: samplePublications,
-      addPublication: (p) =>
-        set((s) => ({
-          publications: [
-            ...s.publications,
-            { ...p, id: genId('pub'), createdAt: new Date().toISOString() },
-          ],
-        })),
-      updatePublication: (id, p) =>
-        set((s) => ({
-          publications: s.publications.map((x) => (x.id === id ? { ...x, ...p } : x)),
-        })),
-      deletePublication: (id) =>
-        set((s) => ({ publications: s.publications.filter((x) => x.id !== id) })),
-
-      getClientDebt: (clientId) => {
-        const { orders } = get();
-        return orders
-          .filter(
-            (o) =>
-              o.clientId === clientId &&
-              o.status !== 'cancelado' &&
-              o.status !== 'pagado'
-          )
-          .reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
-      },
-
-      getClientTotalPaid: (clientId) => {
-        const { payments } = get();
-        return payments
-          .filter((p) => p.clientId === clientId)
-          .reduce((sum, p) => sum + p.amount, 0);
-      },
-
-      getClientOrders: (clientId) => {
-        return get().orders.filter((o) => o.clientId === clientId);
-      },
-
-      getClientPayments: (clientId) => {
-        return get().payments.filter((p) => p.clientId === clientId);
-      },
-
-      getOrderItems: (orderId) => {
-        const order = get().orders.find((o) => o.id === orderId);
-        return order?.items ?? [];
-      },
-    }),
-    {
-      name: 'jas-store-data',
-      version: 1,
+      set({
+        users:        cam(users        ?? []) as User[],
+        clients:      cam(clients      ?? []) as Client[],
+        products:     cam(products     ?? []) as Product[],
+        orders:       cam(orders       ?? []) as Order[],
+        payments:     cam(payments     ?? []) as Payment[],
+        suppliers:    cam(suppliers    ?? []) as Supplier[],
+        purchases:    cam(purchases    ?? []) as SupplierPurchase[],
+        publications: cam(publications ?? []) as Publication[],
+        initialized: true,
+        isLoading: false,
+      });
+    } catch (err) {
+      set({ error: 'Error al conectar con la base de datos', isLoading: false });
+      console.error('initialize error:', err);
     }
-  )
-);
+  },
+
+  // ── Auth ─────────────────────────────────────────────────────────────────
+  currentUser: null,
+
+  login: async (email, password) => {
+    const { data } = await supabase
+      .from('app_users')
+      .select('*')
+      .eq('email', email)
+      .eq('password', password)
+      .eq('active', true)
+      .single();
+    if (data) {
+      set({ currentUser: toCamel(data) as User });
+      return true;
+    }
+    return false;
+  },
+
+  logout: () => set({ currentUser: null }),
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+  users: [],
+
+  addUser: async (u) => {
+    const row = toSnake({ ...u, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('app_users').insert(row).select().single();
+    if (error) { console.error('addUser:', error); return; }
+    set(s => ({ users: [...s.users, toCamel(data) as User] }));
+  },
+
+  updateUser: async (id, u) => {
+    const { error } = await supabase.from('app_users').update(toSnake(u)).eq('id', id);
+    if (error) { console.error('updateUser:', error); return; }
+    set(s => ({ users: s.users.map(x => x.id === id ? { ...x, ...u } : x) }));
+  },
+
+  deleteUser: async (id) => {
+    const { error } = await supabase.from('app_users').delete().eq('id', id);
+    if (error) { console.error('deleteUser:', error); return; }
+    set(s => ({ users: s.users.filter(x => x.id !== id) }));
+  },
+
+  // ── Clients ───────────────────────────────────────────────────────────────
+  clients: [],
+
+  addClient: async (c) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...c, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('clients').insert(row).select().single();
+    if (error) { console.error('addClient:', error); return; }
+    set(s => ({ clients: [...s.clients, toCamel(data) as Client] }));
+  },
+
+  updateClient: async (id, c) => {
+    const row = toSnake({ ...c, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('clients').update(row).eq('id', id);
+    if (error) { console.error('updateClient:', error); return; }
+    set(s => ({
+      clients: s.clients.map(x =>
+        x.id === id ? { ...x, ...c, updatedAt: new Date().toISOString() } : x
+      ),
+    }));
+  },
+
+  deleteClient: async (id) => {
+    const { error } = await supabase.from('clients').delete().eq('id', id);
+    if (error) { console.error('deleteClient:', error); return; }
+    set(s => ({ clients: s.clients.filter(x => x.id !== id) }));
+  },
+
+  // ── Products ──────────────────────────────────────────────────────────────
+  products: [],
+
+  addProduct: async (p) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...p, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('products').insert(row).select().single();
+    if (error) { console.error('addProduct:', error); return; }
+    set(s => ({ products: [...s.products, toCamel(data) as Product] }));
+  },
+
+  updateProduct: async (id, p) => {
+    const row = toSnake({ ...p, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('products').update(row).eq('id', id);
+    if (error) { console.error('updateProduct:', error); return; }
+    set(s => ({
+      products: s.products.map(x =>
+        x.id === id ? { ...x, ...p, updatedAt: new Date().toISOString() } : x
+      ),
+    }));
+  },
+
+  deleteProduct: async (id) => {
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) { console.error('deleteProduct:', error); return; }
+    set(s => ({ products: s.products.filter(x => x.id !== id) }));
+  },
+
+  // ── Orders ────────────────────────────────────────────────────────────────
+  orders: [],
+
+  addOrder: async (o) => {
+    const now = new Date().toISOString();
+    const orderNumber = genOrderNumber(get().orders);
+    const row = toSnake({ ...o, orderNumber, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('orders').insert(row).select().single();
+    if (error) { console.error('addOrder:', error); return; }
+    set(s => ({ orders: [...s.orders, toCamel(data) as Order] }));
+  },
+
+  updateOrder: async (id, o) => {
+    const row = toSnake({ ...o, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('orders').update(row).eq('id', id);
+    if (error) { console.error('updateOrder:', error); return; }
+    set(s => ({
+      orders: s.orders.map(x =>
+        x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
+      ),
+    }));
+  },
+
+  deleteOrder: async (id) => {
+    const { error } = await supabase.from('orders').delete().eq('id', id);
+    if (error) { console.error('deleteOrder:', error); return; }
+    set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
+  },
+
+  // ── Payments ──────────────────────────────────────────────────────────────
+  payments: [],
+
+  addPayment: async (p) => {
+    const row = toSnake({ ...p, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('payments').insert(row).select().single();
+    if (error) { console.error('addPayment:', error); return; }
+    set(s => ({ payments: [...s.payments, toCamel(data) as Payment] }));
+  },
+
+  updatePayment: async (id, p) => {
+    const { error } = await supabase.from('payments').update(toSnake(p)).eq('id', id);
+    if (error) { console.error('updatePayment:', error); return; }
+    set(s => ({ payments: s.payments.map(x => x.id === id ? { ...x, ...p } : x) }));
+  },
+
+  deletePayment: async (id) => {
+    const { error } = await supabase.from('payments').delete().eq('id', id);
+    if (error) { console.error('deletePayment:', error); return; }
+    set(s => ({ payments: s.payments.filter(x => x.id !== id) }));
+  },
+
+  // ── Suppliers ─────────────────────────────────────────────────────────────
+  suppliers: [],
+
+  addSupplier: async (s) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...s, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('suppliers').insert(row).select().single();
+    if (error) { console.error('addSupplier:', error); return; }
+    set(st => ({ suppliers: [...st.suppliers, toCamel(data) as Supplier] }));
+  },
+
+  updateSupplier: async (id, s) => {
+    const row = toSnake({ ...s, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('suppliers').update(row).eq('id', id);
+    if (error) { console.error('updateSupplier:', error); return; }
+    set(st => ({
+      suppliers: st.suppliers.map(x =>
+        x.id === id ? { ...x, ...s, updatedAt: new Date().toISOString() } : x
+      ),
+    }));
+  },
+
+  deleteSupplier: async (id) => {
+    const { error } = await supabase.from('suppliers').delete().eq('id', id);
+    if (error) { console.error('deleteSupplier:', error); return; }
+    set(s => ({ suppliers: s.suppliers.filter(x => x.id !== id) }));
+  },
+
+  // ── Purchases ─────────────────────────────────────────────────────────────
+  purchases: [],
+
+  addPurchase: async (p) => {
+    const row = toSnake({ ...p, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('supplier_purchases').insert(row).select().single();
+    if (error) { console.error('addPurchase:', error); return; }
+    set(s => ({ purchases: [...s.purchases, toCamel(data) as SupplierPurchase] }));
+  },
+
+  updatePurchase: async (id, p) => {
+    const { error } = await supabase.from('supplier_purchases').update(toSnake(p)).eq('id', id);
+    if (error) { console.error('updatePurchase:', error); return; }
+    set(s => ({ purchases: s.purchases.map(x => x.id === id ? { ...x, ...p } : x) }));
+  },
+
+  deletePurchase: async (id) => {
+    const { error } = await supabase.from('supplier_purchases').delete().eq('id', id);
+    if (error) { console.error('deletePurchase:', error); return; }
+    set(s => ({ purchases: s.purchases.filter(x => x.id !== id) }));
+  },
+
+  // ── Publications ──────────────────────────────────────────────────────────
+  publications: [],
+
+  addPublication: async (p) => {
+    const row = toSnake({ ...p, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('publications').insert(row).select().single();
+    if (error) { console.error('addPublication:', error); return; }
+    set(s => ({ publications: [...s.publications, toCamel(data) as Publication] }));
+  },
+
+  updatePublication: async (id, p) => {
+    const { error } = await supabase.from('publications').update(toSnake(p)).eq('id', id);
+    if (error) { console.error('updatePublication:', error); return; }
+    set(s => ({ publications: s.publications.map(x => x.id === id ? { ...x, ...p } : x) }));
+  },
+
+  deletePublication: async (id) => {
+    const { error } = await supabase.from('publications').delete().eq('id', id);
+    if (error) { console.error('deletePublication:', error); return; }
+    set(s => ({ publications: s.publications.filter(x => x.id !== id) }));
+  },
+
+  // ── Computed helpers ──────────────────────────────────────────────────────
+  getClientDebt: (clientId) =>
+    get().orders
+      .filter(o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado')
+      .reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0),
+
+  getClientTotalPaid: (clientId) =>
+    get().payments
+      .filter(p => p.clientId === clientId)
+      .reduce((sum, p) => sum + p.amount, 0),
+
+  getClientOrders:   (clientId) => get().orders.filter(o => o.clientId === clientId),
+  getClientPayments: (clientId) => get().payments.filter(p => p.clientId === clientId),
+  getOrderItems:     (orderId)  => get().orders.find(o => o.id === orderId)?.items ?? [],
+}));

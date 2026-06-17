@@ -18,7 +18,7 @@ export function LoginPage() {
     setError('');
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
-    const ok = login(email.trim(), password);
+    const ok = await login(email.trim(), password);
     setLoading(false);
     if (ok) {
       navigate('/');
