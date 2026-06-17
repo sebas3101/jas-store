@@ -143,14 +143,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         `${baseUrl}/rest/v1/app_users?select=*&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}&active=eq.true&limit=1`,
         { headers: { apikey: key, Authorization: `Bearer ${key}` } }
       );
-      if (res.ok) {
-        const rows = await res.json() as Record<string, unknown>[];
-        if (rows.length > 0) {
-          set({ currentUser: toCamel(rows[0]) as User });
-          return true;
-        }
+      console.log('[login] status:', res.status, '| key prefix:', key?.slice(0,12));
+      const body = await res.json();
+      console.log('[login] body:', JSON.stringify(body));
+      if (res.ok && Array.isArray(body) && body.length > 0) {
+        set({ currentUser: toCamel(body[0]) as User });
+        return true;
       }
-    } catch { /* error de red */ }
+    } catch (err) { console.error('[login] error:', err); }
     return false;
   },
 
