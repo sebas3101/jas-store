@@ -135,6 +135,15 @@ alter table suppliers          enable row level security;
 alter table supplier_purchases enable row level security;
 alter table publications       enable row level security;
 
+drop policy if exists "jas_all_app_users"          on app_users;
+drop policy if exists "jas_all_clients"            on clients;
+drop policy if exists "jas_all_products"           on products;
+drop policy if exists "jas_all_orders"             on orders;
+drop policy if exists "jas_all_payments"           on payments;
+drop policy if exists "jas_all_suppliers"          on suppliers;
+drop policy if exists "jas_all_supplier_purchases" on supplier_purchases;
+drop policy if exists "jas_all_publications"       on publications;
+
 create policy "jas_all_app_users"          on app_users          for all using (true) with check (true);
 create policy "jas_all_clients"            on clients            for all using (true) with check (true);
 create policy "jas_all_products"           on products           for all using (true) with check (true);
