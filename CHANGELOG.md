@@ -7,6 +7,170 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.5] — 2026-06-17 — Tests unitarios con Vitest
+
+### Agregado
+- `vitest` ^4.1.9 como dependencia de desarrollo.
+- Scripts `"test": "vitest run"` y `"test:watch": "vitest"` en `package.json`.
+- `vite.config.ts`: sección `test` con `globals: true`, `environment: 'node'`.
+- `src/utils/businessLogic.ts`: módulo nuevo con las funciones puras de lógica
+  de negocio extraídas del store y las páginas, para poder testarlas de forma aislada:
+  - `calculateClientDebt(clientId, orders)` — deuda activa del cliente
+  - `distributeFifo(amount, orders)` — distribución FIFO devuelve `FifoApplication[]`
+  - `deriveClientStatus(client, orders)` — estado correcto según deuda real
+- `src/utils/businessLogic.test.ts`: **20 tests** cubriendo los tres casos
+  críticos del negocio (deuda, distribución FIFO, estado del cliente).
+- `src/utils/formatters.test.ts`: **10 tests** para `calculateProfit`
+  y `profitMargin`, incluyendo caso borde de división por cero.
+
+### Modificado
+- `src/store/index.ts`: importa `deriveClientStatus` desde `businessLogic.ts`
+  en lugar de tenerla duplicada localmente.
+
+### Resultado
+```
+Test Files  2 passed (2)
+     Tests  30 passed (30)
+  Duration  1.27s
+```
+
+**Cobertura de los 30 tests:**
+- `calculateClientDebt`: 6 casos (sin pedidos, sin abonos, con abono, pagado, cancelado, múltiples pedidos)
+- `distributeFifo`: 8 casos (monto 0, sin pedidos, pago parcial, pago exacto, FIFO correcto, dos pedidos, cubre todo, ya pagado, amountPaid previo)
+- `deriveClientStatus`: 5 casos (al_dia, pendiente, mora, credito_cerrado, límite por defecto)
+- `calculateProfit` + `profitMargin`: 9 casos (unitario, con cantidad, cero ganancia, negativo, margen, div/0, sin ganancias, redondeo)
+
+---
+
+## [1.2.4] — 2026-06-17 — Agregar ESLint con TypeScript
+
+### Agregado
+- `eslint.config.js`: configuración ESLint v9 en formato flat config.
+  Incluye reglas de `@eslint/js`, `typescript-eslint`, `react-hooks`
+  y `react-refresh`. Ignora `dist/` y `node_modules/`.
+- Script `"lint": "eslint ."` en `package.json`.
+- Script `"lint:fix": "eslint . --fix"` para correcciones automáticas.
+
+### Dependencias de desarrollo instaladas
+- `eslint` ^10.5.0 — motor principal
+- `@eslint/js` ^10.0.1 — reglas base JavaScript
+- `typescript-eslint` ^8.61.1 — parser y reglas TypeScript
+- `eslint-plugin-react-hooks` ^7.1.1 — valida reglas de hooks
+- `eslint-plugin-react-refresh` ^0.5.3 — valida exports compatibles con HMR
+- `globals` ^17.6.0 — definiciones de globales del navegador
+
+### Resultado de la primera ejecución
+`npm run lint` → **0 errores, 0 advertencias**. El código ya seguía
+las convenciones correctas. Los únicos `any` existentes en el código
+están marcados con comentarios explícitos (`@typescript-eslint/no-explicit-any`).
+
+---
+
+## [1.2.3] — 2026-06-17 — Code splitting: bundle inicial de 966 KB → 446 KB
+
+### Modificado
+- `src/App.tsx`: todas las páginas convertidas a `React.lazy()` con dynamic import.
+  `LoginPage` se mantiene estática (primera pantalla, carga inmediata).
+  Las `<Routes>` se envuelven en `<Suspense fallback={<LoadingScreen />}>`.
+
+### Resultado
+| Antes | Después |
+|-------|---------|
+| 1 chunk · 966 KB | Múltiples chunks |
+| El usuario descargaba todo al abrir la app | El usuario solo descarga lo que visita |
+
+**Chunks principales tras el build:**
+- `index` (núcleo: React, Zustand, Router, Store, Layout, Login): **446 KB**
+- `PieChart` (Recharts completo): **400 KB** — solo se descarga al visitar
+  Dashboard o Reportes por primera vez.
+- Páginas individuales: 5–12 KB cada una, descargadas al navegar.
+
+**Reducción del bundle inicial: 54%** (de 966 KB a 446 KB).
+Usuarios de Clientes, Pedidos o Pagos nunca descargan los 400 KB de Recharts.
+
+---
+
+## [1.2.2] — 2026-06-17 — Eliminar dependencia sin uso react-hook-form
+
+### Eliminado
+- `react-hook-form` desinstalado con `npm uninstall react-hook-form`.
+  El paquete estaba en `package.json` pero no tenía ningún import en `src/`.
+  No aportaba al bundle (Vite nunca lo incluía) pero sí a `node_modules`
+  y podía confundir a futuros desarrolladores.
+
+### Verificado
+- Búsqueda en todo `src/` confirma cero usos de `react-hook-form`,
+  `useForm`, `Controller`, `FormProvider`, `useFieldArray`.
+- `npm run build` sigue pasando sin errores tras la desinstalación.
+
+### Pendiente
+- `npm audit` reporta 2 vulnerabilidades en `esbuild` (<=0.24.2) y `vite` (<=6.4.2)
+  que solo afectan el servidor de desarrollo, no el build de producción.
+  Corregirlas requiere saltar a Vite 8 (cambio mayor) — evaluar en una actualización
+  dedicada de dependencias.
+
+---
+
+## [1.2.1] — 2026-06-17 — Sincronización automática de estado del cliente
+
+### Agregado
+- Helper `deriveClientStatus(client, orders)` en `src/store/index.ts`:
+  calcula el estado correcto basado en la deuda real del cliente.
+  - Deuda = 0 → `al_dia`
+  - Deuda > 0 y ≤ límite de crédito → `pendiente`
+  - Deuda > límite de crédito → `mora`
+  - `credito_cerrado` nunca se toca (decisión del admin)
+- Helper `syncOneClientStatus(clientId, clients, orders, set)`:
+  actualiza la UI de inmediato y persiste el cambio en Supabase de forma asíncrona.
+
+### Modificado
+- `initialize()`: tras cargar todos los datos, recalcula el status de cada cliente
+  y corrige los que están desactualizados. Los cambios se persisten en Supabase
+  en segundo plano (fire-and-forget), sin bloquear la carga.
+- `addOrder()`: llama a `syncOneClientStatus` después de crear un pedido,
+  actualizando el estado del cliente si la nueva deuda lo requiere.
+- `updateOrder()`: llama a `syncOneClientStatus` cuando cambia `amountPaid`
+  o el estado del pedido, para reflejar la deuda actualizada.
+- `deleteOrder()`: llama a `syncOneClientStatus` después de eliminar un pedido,
+  ya que la deuda puede reducirse al eliminarlo.
+
+### Pendiente
+- `creditLimit` por cliente: actualmente si el campo es null se usa $200.000 como
+  umbral entre `pendiente` y `mora`. Verificar que los clientes en BD tengan el
+  límite configurado correctamente.
+
+---
+
+## [1.2.0] — 2026-06-17 — Control de acceso por rol
+
+### Agregado
+- `src/hooks/usePermissions.ts`: hook centralizado con la matriz de permisos por rol.
+  Define qué rutas puede visitar cada rol (`admin`, `jennifer`, `alexis`, `vendedor`, `consulta`).
+- Componente `AccessDenied` en `AppLayout`: si el usuario navega a una ruta sin permiso
+  ve un mensaje de "Acceso restringido" en lugar de la página (sin redirección al login).
+
+### Modificado
+- `src/components/layout/AppLayout.tsx`: lee la ruta actual con `useLocation` y verifica
+  el permiso via `usePermissions`. Si no tiene acceso, renderiza `AccessDenied` en lugar de `<Outlet />`.
+- `src/components/layout/Sidebar.tsx`: filtra los ítems de navegación con `filterNavItems`
+  para mostrar solo los módulos permitidos al rol activo.
+- `src/components/layout/MobileNav.tsx`: ídem Sidebar — el menú inferior en móvil
+  solo muestra las opciones accesibles.
+
+### Matriz de permisos implementada
+| Rol | Módulos accesibles |
+|-----|-------------------|
+| admin | Todos |
+| jennifer | Dashboard, Clientes, Pedidos, Pagos, Entregas, Publicaciones |
+| alexis | Dashboard, Pedidos, Entregas |
+| vendedor | Dashboard, Productos, Pedidos, Publicaciones |
+| consulta | Dashboard, Reportes |
+
+### Pendiente
+- Verificar con el usuario si la matriz de permisos refleja exactamente los accesos deseados para cada persona del equipo.
+
+---
+
 ## [1.1.1] — 2026-06-17 — Validación general QA
 
 ### Validado
