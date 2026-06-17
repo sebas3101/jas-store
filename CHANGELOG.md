@@ -7,6 +7,36 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.1] — 2026-06-17 — Sincronización automática de estado del cliente
+
+### Agregado
+- Helper `deriveClientStatus(client, orders)` en `src/store/index.ts`:
+  calcula el estado correcto basado en la deuda real del cliente.
+  - Deuda = 0 → `al_dia`
+  - Deuda > 0 y ≤ límite de crédito → `pendiente`
+  - Deuda > límite de crédito → `mora`
+  - `credito_cerrado` nunca se toca (decisión del admin)
+- Helper `syncOneClientStatus(clientId, clients, orders, set)`:
+  actualiza la UI de inmediato y persiste el cambio en Supabase de forma asíncrona.
+
+### Modificado
+- `initialize()`: tras cargar todos los datos, recalcula el status de cada cliente
+  y corrige los que están desactualizados. Los cambios se persisten en Supabase
+  en segundo plano (fire-and-forget), sin bloquear la carga.
+- `addOrder()`: llama a `syncOneClientStatus` después de crear un pedido,
+  actualizando el estado del cliente si la nueva deuda lo requiere.
+- `updateOrder()`: llama a `syncOneClientStatus` cuando cambia `amountPaid`
+  o el estado del pedido, para reflejar la deuda actualizada.
+- `deleteOrder()`: llama a `syncOneClientStatus` después de eliminar un pedido,
+  ya que la deuda puede reducirse al eliminarlo.
+
+### Pendiente
+- `creditLimit` por cliente: actualmente si el campo es null se usa $200.000 como
+  umbral entre `pendiente` y `mora`. Verificar que los clientes en BD tengan el
+  límite configurado correctamente.
+
+---
+
 ## [1.2.0] — 2026-06-17 — Control de acceso por rol
 
 ### Agregado

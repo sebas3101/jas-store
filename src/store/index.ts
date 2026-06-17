@@ -3,6 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
+  ClientStatus,
 } from '../types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -12,6 +13,47 @@ const cam = (rows: any[]) => rows.map(toCamel) as any[];
 
 const genOrderNumber = (orders: Order[]) =>
   `JAS-${String(orders.length + 1).padStart(3, '0')}`;
+
+// Calcula el estado correcto de un cliente basado en su deuda real.
+// 'credito_cerrado' nunca se modifica automáticamente (decisión del admin).
+function deriveClientStatus(client: Client, orders: Order[]): ClientStatus {
+  if (client.status === 'credito_cerrado') return 'credito_cerrado';
+  const debt = orders
+    .filter(o => o.clientId === client.id && o.status !== 'cancelado' && o.status !== 'pagado')
+    .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+  if (debt <= 0) return 'al_dia';
+  if (debt > (client.creditLimit ?? 200_000)) return 'mora';
+  return 'pendiente';
+}
+
+// Sincroniza el status de UN cliente contra Supabase si cambió.
+// Actualiza el estado local inmediatamente; la llamada a Supabase es fire-and-forget.
+async function syncOneClientStatus(
+  clientId: string,
+  clients: Client[],
+  orders: Order[],
+  setStore: (fn: (s: { clients: Client[] }) => Partial<{ clients: Client[] }>) => void
+) {
+  const client = clients.find(c => c.id === clientId);
+  if (!client) return;
+  const newStatus = deriveClientStatus(client, orders);
+  if (newStatus === client.status) return;
+  const now = new Date().toISOString();
+  // Actualizar UI de inmediato (sin esperar a Supabase)
+  setStore(s => ({
+    clients: s.clients.map(c =>
+      c.id === clientId ? { ...c, status: newStatus, updatedAt: now } : c
+    ),
+  }));
+  // Persistir en Supabase en segundo plano
+  supabase
+    .from('clients')
+    .update(toSnake({ status: newStatus, updatedAt: now }))
+    .eq('id', clientId)
+    .then(({ error }) => {
+      if (error) console.error('syncOneClientStatus:', error);
+    });
+}
 
 // ─── Tipo del store ───────────────────────────────────────────────────────────
 interface AppStore {
@@ -113,11 +155,23 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('publications').select('*').order('created_at'),
       ]);
 
+      const loadedClients = cam(clients ?? []) as Client[];
+      const loadedOrders  = cam(orders  ?? []) as Order[];
+
+      // Corregir estados de clientes al arrancar, usando la deuda real
+      const syncedClients = loadedClients.map(c => {
+        const correct = deriveClientStatus(c, loadedOrders);
+        return correct !== c.status ? { ...c, status: correct } : c;
+      });
+      const changedClients = syncedClients.filter(
+        (c, i) => c.status !== loadedClients[i].status
+      );
+
       set({
         users:        cam(users        ?? []) as User[],
-        clients:      cam(clients      ?? []) as Client[],
+        clients:      syncedClients,
         products:     cam(products     ?? []) as Product[],
-        orders:       cam(orders       ?? []) as Order[],
+        orders:       loadedOrders,
         payments:     cam(payments     ?? []) as Payment[],
         suppliers:    cam(suppliers    ?? []) as Supplier[],
         purchases:    cam(purchases    ?? []) as SupplierPurchase[],
@@ -125,6 +179,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         initialized: true,
         isLoading: false,
       });
+
+      // Persistir cambios de status en Supabase (fire-and-forget)
+      if (changedClients.length > 0) {
+        const now = new Date().toISOString();
+        for (const c of changedClients) {
+          supabase
+            .from('clients')
+            .update(toSnake({ status: c.status, updatedAt: now }))
+            .eq('id', c.id)
+            .then(({ error }) => {
+              if (error) console.error('syncClientStatus (init):', error);
+            });
+        }
+      }
     } catch (err) {
       set({ error: 'Error al conectar con la base de datos', isLoading: false });
       console.error('initialize error:', err);
@@ -243,9 +311,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { data, error } = await supabase.from('orders').insert(row).select().single();
     if (error) { console.error('addOrder:', error); return; }
     set(s => ({ orders: [...s.orders, toCamel(data) as Order] }));
+    // Resincronizar status del cliente tras agregar un pedido (genera deuda)
+    const { clients, orders } = get();
+    await syncOneClientStatus(o.clientId, clients, orders, set);
   },
 
   updateOrder: async (id, o) => {
+    // Obtener clientId antes de actualizar para la sincronización
+    const clientId = get().orders.find(x => x.id === id)?.clientId;
     const row = toSnake({ ...o, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('orders').update(row).eq('id', id);
     if (error) { console.error('updateOrder:', error); return; }
@@ -254,12 +327,24 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
       ),
     }));
+    // Resincronizar status del cliente si cambia amountPaid o status del pedido
+    if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
+      const { clients, orders } = get();
+      await syncOneClientStatus(clientId, clients, orders, set);
+    }
   },
 
   deleteOrder: async (id) => {
+    // Obtener clientId antes de eliminar
+    const clientId = get().orders.find(x => x.id === id)?.clientId;
     const { error } = await supabase.from('orders').delete().eq('id', id);
     if (error) { console.error('deleteOrder:', error); return; }
     set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
+    // Resincronizar: eliminar un pedido puede reducir la deuda del cliente
+    if (clientId) {
+      const { clients, orders } = get();
+      await syncOneClientStatus(clientId, clients, orders, set);
+    }
   },
 
   // ── Payments ──────────────────────────────────────────────────────────────
