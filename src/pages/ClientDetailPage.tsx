@@ -253,21 +253,21 @@ export function ClientDetailPage() {
         </div>
       </div>
 
-      {/* Financial summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalOrdered)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total pedidos</p>
+      {/* Financial summary — horizontal list on mobile, 3 cols on sm+ */}
+      <div className="card !p-0 overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-gray-100 sm:grid sm:grid-cols-3">
+        <div className="flex items-center justify-between sm:flex-col sm:items-start px-5 py-3.5 gap-3">
+          <p className="text-xs text-gray-500 flex-shrink-0">Total pedidos</p>
+          <p className="text-lg font-bold text-gray-900 tabular-nums">{formatCurrency(totalOrdered)}</p>
         </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalPaid)}</p>
-          <p className="text-xs text-gray-500 mt-1">Total pagado</p>
+        <div className="flex items-center justify-between sm:flex-col sm:items-start px-5 py-3.5 gap-3">
+          <p className="text-xs text-gray-500 flex-shrink-0">Total pagado</p>
+          <p className="text-lg font-bold text-emerald-600 tabular-nums">{formatCurrency(totalPaid)}</p>
         </div>
-        <div className="card text-center">
-          <p className={`text-2xl font-bold ${debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+        <div className="flex items-center justify-between sm:flex-col sm:items-start px-5 py-3.5 gap-3">
+          <p className="text-xs text-gray-500 flex-shrink-0">{debt > 0 ? 'Saldo pendiente' : 'Al día'}</p>
+          <p className={`text-lg font-bold tabular-nums ${debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
             {formatCurrency(debt)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">{debt > 0 ? 'Saldo pendiente' : 'Al día'}</p>
         </div>
       </div>
 
@@ -356,8 +356,8 @@ export function ClientDetailPage() {
                   <p className="text-sm font-semibold text-gray-800">{o.orderNumber}</p>
                   <p className="text-xs text-gray-400">{formatDate(o.orderDate)}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-900">{formatCurrency(o.totalAmount)}</p>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-gray-900 tabular-nums">{formatCurrency(o.totalAmount)}</p>
                   <span className={`text-[10px] font-semibold ${orderStatusColor[o.status]}`}>
                     {orderStatusLabel[o.status]}
                   </span>
@@ -389,7 +389,7 @@ export function ClientDetailPage() {
                   <p className="text-xs text-gray-400">{formatDateTime(p.date)}</p>
                   {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
                 </div>
-                <p className="text-sm font-bold text-emerald-600">{formatCurrency(p.amount)}</p>
+                <p className="text-sm font-bold text-emerald-600 tabular-nums flex-shrink-0">{formatCurrency(p.amount)}</p>
               </div>
             ))}
           </div>

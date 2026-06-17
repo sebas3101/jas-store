@@ -7,6 +7,21 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.5.2] — 2026-06-17 — Corrección responsive en clientes y filtros de fecha
+
+### Corregido
+
+- **Desbordamiento en resumen financiero de clientes** — La sección de "Total pedidos / Total pagado / Saldo pendiente" en el detalle del cliente usaba `grid-cols-3 gap-4` con `text-2xl`. En 320px cada tarjeta medía ~85px de ancho, insuficiente para valores monetarios. Rediseñada como lista horizontal con fila por indicador (etiqueta izquierda | valor derecho) en móvil, y rejilla de 3 columnas en `sm+`.
+- **Valores de historial de pedidos y abonos** — Añadido `flex-shrink-0` al valor monetario en las listas de pedidos y pagos del cliente, evitando que se comprima y genere solapamiento.
+- **Historial de metas (GoalsPage)** — `grid-cols-2 gap-4` con cadenas `"$X / $Y"` por columna podía desbordar en 120px de ancho. Cambiado a `grid-cols-1 sm:grid-cols-2` y separado el valor actual de la meta en dos líneas independientes.
+- **Input de mes en Finanzas** — Eliminado `max-w-[200px]` en móvil para que el campo ocupe el ancho disponible completo; `sm:max-w-[200px]` en escritorio.
+
+### Validado
+
+- 320px, 360px, 375px, 390px, 414px, 430px: sin scroll horizontal, valores completos, tarjetas alineadas.
+
+---
+
 ## [1.5.1] — 2026-06-17 — Correcciones mobile: filtros de fechas, tarjetas de pagos y notificaciones
 
 ### Corregido
