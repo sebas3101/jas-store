@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Plus, Search, ShoppingBag, ArrowRight, X } from 'lucide-react';
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
@@ -233,6 +234,7 @@ export function OrdersPage() {
   const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
 
   const { orders, clients, addOrder, users } = useAppStore();
+  const { can } = usePermissions();
 
   // Si viene el param ?cliente=<id>, pre-cargar el nombre del cliente en el buscador
   const prefilledName = clienteParam
@@ -262,9 +264,11 @@ export function OrdersPage() {
           <h1 className="page-title">Pedidos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{orders.length} pedidos en total</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="btn-primary">
-          <Plus size={16} /> Nuevo pedido
-        </button>
+        {can('pedidos', 'crear') && (
+          <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <Plus size={16} /> Nuevo pedido
+          </button>
+        )}
       </div>
 
       {/* Filters */}

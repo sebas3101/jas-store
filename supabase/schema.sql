@@ -160,3 +160,87 @@ insert into app_users (id, name, email, password, role, active) values
   ('00000000-0000-0000-0000-000000000003', 'Alexis',        'alexis@jasstore.co',    'alexis123',   'alexis',   true),
   ('00000000-0000-0000-0000-000000000004', 'Vendedor',      'vendedor@jasstore.co',  'vendedor123', 'vendedor', true)
 on conflict (email) do nothing;
+
+-- =====================================================================
+-- MIGRACIÓN v1.3 — Sistema de permisos por usuario
+-- Ejecutar en Supabase SQL Editor después del schema inicial
+-- =====================================================================
+
+-- 1. Agregar columna permissions a app_users
+alter table app_users
+  add column if not exists permissions jsonb not null default '{}';
+
+-- 2. Función de login que verifica usuario activo
+--    Reemplaza la anterior (si existe) y solo retorna usuarios con active = true
+create or replace function login_user(p_email text, p_password text)
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select to_jsonb(u.*)
+  from app_users u
+  where u.email = p_email
+    and u.password = p_password
+    and u.active = true
+  limit 1;
+$$;
+
+-- 3. Permisos predeterminados para usuarios existentes
+--    Admin: todos los permisos (el rol 'admin' ya omite el chequeo en la app,
+--    pero se setean por consistencia)
+update app_users
+set permissions = '{
+  "dashboard":    {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "clientes":     {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "pedidos":      {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "productos":    {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "publicaciones":{"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "pagos":        {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "proveedores":  {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "entregas":     {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "reportes":     {"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true},
+  "configuracion":{"ver":true,"crear":true,"editar":true,"eliminar":true,"exportar":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true,"cambiar_estado":true,"administrar_accesos":true}
+}'::jsonb
+where role = 'admin';
+
+-- Jennifer: clientes, pedidos, pagos, entregas, publicaciones, reportes
+update app_users
+set permissions = '{
+  "dashboard":    {"ver":true},
+  "clientes":     {"ver":true,"crear":true,"editar":true,"ver_financiero":true},
+  "pedidos":      {"ver":true,"crear":true,"editar":true,"cambiar_estado":true},
+  "pagos":        {"ver":true,"registrar_pago":true,"registrar_abono":true,"ver_financiero":true},
+  "entregas":     {"ver":true},
+  "publicaciones":{"ver":true,"crear":true},
+  "reportes":     {"ver":true},
+  "productos":    {"ver":true}
+}'::jsonb
+where role = 'jennifer';
+
+-- Alexis: pedidos y entregas (cambiar estado)
+update app_users
+set permissions = '{
+  "dashboard": {"ver":true},
+  "pedidos":   {"ver":true,"cambiar_estado":true},
+  "entregas":  {"ver":true,"cambiar_estado":true}
+}'::jsonb
+where role = 'alexis';
+
+-- Vendedor: productos, pedidos, publicaciones
+update app_users
+set permissions = '{
+  "dashboard":    {"ver":true},
+  "productos":    {"ver":true},
+  "pedidos":      {"ver":true,"crear":true},
+  "publicaciones":{"ver":true,"crear":true}
+}'::jsonb
+where role = 'vendedor';
+
+-- Consulta: solo reportes
+update app_users
+set permissions = '{
+  "dashboard": {"ver":true},
+  "reportes":  {"ver":true}
+}'::jsonb
+where role = 'consulta';

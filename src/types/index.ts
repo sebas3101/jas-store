@@ -26,6 +26,39 @@ export type PublicationChannel =
   | 'marketplace'
   | 'otro';
 
+// ─── Sistema de permisos por usuario ─────────────────────────────────────────
+
+/** Módulos de la aplicación */
+export type PermModule =
+  | 'dashboard'
+  | 'clientes'
+  | 'pedidos'
+  | 'productos'
+  | 'publicaciones'
+  | 'pagos'
+  | 'proveedores'
+  | 'entregas'
+  | 'reportes'
+  | 'configuracion';
+
+/** Acciones posibles por módulo */
+export type PermAction =
+  | 'ver'
+  | 'crear'
+  | 'editar'
+  | 'eliminar'
+  | 'exportar'
+  | 'registrar_pago'
+  | 'registrar_abono'
+  | 'ver_financiero'
+  | 'cambiar_estado'
+  | 'administrar_accesos';
+
+export type ModulePerms = Partial<Record<PermAction, boolean>>;
+export type UserPermissions = Partial<Record<PermModule, ModulePerms>>;
+
+// ─── Entidades ────────────────────────────────────────────────────────────────
+
 export interface User {
   id: string;
   name: string;
@@ -35,6 +68,7 @@ export interface User {
   phone?: string;
   active: boolean;
   createdAt: string;
+  permissions?: UserPermissions;
 }
 
 export interface Client {

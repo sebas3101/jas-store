@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, Package, Edit2, Trash2 } from 'lucide-react';
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -126,6 +127,7 @@ function ProductForm({
 
 export function ProductsPage() {
   const { products, users, addProduct, updateProduct, deleteProduct } = useAppStore();
+  const { can } = usePermissions();
   const [search, setSearch]           = useState('');
   const [filterCat, setFilterCat]     = useState<ProductCategory | 'all'>('all');
   const [filterStatus, setFilterStatus] = useState<ProductStatus | 'all'>('all');
@@ -168,9 +170,11 @@ export function ProductsPage() {
           <h1 className="page-title">Productos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{products.length} productos en catálogo</p>
         </div>
-        <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
-          <Plus size={16} /> Nuevo producto
-        </button>
+        {can('productos', 'crear') && (
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+            <Plus size={16} /> Nuevo producto
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -246,18 +250,22 @@ export function ProductsPage() {
                     <Package size={16} className="text-primary-600" />
                   </div>
                   <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { setEditing(product); setModalOpen(true); }}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <Edit2 size={13} />
-                    </button>
-                    <button
-                      onClick={() => setDeleting(product)}
-                      className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                    {can('productos', 'editar') && (
+                      <button
+                        onClick={() => { setEditing(product); setModalOpen(true); }}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                    )}
+                    {can('productos', 'eliminar') && (
+                      <button
+                        onClick={() => setDeleting(product)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
 

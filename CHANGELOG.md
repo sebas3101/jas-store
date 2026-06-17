@@ -7,6 +7,48 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.3.0] — 2026-06-17 — Permisos personalizados por usuario
+
+### Agregado
+- `PermModule`, `PermAction`, `ModulePerms`, `UserPermissions` — nuevos tipos en `src/types/index.ts`
+- Campo `permissions?: UserPermissions` en la interfaz `User`
+- `src/hooks/usePermissions.ts` — completamente reescrito:
+  - `can(module, action)` — verifica permisos granulares por módulo y acción
+  - `canAccess(basePath)` — verifica acceso de vista a una ruta
+  - `filterNavItems()` — filtra navegación según permisos `ver`
+  - `PERMISSION_TEMPLATES` — plantillas reutilizables (admin, jennifer, alexis, vendedor, consulta)
+  - `MODULE_ACTIONS` — definición de acciones disponibles por módulo para la UI
+  - `ALL_MODULES`, `MODULE_LABELS` — utilidades para la matriz de permisos
+- `src/pages/SettingsPage.tsx` — completamente reescrita con:
+  - Lista de usuarios con toggle activo/inactivo (sin eliminar historial)
+  - Modal de edición de usuario con campo de permisos embebido
+  - Modal de permisos independiente con `PermissionsMatrix` completa
+  - Botones: crear, editar, activar/desactivar, administrar accesos, eliminar — cada uno protegido por `can()`
+  - Selector de plantillas de permisos para setup rápido
+- Checks `can()` en páginas clave:
+  - `ClientsPage`: oculta "Nuevo cliente" y botón Editar según permisos
+  - `OrdersPage`: oculta "Nuevo pedido"
+  - `PaymentsPage`: oculta "Registrar pago"
+  - `ProductsPage`: oculta crear/editar/eliminar
+  - `SuppliersPage`: oculta crear/editar/eliminar
+  - `DeliveriesPage`: oculta controles de asignación y cambio de estado
+- Migración SQL en `supabase/schema.sql` (sección v1.3):
+  - `alter table app_users add column permissions jsonb`
+  - RPC `login_user` actualizada para verificar `active = true`
+  - `update` con permisos predeterminados por rol para usuarios existentes
+
+### Cambiado
+- `store/updateUser`: sincroniza `localStorage` cuando se actualizan los permisos del usuario activo
+- Admin (`role = 'admin'`) omite verificación de permisos — acceso completo garantizado por código
+- `AppLayout`: mensaje de "Acceso no autorizado" más claro
+
+### Seguridad
+- Usuarios inactivos (`active = false`) bloqueados en el login a nivel de RPC
+- Solo admin o usuario con `configuracion.administrar_accesos` puede modificar permisos
+- Dos niveles de enforcement: UI (ocultar elementos) + ruta (bloquear navegación)
+
+---
+
 ## [1.2.5] — 2026-06-17 — Tests unitarios con Vitest
 
 ### Agregado

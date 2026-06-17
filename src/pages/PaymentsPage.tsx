@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp } from 'lucide-react';
 
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
@@ -145,6 +146,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
 // ─── Página principal
 export function PaymentsPage() {
   const { payments, clients, users } = useAppStore();
+  const { can } = usePermissions();
   const [search, setSearch]     = useState('');
   const [modalOpen, setModal]   = useState(false);
   const [dateFrom, setDateFrom] = useState('');
@@ -192,9 +194,11 @@ export function PaymentsPage() {
           <h1 className="page-title">Pagos y abonos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{payments.length} pagos registrados</p>
         </div>
-        <button onClick={() => setModal(true)} className="btn-primary">
-          <Plus size={16} /> Registrar pago
-        </button>
+        {can('pagos', 'registrar_pago') && (
+          <button onClick={() => setModal(true)} className="btn-primary">
+            <Plus size={16} /> Registrar pago
+          </button>
+        )}
       </div>
 
       {/* Stats */}

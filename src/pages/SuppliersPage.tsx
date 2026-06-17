@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, Store, Phone, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -116,6 +117,7 @@ function PurchaseForm({ supplierId, onSave }: {
 
 export function SuppliersPage() {
   const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, addPurchase, updatePurchase } = useAppStore();
+  const { can } = usePermissions();
   const [modalOpen, setModalOpen]       = useState(false);
   const [purchaseModal, setPurchaseModal] = useState<string | null>(null);
   const [editing, setEditing]           = useState<Supplier | null>(null);
@@ -140,9 +142,11 @@ export function SuppliersPage() {
           <h1 className="page-title">Proveedores</h1>
           <p className="text-sm text-gray-500 mt-0.5">{suppliers.length} proveedores</p>
         </div>
-        <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
-          <Plus size={16} /> Nuevo proveedor
-        </button>
+        {can('proveedores', 'crear') && (
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+            <Plus size={16} /> Nuevo proveedor
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -185,14 +189,18 @@ export function SuppliersPage() {
                     <p className="text-xs text-gray-400">{supplierPurchases.length} compras</p>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
-                    <button onClick={() => { setEditing(supplier); setModalOpen(true); }}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
-                      <Edit2 size={13} />
-                    </button>
-                    <button onClick={() => setDeleting(supplier)}
-                      className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500">
-                      <Trash2 size={13} />
-                    </button>
+                    {can('proveedores', 'editar') && (
+                      <button onClick={() => { setEditing(supplier); setModalOpen(true); }}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                        <Edit2 size={13} />
+                      </button>
+                    )}
+                    {can('proveedores', 'eliminar') && (
+                      <button onClick={() => setDeleting(supplier)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500">
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                     <button
                       onClick={() => setExpanded(isExpanded ? null : supplier.id)}
                       className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">

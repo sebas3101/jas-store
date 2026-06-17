@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Truck, CheckCircle2, Clock, Package, Search } from 'lucide-react';
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
 import {
@@ -13,6 +14,7 @@ import type { OrderStatus } from '../types';
 
 export function DeliveriesPage() {
   const { orders, clients, users, updateOrder } = useAppStore();
+  const { can } = usePermissions();
   const [filter, setFilter]   = useState<'all' | 'pending' | 'delivered'>('pending');
   const [search, setSearch]   = useState('');
 
@@ -143,31 +145,35 @@ export function DeliveriesPage() {
 
                 {/* Controls */}
                 <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50 flex-wrap">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] text-gray-400 mb-1">Repartidor</p>
-                    <select
-                      value={order.deliveryPersonId ?? ''}
-                      onChange={e => handleAssign(order.id, e.target.value)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 w-full max-w-[160px]"
-                    >
-                      <option value="">Sin asignar</option>
-                      {assignableUsers.map(u => (
-                        <option key={u.id} value={u.id}>{u.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 mb-1">Estado</p>
-                    <select
-                      value={order.status}
-                      onChange={e => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                      className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
-                    >
-                      {STATUS_OPTIONS.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {can('entregas', 'cambiar_estado') && (
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-gray-400 mb-1">Repartidor</p>
+                      <select
+                        value={order.deliveryPersonId ?? ''}
+                        onChange={e => handleAssign(order.id, e.target.value)}
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 w-full max-w-[160px]"
+                      >
+                        <option value="">Sin asignar</option>
+                        {assignableUsers.map(u => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {can('entregas', 'cambiar_estado') && (
+                    <div>
+                      <p className="text-[10px] text-gray-400 mb-1">Estado</p>
+                      <select
+                        value={order.status}
+                        onChange={e => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
+                      >
+                        {STATUS_OPTIONS.map(s => (
+                          <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   {order.notes && (
                     <div className="w-full">
                       <p className="text-[10px] text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">

@@ -9,9 +9,9 @@ function AccessDenied() {
   return (
     <div className="text-center py-20">
       <Shield size={48} className="text-gray-200 mx-auto mb-4" />
-      <p className="text-gray-600 font-semibold text-lg">Acceso restringido</p>
+      <p className="text-gray-600 font-semibold text-lg">Acceso no autorizado</p>
       <p className="text-sm text-gray-400 mt-1 max-w-xs mx-auto">
-        Tu rol no tiene permiso para ver esta sección. Contacta al administrador si crees que es un error.
+        No tienes permisos para ver esta sección. Contacta al administrador para solicitar acceso.
       </p>
     </div>
   );
