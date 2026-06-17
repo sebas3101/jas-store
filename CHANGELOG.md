@@ -7,6 +7,38 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.1.1] — 2026-06-17 — Validación general QA
+
+### Validado
+- `npm run build` sin errores TypeScript ni de compilación.
+- Navegación completa: Login, Dashboard, Clientes, Pedidos, Pagos, Productos, Proveedores, Entregas, Publicaciones, Reportes, Configuración.
+- Formularios: crear/editar cliente, crear pedido con múltiples items, registrar pago/abono, crear producto, proveedor, publicación y usuario.
+- Cálculo de deuda por cliente (`getClientDebt`): excluye pedidos `pagado` y `cancelado` → correcto.
+- Distribución FIFO de abonos entre pedidos → correcto.
+- Cálculo de ganancia estimada (`totalAmount − totalCost`) → correcto.
+- KPIs del Dashboard: ventas totales, por cobrar, cobrado, ganancia estimada → correctos.
+- Prueba de caso real: pedido $120.000 + abono $50.000 → saldo pendiente $70.000 → correcto.
+- Alertas automáticas (mora, pedidos por recoger, productos agotados) → correctas.
+- Mensaje de cobro WhatsApp en detalle de cliente → genera y abre correctamente.
+- Sesión persistida en `localStorage`, sobrevive recarga de página.
+- Protección de rutas privadas: redirige a `/login` sin sesión activa → correcto.
+- Módulo Entregas: asignación de repartidor y cambio de estado → funcionan.
+- Configuración: restricción a rol `admin` → correcto.
+
+### Corregido
+- **fix: logo roto en página Configuración** (`src/pages/SettingsPage.tsx`): referencia estática `/logo.jpeg` generaba 404 en producción. Corregido importando el asset desde `src/assets/logo.jpeg`.
+- **fix: estado del cliente no se actualizaba al pagar desde /pagos** (`src/pages/PaymentsPage.tsx`): `PaymentForm` distribuía el abono pero nunca actualizaba `client.status`. Corregido: si la deuda total queda en cero, se llama `updateClient({ status: 'al_dia' })`.
+
+### Pendiente
+- Control de acceso por rol: roles `jennifer`, `alexis`, `vendedor`, `consulta` no tienen guardias de ruta. Cualquier usuario autenticado accede a todos los módulos.
+- Estado del cliente no sincronizado automáticamente: solo se recalcula al abonar la deuda completa. Un cliente con deuda parcial puede mostrar estado incorrecto si el admin lo estableció manualmente.
+- Bundle pesado (963 KB antes de gzip): aplicar `dynamic import()` en páginas de Reportes y Dashboard para reducir chunk inicial.
+- Sin script `npm run lint`: agregar ESLint + `@typescript-eslint`.
+- Sin tests: agregar Vitest con tests unitarios para cálculos de deuda, distribución FIFO y ganancia.
+- `react-hook-form` está instalado pero no se usa en ningún formulario — eliminar para reducir bundle.
+
+---
+
 ## [1.1.0] — 2026-06-16 — rama: feature/integracion-supabase
 
 ### Agregado

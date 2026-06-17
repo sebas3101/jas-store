@@ -15,7 +15,7 @@ import type { PaymentMethod } from '../types';
 
 // ─── Formulario de pago — fuera del padre para evitar re-mount en cada render
 function PaymentForm({ onClose }: { onClose: () => void }) {
-  const { clients, orders, currentUser, addPayment, updateOrder } = useAppStore();
+  const { clients, orders, currentUser, addPayment, updateOrder, updateClient } = useAppStore();
 
   const [clientId, setClientId]           = useState('');
   const [amount, setAmount]               = useState(0);
@@ -52,6 +52,12 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
           .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
       : [];
 
+    // Calcular deuda total del cliente antes de distribuir (para saber si queda en cero)
+    const allClientOrders = orders.filter(
+      o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado'
+    );
+    const deudaAntes = allClientOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+
     let remaining = amount;
     for (const order of ordersToProcess) {
       if (remaining <= 0) break;
@@ -64,6 +70,11 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
         status: newPaid >= order.totalAmount ? 'pagado' : order.status,
       });
       remaining -= toApply;
+    }
+
+    // Actualizar estado del cliente si la deuda queda saldada
+    if (clientId && deudaAntes - amount <= 0) {
+      updateClient(clientId, { status: 'al_dia' });
     }
 
     onClose();

@@ -5,6 +5,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { roleLabel } from '../utils/formatters';
 import type { User as UserType, UserRole } from '../types';
+import logoUrl from '../assets/logo.jpeg';
 
 const ROLES: UserRole[] = ['admin', 'jennifer', 'alexis', 'vendedor', 'consulta'];
 
@@ -127,7 +128,7 @@ export function SettingsPage() {
       {/* Business info card */}
       <div className="card">
         <div className="flex items-center gap-4 mb-4">
-          <img src="/logo.jpeg" alt="JAS Store" className="w-16 h-16 rounded-2xl object-cover shadow-md" />
+          <img src={logoUrl} alt="JAS Store" className="w-16 h-16 rounded-2xl object-cover shadow-md" />
           <div>
             <h2 className="text-lg font-bold text-gray-900">JAS Store</h2>
             <p className="text-sm text-gray-500">Tienda virtual de ropa, lociones y cosméticos</p>
