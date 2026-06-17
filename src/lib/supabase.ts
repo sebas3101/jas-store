@@ -9,7 +9,9 @@ if (!url || !key) {
 }
 
 export const supabase      = createClient(url, key);
-export const supabaseAdmin = createClient(url, serviceKey || key);
+export const supabaseAdmin = createClient(url, serviceKey || key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 // ─── Helpers de conversión snake_case ↔ camelCase ────────────────────────────
 
