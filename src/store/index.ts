@@ -135,14 +135,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   currentUser: null,
 
   login: async (email, password) => {
-    const { data } = await supabaseAdmin
-      .from('app_users')
-      .select('*')
-      .eq('email', email)
-      .eq('password', password)
-      .eq('active', true)
-      .single();
-    if (data) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const authKey = (import.meta.env.VITE_SUPABASE_SERVICE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}&active=eq.true&select=*`,
+      {
+        headers: {
+          'apikey': authKey,
+          'Authorization': `Bearer ${authKey}`,
+          'Accept': 'application/vnd.pgrst.object+json',
+        },
+      }
+    );
+    if (res.ok) {
+      const data = await res.json();
       set({ currentUser: toCamel(data) as User });
       return true;
     }
