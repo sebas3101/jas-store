@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Phone, Building2, Users, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store';
+import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
@@ -110,6 +111,7 @@ function ClientForm({
 
 export function ClientsPage() {
   const { clients, addClient, updateClient, orders, getClientDebt } = useAppStore();
+  const { can } = usePermissions();
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all');
   const [filterType, setFilterType]   = useState<'all' | 'internal' | 'external'>('all');
@@ -144,12 +146,14 @@ export function ClientsPage() {
           <h1 className="page-title">Clientes</h1>
           <p className="text-sm text-gray-500 mt-0.5">{clients.length} clientes registrados</p>
         </div>
-        <button
-          onClick={() => { setEditing(null); setModalOpen(true); }}
-          className="btn-primary"
-        >
-          <Plus size={16} /> Nuevo cliente
-        </button>
+        {can('clientes', 'crear') && (
+          <button
+            onClick={() => { setEditing(null); setModalOpen(true); }}
+            className="btn-primary"
+          >
+            <Plus size={16} /> Nuevo cliente
+          </button>
+        )}
       </div>
 
       {/* Filters */}
@@ -262,12 +266,14 @@ export function ClientsPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    onClick={() => { setEditing(client); setModalOpen(true); }}
-                    className="btn-ghost text-xs !px-2 !py-1.5"
-                  >
-                    Editar
-                  </button>
+                  {can('clientes', 'editar') && (
+                    <button
+                      onClick={() => { setEditing(client); setModalOpen(true); }}
+                      className="btn-ghost text-xs !px-2 !py-1.5"
+                    >
+                      Editar
+                    </button>
+                  )}
                   <Link to={`/clientes/${client.id}`} className="btn-primary !px-2.5 !py-1.5">
                     <ArrowRight size={14} />
                   </Link>

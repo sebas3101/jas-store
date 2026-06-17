@@ -225,7 +225,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   updateUser: async (id, u) => {
     const { error } = await supabase.from('app_users').update(toSnake(u)).eq('id', id);
     if (error) { console.error('updateUser:', error); return; }
-    set(s => ({ users: s.users.map(x => x.id === id ? { ...x, ...u } : x) }));
+    set(s => {
+      const updatedUsers = s.users.map(x => x.id === id ? { ...x, ...u } : x);
+      // Si se actualizan los permisos del usuario activo, sincronizar la sesión
+      const updatedCurrent = s.currentUser?.id === id
+        ? { ...s.currentUser, ...u }
+        : s.currentUser;
+      if (s.currentUser?.id === id) {
+        localStorage.setItem('jas_user', JSON.stringify(updatedCurrent));
+      }
+      return { users: updatedUsers, currentUser: updatedCurrent };
+    });
   },
 
   deleteUser: async (id) => {
