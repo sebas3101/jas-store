@@ -1,20 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppStore } from './store';
-import { AppLayout }       from './components/layout/AppLayout';
-import { LoginPage }       from './pages/LoginPage';
-import { DashboardPage }   from './pages/DashboardPage';
-import { ClientsPage }     from './pages/ClientsPage';
-import { ClientDetailPage }from './pages/ClientDetailPage';
-import { OrdersPage }      from './pages/OrdersPage';
-import { OrderDetailPage } from './pages/OrderDetailPage';
-import { PaymentsPage }    from './pages/PaymentsPage';
-import { ProductsPage }    from './pages/ProductsPage';
-import { SuppliersPage }   from './pages/SuppliersPage';
-import { DeliveriesPage }  from './pages/DeliveriesPage';
-import { PublicationsPage }from './pages/PublicationsPage';
-import { ReportsPage }     from './pages/ReportsPage';
-import { SettingsPage }    from './pages/SettingsPage';
+import { AppLayout } from './components/layout/AppLayout';
+// LoginPage carga de forma estática — es la primera pantalla, debe estar disponible de inmediato
+import { LoginPage } from './pages/LoginPage';
+
+// Páginas cargadas bajo demanda: cada una genera su propio chunk en el build
+// y Recharts (la librería más pesada) solo se descarga cuando el usuario
+// visita Dashboard o Reportes por primera vez.
+const DashboardPage    = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ClientsPage      = lazy(() => import('./pages/ClientsPage').then(m => ({ default: m.ClientsPage })));
+const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage').then(m => ({ default: m.ClientDetailPage })));
+const OrdersPage       = lazy(() => import('./pages/OrdersPage').then(m => ({ default: m.OrdersPage })));
+const OrderDetailPage  = lazy(() => import('./pages/OrderDetailPage').then(m => ({ default: m.OrderDetailPage })));
+const PaymentsPage     = lazy(() => import('./pages/PaymentsPage').then(m => ({ default: m.PaymentsPage })));
+const ProductsPage     = lazy(() => import('./pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const SuppliersPage    = lazy(() => import('./pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const DeliveriesPage   = lazy(() => import('./pages/DeliveriesPage').then(m => ({ default: m.DeliveriesPage })));
+const PublicationsPage = lazy(() => import('./pages/PublicationsPage').then(m => ({ default: m.PublicationsPage })));
+const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useAppStore(s => s.currentUser);
@@ -61,30 +66,32 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          element={
-            <PrivateRoute>
-              <AppLayout />
-            </PrivateRoute>
-          }
-        >
-          <Route index                  element={<DashboardPage />} />
-          <Route path="clientes"        element={<ClientsPage />} />
-          <Route path="clientes/:id"    element={<ClientDetailPage />} />
-          <Route path="pedidos"         element={<OrdersPage />} />
-          <Route path="pedidos/:id"     element={<OrderDetailPage />} />
-          <Route path="pagos"           element={<PaymentsPage />} />
-          <Route path="productos"       element={<ProductsPage />} />
-          <Route path="proveedores"     element={<SuppliersPage />} />
-          <Route path="entregas"        element={<DeliveriesPage />} />
-          <Route path="publicaciones"   element={<PublicationsPage />} />
-          <Route path="reportes"        element={<ReportsPage />} />
-          <Route path="configuracion"   element={<SettingsPage />} />
-          <Route path="*"               element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={<LoadingScreen />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            element={
+              <PrivateRoute>
+                <AppLayout />
+              </PrivateRoute>
+            }
+          >
+            <Route index                  element={<DashboardPage />} />
+            <Route path="clientes"        element={<ClientsPage />} />
+            <Route path="clientes/:id"    element={<ClientDetailPage />} />
+            <Route path="pedidos"         element={<OrdersPage />} />
+            <Route path="pedidos/:id"     element={<OrderDetailPage />} />
+            <Route path="pagos"           element={<PaymentsPage />} />
+            <Route path="productos"       element={<ProductsPage />} />
+            <Route path="proveedores"     element={<SuppliersPage />} />
+            <Route path="entregas"        element={<DeliveriesPage />} />
+            <Route path="publicaciones"   element={<PublicationsPage />} />
+            <Route path="reportes"        element={<ReportsPage />} />
+            <Route path="configuracion"   element={<SettingsPage />} />
+            <Route path="*"               element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

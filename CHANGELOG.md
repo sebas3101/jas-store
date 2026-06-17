@@ -7,6 +7,30 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.3] — 2026-06-17 — Code splitting: bundle inicial de 966 KB → 446 KB
+
+### Modificado
+- `src/App.tsx`: todas las páginas convertidas a `React.lazy()` con dynamic import.
+  `LoginPage` se mantiene estática (primera pantalla, carga inmediata).
+  Las `<Routes>` se envuelven en `<Suspense fallback={<LoadingScreen />}>`.
+
+### Resultado
+| Antes | Después |
+|-------|---------|
+| 1 chunk · 966 KB | Múltiples chunks |
+| El usuario descargaba todo al abrir la app | El usuario solo descarga lo que visita |
+
+**Chunks principales tras el build:**
+- `index` (núcleo: React, Zustand, Router, Store, Layout, Login): **446 KB**
+- `PieChart` (Recharts completo): **400 KB** — solo se descarga al visitar
+  Dashboard o Reportes por primera vez.
+- Páginas individuales: 5–12 KB cada una, descargadas al navegar.
+
+**Reducción del bundle inicial: 54%** (de 966 KB a 446 KB).
+Usuarios de Clientes, Pedidos o Pagos nunca descargan los 400 KB de Recharts.
+
+---
+
 ## [1.2.2] — 2026-06-17 — Eliminar dependencia sin uso react-hook-form
 
 ### Eliminado
