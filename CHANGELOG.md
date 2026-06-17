@@ -7,7 +7,34 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-## [Unreleased] — rama: feature/correccion-bugs-pagos-pedidos
+## [1.1.0] — 2026-06-16 — rama: feature/integracion-supabase
+
+### Agregado
+- Integración con Supabase como base de datos real en la nube.
+- `src/lib/supabase.ts`: cliente de Supabase + helpers `toCamel` / `toSnake` para
+  convertir entre snake_case (Postgres) y camelCase (TypeScript).
+- `supabase/schema.sql`: script SQL completo con tablas, RLS y datos iniciales de
+  usuarios. Se ejecuta una sola vez en el SQL Editor de Supabase.
+- `.env.local` con variables `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`
+  (no se sube a Git).
+- Pantalla de carga mientras Supabase inicializa los datos.
+- Pantalla de error con botón "Reintentar" si falla la conexión.
+
+### Modificado
+- `src/store/index.ts`: reemplazado Zustand + persist (localStorage) por Zustand +
+  Supabase. Todas las mutaciones (add/update/delete) ahora son async y persisten en
+  la nube. Se agrega `initialize()` que carga todos los datos al arrancar la app.
+- `src/App.tsx`: llama a `initialize()` en `useEffect` y muestra pantalla de carga
+  hasta que los datos estén disponibles.
+- `src/pages/LoginPage.tsx`: `login()` ahora es async (consulta Supabase).
+
+### Pendiente
+- Code splitting para reducir el bundle principal (~960 kB).
+- Pruebas unitarias e integración.
+
+---
+
+## [1.0.1] — 2026-06-16 — rama: feature/correccion-bugs-pagos-pedidos
 
 ### Corregido
 - `PaymentForm` estaba definido dentro del componente padre en `PaymentsPage.tsx` y
