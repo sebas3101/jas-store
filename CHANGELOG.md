@@ -7,6 +7,30 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.4] — 2026-06-17 — Agregar ESLint con TypeScript
+
+### Agregado
+- `eslint.config.js`: configuración ESLint v9 en formato flat config.
+  Incluye reglas de `@eslint/js`, `typescript-eslint`, `react-hooks`
+  y `react-refresh`. Ignora `dist/` y `node_modules/`.
+- Script `"lint": "eslint ."` en `package.json`.
+- Script `"lint:fix": "eslint . --fix"` para correcciones automáticas.
+
+### Dependencias de desarrollo instaladas
+- `eslint` ^10.5.0 — motor principal
+- `@eslint/js` ^10.0.1 — reglas base JavaScript
+- `typescript-eslint` ^8.61.1 — parser y reglas TypeScript
+- `eslint-plugin-react-hooks` ^7.1.1 — valida reglas de hooks
+- `eslint-plugin-react-refresh` ^0.5.3 — valida exports compatibles con HMR
+- `globals` ^17.6.0 — definiciones de globales del navegador
+
+### Resultado de la primera ejecución
+`npm run lint` → **0 errores, 0 advertencias**. El código ya seguía
+las convenciones correctas. Los únicos `any` existentes en el código
+están marcados con comentarios explícitos (`@typescript-eslint/no-explicit-any`).
+
+---
+
 ## [1.2.3] — 2026-06-17 — Code splitting: bundle inicial de 966 KB → 446 KB
 
 ### Modificado
