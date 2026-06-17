@@ -7,6 +7,22 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.5.1] — 2026-06-17 — Correcciones mobile: filtros de fechas, tarjetas de pagos y notificaciones
+
+### Corregido
+
+- **Filtros de rango de fechas** — Los campos "Desde" y "Hasta" ahora se apilan verticalmente en móvil (`grid-cols-1` en < sm). Antes en pantallas de 320-430px los inputs de fecha se comprimían y se solapaban. Corregido en PaymentsPage y FinancesPage.
+- **Tarjetas de resumen en Pagos** — La grilla pasó de `grid-cols-3` a `grid-cols-2 sm:grid-cols-3`, con la tarjeta "Total cobrado" ocupando ancho completo en móvil. Evita que los valores monetarios se corten en pantallas estrechas.
+- **Campana de notificaciones** — Ahora abre un panel (bottom-sheet) con alertas reales: clientes en mora con monto de deuda, pedidos por recoger y pedidos con pago pendiente. Estado vacío claro si no hay alertas.
+
+### Modificado
+
+- `Header.tsx` — Panel de notificaciones con datos reales del store (clientes en mora, pedidos por recoger, pagos pendientes). Íconos y colores por severidad: rojo (mora), naranja (por recoger/pendiente pago).
+- `PaymentsPage.tsx` — Stats 2+1 en móvil, filtros de fecha apilados.
+- `FinancesPage.tsx` — Filtros de rango de fechas apilados en móvil.
+
+---
+
 ## [1.4.0] — 2026-06-17 — Mejoras pedidos, clientes, finanzas y metas
 
 ### Agregado

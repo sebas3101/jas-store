@@ -202,10 +202,11 @@ export function PaymentsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <StatCard title="Esta semana"  value={formatCurrency(weeklyPayments)}  icon={Calendar}     color="green" />
-        <StatCard title="Este mes"     value={formatCurrency(thisMonthPayments)} icon={TrendingUp}   color="purple" />
-        <StatCard title="Total cobrado" value={formatCurrency(totalCollected)}  icon={CheckCircle2} color="blue" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <StatCard title="Esta semana"   value={formatCurrency(weeklyPayments)}    icon={Calendar}     color="green" />
+        <StatCard title="Este mes"      value={formatCurrency(thisMonthPayments)}  icon={TrendingUp}   color="purple" />
+        <StatCard title="Total cobrado" value={formatCurrency(totalCollected)}     icon={CheckCircle2} color="blue"
+          className="col-span-2 sm:col-span-1" />
       </div>
 
       {/* Filters */}
@@ -215,15 +216,15 @@ export function PaymentsPage() {
           <input className="input-field pl-9" placeholder="Buscar por cliente o método..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label !text-xs">Desde</label>
-            <input type="date" className="input-field !py-2 text-xs" value={dateFrom}
+            <input type="date" className="input-field" value={dateFrom}
               onChange={e => setDateFrom(e.target.value)} />
           </div>
           <div>
             <label className="label !text-xs">Hasta</label>
-            <input type="date" className="input-field !py-2 text-xs" value={dateTo}
+            <input type="date" className="input-field" value={dateTo}
               onChange={e => setDateTo(e.target.value)} />
           </div>
         </div>
