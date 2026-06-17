@@ -7,6 +7,27 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.2] — 2026-06-17 — Eliminar dependencia sin uso react-hook-form
+
+### Eliminado
+- `react-hook-form` desinstalado con `npm uninstall react-hook-form`.
+  El paquete estaba en `package.json` pero no tenía ningún import en `src/`.
+  No aportaba al bundle (Vite nunca lo incluía) pero sí a `node_modules`
+  y podía confundir a futuros desarrolladores.
+
+### Verificado
+- Búsqueda en todo `src/` confirma cero usos de `react-hook-form`,
+  `useForm`, `Controller`, `FormProvider`, `useFieldArray`.
+- `npm run build` sigue pasando sin errores tras la desinstalación.
+
+### Pendiente
+- `npm audit` reporta 2 vulnerabilidades en `esbuild` (<=0.24.2) y `vite` (<=6.4.2)
+  que solo afectan el servidor de desarrollo, no el build de producción.
+  Corregirlas requiere saltar a Vite 8 (cambio mayor) — evaluar en una actualización
+  dedicada de dependencias.
+
+---
+
 ## [1.2.1] — 2026-06-17 — Sincronización automática de estado del cliente
 
 ### Agregado
