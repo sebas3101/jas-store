@@ -13,24 +13,27 @@ import {
   Store,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
+import { usePermissions } from '../../hooks/usePermissions';
 import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
 
-const navItems = [
-  { to: '/',             icon: LayoutDashboard, label: 'Inicio'      },
-  { to: '/clientes',     icon: Users,           label: 'Clientes'    },
-  { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'     },
-  { to: '/pagos',        icon: CreditCard,      label: 'Pagos'       },
-  { to: '/productos',    icon: Package,         label: 'Productos'   },
-  { to: '/proveedores',  icon: Store,           label: 'Proveedores' },
-  { to: '/entregas',     icon: Truck,           label: 'Entregas'    },
+const ALL_NAV_ITEMS = [
+  { to: '/',             icon: LayoutDashboard, label: 'Inicio'       },
+  { to: '/clientes',     icon: Users,           label: 'Clientes'     },
+  { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'      },
+  { to: '/pagos',        icon: CreditCard,      label: 'Pagos'        },
+  { to: '/productos',    icon: Package,         label: 'Productos'    },
+  { to: '/proveedores',  icon: Store,           label: 'Proveedores'  },
+  { to: '/entregas',     icon: Truck,           label: 'Entregas'     },
   { to: '/publicaciones',icon: Megaphone,       label: 'Publicaciones'},
-  { to: '/reportes',     icon: BarChart3,       label: 'Reportes'    },
+  { to: '/reportes',     icon: BarChart3,       label: 'Reportes'     },
   { to: '/configuracion',icon: Settings,        label: 'Configuración'},
 ];
 
 export function Sidebar() {
   const { currentUser, logout } = useAppStore();
+  const { filterNavItems } = usePermissions();
+  const navItems = filterNavItems(ALL_NAV_ITEMS);
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0 shadow-sm">

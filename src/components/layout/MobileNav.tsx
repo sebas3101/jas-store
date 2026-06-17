@@ -11,8 +11,9 @@ import {
   Settings,
   Store,
 } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
-const navItems = [
+const ALL_NAV_ITEMS = [
   { to: '/',             icon: LayoutDashboard, label: 'Inicio'    },
   { to: '/clientes',     icon: Users,           label: 'Clientes'  },
   { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'   },
@@ -26,6 +27,9 @@ const navItems = [
 ];
 
 export function MobileNav() {
+  const { filterNavItems } = usePermissions();
+  const navItems = filterNavItems(ALL_NAV_ITEMS);
+
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg">
       <div className="flex overflow-x-auto scrollbar-hide">

@@ -7,6 +7,36 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.0] — 2026-06-17 — Control de acceso por rol
+
+### Agregado
+- `src/hooks/usePermissions.ts`: hook centralizado con la matriz de permisos por rol.
+  Define qué rutas puede visitar cada rol (`admin`, `jennifer`, `alexis`, `vendedor`, `consulta`).
+- Componente `AccessDenied` en `AppLayout`: si el usuario navega a una ruta sin permiso
+  ve un mensaje de "Acceso restringido" en lugar de la página (sin redirección al login).
+
+### Modificado
+- `src/components/layout/AppLayout.tsx`: lee la ruta actual con `useLocation` y verifica
+  el permiso via `usePermissions`. Si no tiene acceso, renderiza `AccessDenied` en lugar de `<Outlet />`.
+- `src/components/layout/Sidebar.tsx`: filtra los ítems de navegación con `filterNavItems`
+  para mostrar solo los módulos permitidos al rol activo.
+- `src/components/layout/MobileNav.tsx`: ídem Sidebar — el menú inferior en móvil
+  solo muestra las opciones accesibles.
+
+### Matriz de permisos implementada
+| Rol | Módulos accesibles |
+|-----|-------------------|
+| admin | Todos |
+| jennifer | Dashboard, Clientes, Pedidos, Pagos, Entregas, Publicaciones |
+| alexis | Dashboard, Pedidos, Entregas |
+| vendedor | Dashboard, Productos, Pedidos, Publicaciones |
+| consulta | Dashboard, Reportes |
+
+### Pendiente
+- Verificar con el usuario si la matriz de permisos refleja exactamente los accesos deseados para cada persona del equipo.
+
+---
+
 ## [1.1.1] — 2026-06-17 — Validación general QA
 
 ### Validado
