@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase, supabaseAdmin, toCamel, toSnake } from '../lib/supabase';
+import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
