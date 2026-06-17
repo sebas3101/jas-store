@@ -13,18 +13,19 @@ export function LoginPage() {
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doLogin = async (e: string, p: string) => {
     setError('');
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
-    const ok = await login(email.trim(), password);
+    const ok = await login(e.trim(), p);
     setLoading(false);
-    if (ok) {
-      navigate('/');
-    } else {
-      setError('Correo o contraseña incorrectos');
-    }
+    if (ok) navigate('/');
+    else setError('Correo o contraseña incorrectos');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await doLogin(email, password);
   };
 
   return (
@@ -112,7 +113,7 @@ export function LoginPage() {
                 <button
                   key={acc.email}
                   type="button"
-                  onClick={() => { setEmail(acc.email); setPassword(acc.pwd); }}
+                  onClick={() => { setEmail(acc.email); setPassword(acc.pwd); doLogin(acc.email, acc.pwd); }}
                   className="text-xs bg-gray-50 hover:bg-primary-50 hover:text-primary-700 text-gray-500 px-3 py-2 rounded-xl transition-colors font-medium"
                 >
                   {acc.label}
