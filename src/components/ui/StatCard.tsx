@@ -50,10 +50,10 @@ export function StatCard({
           </span>
         )}
       </div>
-      <div>
-        <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        <p className="text-sm font-medium text-gray-500 mt-0.5">{title}</p>
-        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      <div className="min-w-0">
+        <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1 break-words leading-tight">{value}</p>
+        <p className="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 leading-snug">{title}</p>
+        {subtitle && <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">{subtitle}</p>}
       </div>
     </div>
   );

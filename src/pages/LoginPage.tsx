@@ -36,12 +36,12 @@ export function LoginPage() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-2xl mb-4 overflow-hidden">
             <img src={logoUrl} alt="JAS Store" className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-3xl font-bold text-white">JAS Store</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">JAS Store</h1>
           <p className="text-primary-200 mt-1 text-sm">Sistema de Gestión Comercial</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-8">
+        <div className="bg-white rounded-3xl shadow-2xl p-5 sm:p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Iniciar sesión</h2>
 
           {error && (
