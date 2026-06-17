@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Plus, Search, ShoppingBag, ArrowRight, X } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -229,17 +229,30 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
 }
 
 export function OrdersPage() {
+  const location  = useLocation();
+  const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
+
   const { orders, clients, addOrder, users } = useAppStore();
-  const [search, setSearch]       = useState('');
+
+  // Si viene el param ?cliente=<id>, pre-cargar el nombre del cliente en el buscador
+  const prefilledName = clienteParam
+    ? (clients.find(c => c.id === clienteParam)?.name ?? '')
+    : '';
+
+  const [search, setSearch]       = useState(prefilledName);
+  const [filterClient, setFilterClient] = useState(clienteParam);
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
   const [modalOpen, setModalOpen] = useState(false);
+
+  const clearClientFilter = () => { setFilterClient(''); setSearch(''); };
 
   const filtered = orders.filter(o => {
     const client = clients.find(c => c.id === o.clientId);
     const matchSearch = o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
       (client?.name ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || o.status === filterStatus;
-    return matchSearch && matchStatus;
+    const matchClient = !filterClient || o.clientId === filterClient;
+    return matchSearch && matchStatus && matchClient;
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
@@ -256,10 +269,20 @@ export function OrdersPage() {
 
       {/* Filters */}
       <div className="card !p-4 space-y-3">
+        {filterClient && (
+          <div className="flex items-center gap-2 bg-primary-50 border border-primary-100 rounded-xl px-3 py-2">
+            <span className="text-xs text-primary-700 font-medium flex-1">
+              Filtrando por: <strong>{prefilledName || clients.find(c => c.id === filterClient)?.name}</strong>
+            </span>
+            <button onClick={clearClientFilter} className="text-primary-400 hover:text-primary-700 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+        )}
         <div className="relative">
           <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
           <input className="input-field pl-9" placeholder="Buscar por número o cliente..."
-            value={search} onChange={e => setSearch(e.target.value)} />
+            value={search} onChange={e => { setSearch(e.target.value); if (filterClient) setFilterClient(''); }} />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {STATUS_FILTERS.map(s => (

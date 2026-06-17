@@ -13,8 +13,127 @@ import {
 import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
 import type { PaymentMethod } from '../types';
 
+// ─── Formulario de pago — fuera del padre para evitar re-mount en cada render
+function PaymentForm({ onClose }: { onClose: () => void }) {
+  const { clients, orders, currentUser, addPayment, updateOrder } = useAppStore();
+
+  const [clientId, setClientId]           = useState('');
+  const [amount, setAmount]               = useState(0);
+  const [method, setMethod]               = useState<PaymentMethod>('transferencia');
+  const [date, setDate]                   = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes]                 = useState('');
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+
+  const clientOrders = orders.filter(
+    o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado'
+  );
+
+  const toggleOrder = (oid: string) =>
+    setSelectedOrders(prev =>
+      prev.includes(oid) ? prev.filter(x => x !== oid) : [...prev, oid]
+    );
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addPayment({
+      clientId,
+      orderIds: selectedOrders,
+      amount,
+      method,
+      date: new Date(date).toISOString(),
+      notes,
+      registeredById: currentUser?.id ?? 'u1',
+    });
+
+    // Distribuir el abono entre los pedidos seleccionados (FIFO por fecha)
+    const ordersToProcess = selectedOrders.length > 0
+      ? orders
+          .filter(o => selectedOrders.includes(o.id))
+          .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
+      : [];
+
+    let remaining = amount;
+    for (const order of ordersToProcess) {
+      if (remaining <= 0) break;
+      const pendiente = order.totalAmount - order.amountPaid;
+      if (pendiente <= 0) continue;
+      const toApply = Math.min(remaining, pendiente);
+      const newPaid = order.amountPaid + toApply;
+      updateOrder(order.id, {
+        amountPaid: newPaid,
+        status: newPaid >= order.totalAmount ? 'pagado' : order.status,
+      });
+      remaining -= toApply;
+    }
+
+    onClose();
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="label">Cliente *</label>
+        <select className="input-field" required value={clientId}
+          onChange={e => { setClientId(e.target.value); setSelectedOrders([]); }}>
+          <option value="">Seleccionar cliente...</option>
+          {clients.map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      {clientOrders.length > 0 && (
+        <div>
+          <label className="label">Pedidos a abonar</label>
+          <div className="space-y-1.5 max-h-40 overflow-y-auto">
+            {clientOrders.map(o => (
+              <label key={o.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100">
+                <input type="checkbox" checked={selectedOrders.includes(o.id)}
+                  onChange={() => toggleOrder(o.id)}
+                  className="accent-primary-600 w-4 h-4 rounded" />
+                <span className="text-sm text-gray-700 flex-1">
+                  {o.orderNumber} — {formatCurrency(o.totalAmount - o.amountPaid)} pendiente
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Monto ($) *</label>
+          <input type="number" className="input-field" required min={1} value={amount}
+            onChange={e => setAmount(Number(e.target.value))} />
+        </div>
+        <div>
+          <label className="label">Método</label>
+          <select className="input-field" value={method}
+            onChange={e => setMethod(e.target.value as PaymentMethod)}>
+            {(['transferencia','efectivo','credito','fiado','abono'] as PaymentMethod[]).map(m => (
+              <option key={m} value={m}>{paymentMethodLabel[m]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">Fecha</label>
+          <input type="date" className="input-field" value={date}
+            onChange={e => setDate(e.target.value)} />
+        </div>
+        <div>
+          <label className="label">Notas</label>
+          <input className="input-field" value={notes}
+            onChange={e => setNotes(e.target.value)} placeholder="Referencia, etc." />
+        </div>
+      </div>
+      <button type="submit" className="btn-primary w-full justify-center">
+        Registrar pago
+      </button>
+    </form>
+  );
+}
+
+// ─── Página principal
 export function PaymentsPage() {
-  const { payments, clients, orders, users, currentUser, addPayment } = useAppStore();
+  const { payments, clients, users } = useAppStore();
   const [search, setSearch]     = useState('');
   const [modalOpen, setModal]   = useState(false);
   const [dateFrom, setDateFrom] = useState('');
@@ -46,100 +165,6 @@ export function PaymentsPage() {
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     } catch { return false; }
   }).reduce((s, p) => s + p.amount, 0);
-
-  // Payment form
-  const PaymentForm = () => {
-    const [clientId, setClientId] = useState('');
-    const [amount, setAmount]     = useState(0);
-    const [method, setMethod]     = useState<PaymentMethod>('transferencia');
-    const [date, setDate]         = useState(now.toISOString().slice(0, 10));
-    const [notes, setNotes]       = useState('');
-    const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-
-    const clientOrders = orders.filter(
-      o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado'
-    );
-
-    const toggleOrder = (oid: string) =>
-      setSelectedOrders(prev =>
-        prev.includes(oid) ? prev.filter(x => x !== oid) : [...prev, oid]
-      );
-
-    const submit = (e: React.FormEvent) => {
-      e.preventDefault();
-      addPayment({
-        clientId,
-        orderIds: selectedOrders,
-        amount,
-        method,
-        date: new Date(date).toISOString(),
-        notes,
-        registeredById: currentUser?.id ?? 'u1',
-      });
-      setModal(false);
-    };
-
-    return (
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label">Cliente *</label>
-          <select className="input-field" required value={clientId}
-            onChange={e => setClientId(e.target.value)}>
-            <option value="">Seleccionar cliente...</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-        {clientOrders.length > 0 && (
-          <div>
-            <label className="label">Pedidos a abonar</label>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
-              {clientOrders.map(o => (
-                <label key={o.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100">
-                  <input type="checkbox" checked={selectedOrders.includes(o.id)}
-                    onChange={() => toggleOrder(o.id)}
-                    className="accent-primary-600 w-4 h-4 rounded" />
-                  <span className="text-sm text-gray-700 flex-1">
-                    {o.orderNumber} — {formatCurrency(o.totalAmount - o.amountPaid)} pendiente
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Monto ($) *</label>
-            <input type="number" className="input-field" required min={1} value={amount}
-              onChange={e => setAmount(Number(e.target.value))} />
-          </div>
-          <div>
-            <label className="label">Método</label>
-            <select className="input-field" value={method}
-              onChange={e => setMethod(e.target.value as PaymentMethod)}>
-              {(['transferencia','efectivo','credito','fiado','abono'] as PaymentMethod[]).map(m => (
-                <option key={m} value={m}>{paymentMethodLabel[m]}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label">Fecha</label>
-            <input type="date" className="input-field" value={date}
-              onChange={e => setDate(e.target.value)} />
-          </div>
-          <div>
-            <label className="label">Notas</label>
-            <input className="input-field" value={notes}
-              onChange={e => setNotes(e.target.value)} placeholder="Referencia, etc." />
-          </div>
-        </div>
-        <button type="submit" className="btn-primary w-full justify-center">
-          Registrar pago
-        </button>
-      </form>
-    );
-  };
 
   const methodIcons: Record<PaymentMethod, string> = {
     transferencia: '💳',
@@ -246,7 +271,7 @@ export function PaymentsPage() {
       )}
 
       <Modal isOpen={modalOpen} onClose={() => setModal(false)} title="Registrar pago / abono">
-        <PaymentForm />
+        <PaymentForm onClose={() => setModal(false)} />
       </Modal>
     </div>
   );

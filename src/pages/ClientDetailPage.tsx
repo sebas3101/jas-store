@@ -26,15 +26,119 @@ import {
 import { buildDebtReminderMessage, openWhatsApp } from '../utils/whatsapp';
 import type { PaymentMethod } from '../types';
 
+// ─── Formulario de abono — fuera del padre para evitar re-mount en cada render
+function ClientPaymentForm({
+  clientId,
+  onClose,
+}: {
+  clientId: string;
+  onClose: () => void;
+}) {
+  const { orders, currentUser, addPayment, updateOrder, updateClient } = useAppStore();
+
+  // Pedidos pendientes de este cliente, del más antiguo al más nuevo (FIFO)
+  const pendingOrders = orders
+    .filter(o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado')
+    .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+
+  const debt = pendingOrders.reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
+
+  const [amount, setAmount] = useState<number>(debt > 0 ? Math.round(debt) : 0);
+  const [method, setMethod] = useState<PaymentMethod>('transferencia');
+  const [notes, setNotes]   = useState('');
+  const [date, setDate]     = useState(new Date().toISOString().slice(0, 10));
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    addPayment({
+      clientId,
+      orderIds: pendingOrders.map(o => o.id),
+      amount,
+      method,
+      date: new Date(date).toISOString(),
+      notes,
+      registeredById: currentUser?.id ?? 'u1',
+    });
+
+    // Distribuir el abono entre pedidos pendientes (FIFO: más antiguo primero)
+    let remaining = amount;
+    for (const order of pendingOrders) {
+      if (remaining <= 0) break;
+      const pendiente = order.totalAmount - order.amountPaid;
+      if (pendiente <= 0) continue;
+      const toApply = Math.min(remaining, pendiente);
+      const newPaid = order.amountPaid + toApply;
+      updateOrder(order.id, {
+        amountPaid: newPaid,
+        status: newPaid >= order.totalAmount ? 'pagado' : order.status,
+      });
+      remaining -= toApply;
+    }
+
+    // Actualizar estado del cliente si quedó al día
+    if (debt - amount <= 0) {
+      updateClient(clientId, { status: 'al_dia' });
+    }
+
+    onClose();
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="label">Monto del abono *</label>
+        <input type="number" className="input-field" required min={1}
+          value={amount} onChange={e => setAmount(Number(e.target.value))} />
+        {debt > 0 && (
+          <p className="text-xs text-amber-600 mt-1">
+            Deuda actual: {formatCurrency(debt)}
+          </p>
+        )}
+      </div>
+      <div>
+        <label className="label">Método de pago</label>
+        <select className="input-field" value={method}
+          onChange={e => setMethod(e.target.value as PaymentMethod)}>
+          {(['transferencia','efectivo','credito','fiado','abono'] as PaymentMethod[]).map(m => (
+            <option key={m} value={m}>{paymentMethodLabel[m]}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="label">Fecha del pago</label>
+        <input type="date" className="input-field" value={date}
+          onChange={e => setDate(e.target.value)} />
+      </div>
+      <div>
+        <label className="label">Notas</label>
+        <textarea className="input-field resize-none" rows={2} value={notes}
+          onChange={e => setNotes(e.target.value)} placeholder="Referencia de transferencia, etc." />
+      </div>
+      {pendingOrders.length > 0 && (
+        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+          <p className="text-xs font-semibold text-amber-700 mb-1.5">Pedidos que se abonarán (FIFO):</p>
+          {pendingOrders.map(o => (
+            <div key={o.id} className="flex justify-between text-xs text-amber-700 py-0.5">
+              <span>{o.orderNumber}</span>
+              <span>Pendiente: {formatCurrency(o.totalAmount - o.amountPaid)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <button type="submit" className="btn-primary w-full justify-center">
+        Registrar abono
+      </button>
+    </form>
+  );
+}
+
+// ─── Página de detalle del cliente
 export function ClientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const {
     clients,
     orders,
     payments,
-    currentUser,
-    addPayment,
-    updateClient,
     getClientDebt,
   } = useAppStore();
 
@@ -58,7 +162,7 @@ export function ClientDetailPage() {
     .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
   const clientPayments = payments.filter(p => p.clientId === client.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const totalPaid = clientPayments.reduce((s, p) => s + p.amount, 0);
+  const totalPaid    = clientPayments.reduce((s, p) => s + p.amount, 0);
   const totalOrdered = clientOrders.reduce((s, o) => s + o.totalAmount, 0);
 
   const waMessage = buildDebtReminderMessage(client, debt, orders);
@@ -69,79 +173,10 @@ export function ClientDetailPage() {
     setTimeout(() => setMsgCopied(false), 2000);
   };
 
-  // Payment form
-  const PaymentForm = () => {
-    const [amount, setAmount]   = useState<number>(debt > 0 ? debt : 0);
-    const [method, setMethod]   = useState<PaymentMethod>('transferencia');
-    const [notes, setNotes]     = useState('');
-    const [date, setDate]       = useState(new Date().toISOString().slice(0, 10));
-
-    const pendingOrderIds = clientOrders
-      .filter(o => o.status !== 'pagado' && o.status !== 'cancelado')
-      .map(o => o.id);
-
-    const submit = (e: React.FormEvent) => {
-      e.preventDefault();
-      addPayment({
-        clientId: client.id,
-        orderIds: pendingOrderIds,
-        amount,
-        method,
-        date: new Date(date).toISOString(),
-        notes,
-        registeredById: currentUser?.id ?? 'u1',
-      });
-      // Update client status
-      const newDebt = debt - amount;
-      if (newDebt <= 0) {
-        updateClient(client.id, { status: 'al_dia' });
-      }
-      // Update order paid amounts
-      setPayModal(false);
-    };
-
-    return (
-      <form onSubmit={submit} className="space-y-4">
-        <div>
-          <label className="label">Monto del abono *</label>
-          <input type="number" className="input-field" required min={1}
-            value={amount} onChange={e => setAmount(Number(e.target.value))} />
-          {debt > 0 && (
-            <p className="text-xs text-amber-600 mt-1">
-              Deuda actual: {formatCurrency(debt)}
-            </p>
-          )}
-        </div>
-        <div>
-          <label className="label">Método de pago</label>
-          <select className="input-field" value={method}
-            onChange={e => setMethod(e.target.value as PaymentMethod)}>
-            {(['transferencia','efectivo','credito','fiado','abono'] as PaymentMethod[]).map(m => (
-              <option key={m} value={m}>{paymentMethodLabel[m]}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label">Fecha del pago</label>
-          <input type="date" className="input-field" value={date}
-            onChange={e => setDate(e.target.value)} />
-        </div>
-        <div>
-          <label className="label">Notas</label>
-          <textarea className="input-field resize-none" rows={2} value={notes}
-            onChange={e => setNotes(e.target.value)} placeholder="Referencia de transferencia, etc." />
-        </div>
-        <button type="submit" className="btn-primary w-full justify-center">
-          Registrar abono
-        </button>
-      </form>
-    );
-  };
-
   const statusColors: Record<string, string> = {
-    al_dia:         'text-emerald-600 bg-emerald-50',
-    pendiente:      'text-amber-600 bg-amber-50',
-    mora:           'text-red-600 bg-red-50',
+    al_dia:          'text-emerald-600 bg-emerald-50',
+    pendiente:       'text-amber-600 bg-amber-50',
+    mora:            'text-red-600 bg-red-50',
     credito_cerrado: 'text-gray-600 bg-gray-100',
   };
 
@@ -325,7 +360,7 @@ export function ClientDetailPage() {
 
       {/* Modal */}
       <Modal isOpen={payModal} onClose={() => setPayModal(false)} title="Registrar abono" size="sm">
-        <PaymentForm />
+        <ClientPaymentForm clientId={client.id} onClose={() => setPayModal(false)} />
       </Modal>
     </div>
   );
