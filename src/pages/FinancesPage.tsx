@@ -158,7 +158,7 @@ export function FinancesPage() {
         {viewMode === 'month' ? (
           <div>
             <label className="label">Mes</label>
-            <input type="month" className="input-field max-w-[200px]"
+            <input type="month" className="input-field sm:max-w-[200px]"
               value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
           </div>
         ) : (

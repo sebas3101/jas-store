@@ -238,14 +238,16 @@ export function GoalsPage() {
                     </div>
                   )}
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
-                    <p className="text-gray-500 mb-1">Ventas {salesOk ? '✅' : `${salesPct}%`}</p>
-                    <p className="font-semibold text-gray-800">{formatCurrency(sales)} / {formatCurrency(goal.salesTarget)}</p>
+                    <p className="text-gray-500 mb-0.5">Ventas {salesOk ? '✅' : `${salesPct}%`}</p>
+                    <p className="font-bold text-gray-800 tabular-nums">{formatCurrency(sales)}</p>
+                    <p className="text-gray-400 text-[10px]">Meta: {formatCurrency(goal.salesTarget)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500 mb-1">Recaudo {collOk ? '✅' : `${collPct}%`}</p>
-                    <p className="font-semibold text-gray-800">{formatCurrency(collected)} / {formatCurrency(goal.collectionTarget)}</p>
+                    <p className="text-gray-500 mb-0.5">Recaudo {collOk ? '✅' : `${collPct}%`}</p>
+                    <p className="font-bold text-gray-800 tabular-nums">{formatCurrency(collected)}</p>
+                    <p className="text-gray-400 text-[10px]">Meta: {formatCurrency(goal.collectionTarget)}</p>
                   </div>
                 </div>
               </div>
