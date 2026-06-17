@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Target, Plus, Edit2, Trash2, TrendingUp, DollarSign, CheckCircle2 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import { Target, Plus, Edit2, Trash2, TrendingUp, DollarSign, CheckCircle2, Clock } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDaysInMonth, getDate } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAppStore } from '../store';
 import { useGoalsStore } from '../store/goals';
@@ -11,21 +11,28 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { formatCurrency } from '../utils/formatters';
 import type { MonthlyGoal } from '../types';
 
-function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+function ProgressBar({ value, max, color, label = 'logrado' }: { value: number; max: number; color: string; label?: string }) {
+  const pct      = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  const faltante = Math.max(0, max - value);
   return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>{formatCurrency(value)} recaudado</span>
-        <span className="font-semibold">{pct}%</span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-gray-600">{formatCurrency(value)} <span className="text-gray-400">{label}</span></span>
+        <span className={`font-bold ${pct >= 100 ? 'text-emerald-600' : 'text-gray-700'}`}>{pct}%</span>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400 text-right">Meta: {formatCurrency(max)}</p>
+      <div className="flex justify-between text-[11px] text-gray-400">
+        <span>Meta: {formatCurrency(max)}</span>
+        {faltante > 0
+          ? <span className="text-amber-600 font-medium">Faltan {formatCurrency(faltante)}</span>
+          : <span className="text-emerald-600 font-semibold">¡Meta alcanzada! ✓</span>
+        }
+      </div>
     </div>
   );
 }
@@ -81,6 +88,12 @@ export function GoalsPage() {
 
   const sorted = [...goals].sort((a, b) => b.month.localeCompare(a.month));
 
+  // Days remaining in current month
+  const today      = new Date();
+  const totalDays  = getDaysInMonth(today);
+  const currentDay = getDate(today);
+  const daysLeft   = totalDays - currentDay;
+
   // Compute actual values for a given month
   const monthActuals = (month: string) => {
     const d    = parseISO(`${month}-01`);
@@ -130,11 +143,17 @@ export function GoalsPage() {
       {/* Mes actual */}
       {currentGoal ? (
         <div className="card border-l-4 border-primary-400 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="section-title flex items-center gap-2">
               <Target size={16} className="text-primary-600" />
-              {format(parseISO(`${currentMonth}-01`), 'MMMM yyyy', { locale: es })} — mes actual
+              {format(parseISO(`${currentMonth}-01`), 'MMMM yyyy', { locale: es })}
             </h2>
+            <span className={`flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+              daysLeft <= 5 ? 'bg-red-50 text-red-600' : daysLeft <= 10 ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-600'
+            }`}>
+              <Clock size={11} />
+              {daysLeft === 0 ? 'Último día' : `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`}
+            </span>
             {can('metas', 'editar') && (
               <button onClick={() => { setEditing(currentGoal); setModalOpen(true); }}
                 className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
