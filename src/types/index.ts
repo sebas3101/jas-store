@@ -39,7 +39,9 @@ export type PermModule =
   | 'proveedores'
   | 'entregas'
   | 'reportes'
-  | 'configuracion';
+  | 'configuracion'
+  | 'finanzas'
+  | 'metas';
 
 /** Acciones posibles por módulo */
 export type PermAction =
@@ -181,6 +183,16 @@ export interface Publication {
   isPublished: boolean;
   notes?: string;
   createdAt: string;
+}
+
+export interface MonthlyGoal {
+  id: string;
+  month: string;        // "YYYY-MM"
+  salesTarget: number;  // meta de ventas (totalAmount)
+  collectionTarget: number; // meta de recaudo (pagos recibidos)
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface DashboardStats {

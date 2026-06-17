@@ -11,6 +11,8 @@ import {
   Settings,
   LogOut,
   Store,
+  TrendingUp,
+  Target,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -27,6 +29,8 @@ const ALL_NAV_ITEMS = [
   { to: '/entregas',     icon: Truck,           label: 'Entregas'     },
   { to: '/publicaciones',icon: Megaphone,       label: 'Publicaciones'},
   { to: '/reportes',     icon: BarChart3,       label: 'Reportes'     },
+  { to: '/finanzas',     icon: TrendingUp,      label: 'Finanzas'     },
+  { to: '/metas',        icon: Target,          label: 'Metas'        },
   { to: '/configuracion',icon: Settings,        label: 'Configuración'},
 ];
 

@@ -23,7 +23,8 @@ import {
   paymentMethodLabel,
   clientStatusLabel,
 } from '../utils/formatters';
-import { buildDebtReminderMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, openWhatsApp } from '../utils/whatsapp';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { PaymentMethod } from '../types';
 
 // ─── Formulario de abono — fuera del padre para evitar re-mount en cada render
@@ -87,8 +88,7 @@ function ClientPaymentForm({
     <form onSubmit={submit} className="space-y-4">
       <div>
         <label className="label">Monto del abono *</label>
-        <input type="number" className="input-field" required min={1}
-          value={amount} onChange={e => setAmount(Number(e.target.value))} />
+        <CurrencyInput required min={1} value={amount} onChange={setAmount} />
         {debt > 0 && (
           <p className="text-xs text-amber-600 mt-1">
             Deuda actual: {formatCurrency(debt)}
@@ -145,6 +145,7 @@ export function ClientDetailPage() {
   const client = clients.find(c => c.id === id);
   const [payModal, setPayModal]   = useState(false);
   const [msgCopied, setMsgCopied] = useState(false);
+  const [infoCopied, setInfoCopied] = useState(false);
 
   if (!client) {
     return (
@@ -165,12 +166,19 @@ export function ClientDetailPage() {
   const totalPaid    = clientPayments.reduce((s, p) => s + p.amount, 0);
   const totalOrdered = clientOrders.reduce((s, o) => s + o.totalAmount, 0);
 
-  const waMessage = buildDebtReminderMessage(client, debt, orders);
+  const waMessage     = buildDebtReminderMessage(client, debt, orders);
+  const waInfoMessage = buildDebtInfoMessage(client, debt, clientOrders);
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(waMessage);
     setMsgCopied(true);
     setTimeout(() => setMsgCopied(false), 2000);
+  };
+
+  const handleCopyInfo = () => {
+    navigator.clipboard.writeText(waInfoMessage);
+    setInfoCopied(true);
+    setTimeout(() => setInfoCopied(false), 2000);
   };
 
   const statusColors: Record<string, string> = {
@@ -289,6 +297,36 @@ export function ClientDetailPage() {
           </div>
           <p className="text-xs text-gray-600 bg-white rounded-xl p-3 whitespace-pre-line border border-gray-100">
             {waMessage}
+          </p>
+        </div>
+      )}
+
+      {/* WhatsApp info de deuda — con detalle de pedidos */}
+      {debt > 0 && (
+        <div className="card bg-blue-50 border-blue-100">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <MessageCircle size={18} className="text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-800">Resumen de deuda</h3>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCopyInfo}
+                className="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                {infoCopied ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                {infoCopied ? 'Copiado' : 'Copiar'}
+              </button>
+              <button
+                onClick={() => openWhatsApp(client.phone, waInfoMessage)}
+                className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
+              >
+                <MessageCircle size={12} /> WhatsApp
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-600 bg-white rounded-xl p-3 whitespace-pre-line border border-gray-100">
+            {waInfoMessage}
           </p>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Building2, Users, ArrowRight } from 'lucide-react';
+import { Plus, Search, Phone, Building2, Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
@@ -109,6 +110,14 @@ function ClientForm({
   );
 }
 
+// Severity: days since oldest unpaid order date
+function debtSeverity(daysOverdue: number): { label: string; bg: string; text: string } {
+  if (daysOverdue <= 15) return { label: '1-15 días', bg: 'bg-yellow-50', text: 'text-yellow-700' };
+  if (daysOverdue <= 30) return { label: '16-30 días', bg: 'bg-orange-50', text: 'text-orange-700' };
+  if (daysOverdue <= 60) return { label: '31-60 días', bg: 'bg-red-50', text: 'text-red-700' };
+  return { label: '+60 días', bg: 'bg-red-100', text: 'text-red-900' };
+}
+
 export function ClientsPage() {
   const { clients, addClient, updateClient, orders, getClientDebt } = useAppStore();
   const { can } = usePermissions();
@@ -117,6 +126,23 @@ export function ClientsPage() {
   const [filterType, setFilterType]   = useState<'all' | 'internal' | 'external'>('all');
   const [modalOpen, setModalOpen]     = useState(false);
   const [editing, setEditing]         = useState<Client | null>(null);
+
+  // Cartera vencida: clientes con deuda > 0 y al menos un pedido con más de 15 días sin pagar
+  const today = new Date();
+  const carteraVencida = clients
+    .map(c => {
+      const debt = getClientDebt(c.id);
+      if (debt <= 0) return null;
+      const oldestUnpaid = orders
+        .filter(o => o.clientId === c.id && o.status !== 'pagado' && o.status !== 'cancelado')
+        .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())[0];
+      if (!oldestUnpaid) return null;
+      const days = differenceInDays(today, parseISO(oldestUnpaid.orderDate));
+      if (days < 1) return null;
+      return { client: c, debt, days };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => b.days - a.days);
 
   const filtered = clients.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -155,6 +181,49 @@ export function ClientsPage() {
           </button>
         )}
       </div>
+
+      {/* Cartera vencida */}
+      {carteraVencida.length > 0 && (
+        <div className="card border-l-4 border-red-400 !p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+            <h2 className="text-sm font-bold text-gray-900">
+              Cartera vencida — {carteraVencida.length} cliente{carteraVencida.length > 1 ? 's' : ''} con deuda activa
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {carteraVencida.map(({ client, debt, days }) => {
+              const sev = debtSeverity(days);
+              return (
+                <Link
+                  key={client.id}
+                  to={`/clientes/${client.id}`}
+                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 hover:brightness-95 transition-all ${sev.bg}`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 bg-white bg-opacity-60 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <span className={`text-xs font-bold ${sev.text}`}>
+                        {client.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-bold truncate ${sev.text}`}>{client.name}</p>
+                      <p className={`text-[10px] ${sev.text} opacity-75`}>{sev.label}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className={`text-xs font-bold ${sev.text}`}>{formatCurrency(debt)}</span>
+                    <ArrowRight size={12} className={sev.text} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          <p className={`text-[10px] text-gray-500 text-right`}>
+            Total cartera: {formatCurrency(carteraVencida.reduce((s, x) => s + x.debt, 0))}
+          </p>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card !p-4 space-y-3">

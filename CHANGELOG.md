@@ -7,6 +7,67 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.4.0] — 2026-06-17 — Mejoras pedidos, clientes, finanzas y metas
+
+### Agregado
+
+#### Inputs de moneda (MEJORA 1)
+- `src/components/ui/CurrencyInput.tsx` — componente reutilizable para valores monetarios en COP
+  - Modo display: muestra `$50.000` formateado
+  - Modo edición (focus): muestra número puro, sin ceros pegados
+  - Reemplazó `<input type="number">` en OrdersPage, ProductsPage, ClientDetailPage, PaymentsPage, SuppliersPage
+
+#### Recogidas y Entregas separadas (MEJORA 2)
+- `src/pages/DeliveriesPage.tsx` — reescrita con dos tabs:
+  - **Recogidas**: pedidos `por_recoger` (ir a buscar al proveedor)
+  - **Entregas**: pedidos `recogido / entregado / pagado` (llevar al cliente)
+  - Stats cards actualizadas: Por recoger, En camino, Entregados
+
+#### Cartera vencida (MEJORA 3)
+- `ClientsPage.tsx`: sección de cartera vencida al tope de la lista de clientes
+  - Muestra solo clientes con deuda activa
+  - Color-coded por antigüedad: amarillo (1-15d), naranja (16-30d), rojo (31-60d), rojo oscuro (+60d)
+  - Total de cartera vencida al pie de la sección
+
+#### Mensaje de deuda detallada por WhatsApp (MEJORA 4)
+- `src/utils/whatsapp.ts` — nueva función `buildDebtInfoMessage()` con detalle de pedidos pendientes
+- `ClientDetailPage.tsx` — segunda tarjeta de WhatsApp "Resumen de deuda" (azul) con copiar + enviar
+
+#### WhatsApp al crear pedido (MEJORA 5)
+- `src/utils/whatsapp.ts` — nueva función `buildOrderConfirmationMessage()` con items y saldo pendiente
+- `OrdersPage.tsx` — modal de confirmación post-creación de pedido con botón de WhatsApp al cliente
+
+#### Módulo Finanzas (MEJORA 6)
+- `src/pages/FinancesPage.tsx` — resumen financiero con:
+  - Filtro por mes o rango de fechas
+  - KPIs: ventas, recaudo, ganancia bruta, deuda activa
+  - Flujo de caja (recaudo vs compras)
+  - Desglose por método de pago
+  - Tabla de pedidos del período
+  - Exportación a Excel (.xlsx) con 4 hojas: Resumen, Pedidos, Pagos, Compras
+- Instala `xlsx` (SheetJS) como dependencia
+
+#### Módulo Metas (MEJORA 7)
+- `src/store/goals.ts` — store Zustand persistido en localStorage (`jas-goals`)
+- `src/pages/GoalsPage.tsx` — metas mensuales con:
+  - Barra de progreso para ventas y recaudo vs meta
+  - Mes actual destacado
+  - Historial de meses anteriores con % de cumplimiento
+  - CRUD completo (crear, editar, eliminar)
+- Nuevo tipo `MonthlyGoal` en `src/types/index.ts`
+
+#### Permisos para nuevos módulos (MEJORA 8)
+- `PermModule` extendido con `'finanzas'` y `'metas'`
+- `usePermissions.ts` — mapeo de rutas, acciones y etiquetas para finanzas y metas
+- Sidebar y MobileNav — iconos TrendingUp (Finanzas) y Target (Metas)
+- `App.tsx` — rutas `/finanzas` y `/metas` con lazy loading
+
+### Cambiado
+- `src/utils/whatsapp.ts` — importa `formatDate` de formatters
+- `DeliveriesPage` — assignableUsers ahora filtra por `u.active` en vez de hardcodear roles
+
+---
+
 ## [1.3.0] — 2026-06-17 — Permisos personalizados por usuario
 
 ### Agregado

@@ -19,6 +19,8 @@ const SuppliersPage    = lazy(() => import('./pages/SuppliersPage').then(m => ({
 const DeliveriesPage   = lazy(() => import('./pages/DeliveriesPage').then(m => ({ default: m.DeliveriesPage })));
 const PublicationsPage = lazy(() => import('./pages/PublicationsPage').then(m => ({ default: m.PublicationsPage })));
 const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const FinancesPage     = lazy(() => import('./pages/FinancesPage').then(m => ({ default: m.FinancesPage })));
+const GoalsPage        = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -87,6 +89,8 @@ export default function App() {
             <Route path="entregas"        element={<DeliveriesPage />} />
             <Route path="publicaciones"   element={<PublicationsPage />} />
             <Route path="reportes"        element={<ReportsPage />} />
+            <Route path="finanzas"        element={<FinancesPage />} />
+            <Route path="metas"           element={<GoalsPage />} />
             <Route path="configuracion"   element={<SettingsPage />} />
             <Route path="*"               element={<Navigate to="/" replace />} />
           </Route>
