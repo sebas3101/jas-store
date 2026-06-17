@@ -7,6 +7,41 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.2.5] — 2026-06-17 — Tests unitarios con Vitest
+
+### Agregado
+- `vitest` ^4.1.9 como dependencia de desarrollo.
+- Scripts `"test": "vitest run"` y `"test:watch": "vitest"` en `package.json`.
+- `vite.config.ts`: sección `test` con `globals: true`, `environment: 'node'`.
+- `src/utils/businessLogic.ts`: módulo nuevo con las funciones puras de lógica
+  de negocio extraídas del store y las páginas, para poder testarlas de forma aislada:
+  - `calculateClientDebt(clientId, orders)` — deuda activa del cliente
+  - `distributeFifo(amount, orders)` — distribución FIFO devuelve `FifoApplication[]`
+  - `deriveClientStatus(client, orders)` — estado correcto según deuda real
+- `src/utils/businessLogic.test.ts`: **20 tests** cubriendo los tres casos
+  críticos del negocio (deuda, distribución FIFO, estado del cliente).
+- `src/utils/formatters.test.ts`: **10 tests** para `calculateProfit`
+  y `profitMargin`, incluyendo caso borde de división por cero.
+
+### Modificado
+- `src/store/index.ts`: importa `deriveClientStatus` desde `businessLogic.ts`
+  en lugar de tenerla duplicada localmente.
+
+### Resultado
+```
+Test Files  2 passed (2)
+     Tests  30 passed (30)
+  Duration  1.27s
+```
+
+**Cobertura de los 30 tests:**
+- `calculateClientDebt`: 6 casos (sin pedidos, sin abonos, con abono, pagado, cancelado, múltiples pedidos)
+- `distributeFifo`: 8 casos (monto 0, sin pedidos, pago parcial, pago exacto, FIFO correcto, dos pedidos, cubre todo, ya pagado, amountPaid previo)
+- `deriveClientStatus`: 5 casos (al_dia, pendiente, mora, credito_cerrado, límite por defecto)
+- `calculateProfit` + `profitMargin`: 9 casos (unitario, con cantidad, cero ganancia, negativo, margen, div/0, sin ganancias, redondeo)
+
+---
+
 ## [1.2.4] — 2026-06-17 — Agregar ESLint con TypeScript
 
 ### Agregado

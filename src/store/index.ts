@@ -3,8 +3,8 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
-  ClientStatus,
 } from '../types';
+import { deriveClientStatus } from '../utils/businessLogic';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -14,17 +14,6 @@ const cam = (rows: any[]) => rows.map(toCamel) as any[];
 const genOrderNumber = (orders: Order[]) =>
   `JAS-${String(orders.length + 1).padStart(3, '0')}`;
 
-// Calcula el estado correcto de un cliente basado en su deuda real.
-// 'credito_cerrado' nunca se modifica automáticamente (decisión del admin).
-function deriveClientStatus(client: Client, orders: Order[]): ClientStatus {
-  if (client.status === 'credito_cerrado') return 'credito_cerrado';
-  const debt = orders
-    .filter(o => o.clientId === client.id && o.status !== 'cancelado' && o.status !== 'pagado')
-    .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-  if (debt <= 0) return 'al_dia';
-  if (debt > (client.creditLimit ?? 200_000)) return 'mora';
-  return 'pendiente';
-}
 
 // Sincroniza el status de UN cliente contra Supabase si cambió.
 // Actualiza el estado local inmediatamente; la llamada a Supabase es fire-and-forget.
