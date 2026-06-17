@@ -132,7 +132,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   // ── Auth ─────────────────────────────────────────────────────────────────
-  currentUser: null,
+  currentUser: (() => {
+    try { return JSON.parse(localStorage.getItem('jas_user') ?? 'null'); } catch { return null; }
+  })(),
 
   login: async (email, password) => {
     const { data } = await supabase.rpc('login_user', {
@@ -140,13 +142,18 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       p_password: password,
     });
     if (data) {
-      set({ currentUser: toCamel(data as Record<string, unknown>) as User });
+      const user = toCamel(data as Record<string, unknown>) as User;
+      localStorage.setItem('jas_user', JSON.stringify(user));
+      set({ currentUser: user });
       return true;
     }
     return false;
   },
 
-  logout: () => set({ currentUser: null }),
+  logout: () => {
+    localStorage.removeItem('jas_user');
+    set({ currentUser: null });
+  },
 
   // ── Users ─────────────────────────────────────────────────────────────────
   users: [],
