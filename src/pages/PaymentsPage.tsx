@@ -215,26 +215,24 @@ export function PaymentsPage() {
           <input className="input-field pl-9" placeholder="Buscar por cliente o método..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-3 flex-wrap">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label !text-xs">Desde</label>
-            <input type="date" className="input-field !py-1.5 text-xs" value={dateFrom}
+            <input type="date" className="input-field !py-2 text-xs" value={dateFrom}
               onChange={e => setDateFrom(e.target.value)} />
           </div>
           <div>
             <label className="label !text-xs">Hasta</label>
-            <input type="date" className="input-field !py-1.5 text-xs" value={dateTo}
+            <input type="date" className="input-field !py-2 text-xs" value={dateTo}
               onChange={e => setDateTo(e.target.value)} />
           </div>
-          {(dateFrom || dateTo) && (
-            <div className="flex items-end">
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-                className="btn-ghost text-xs !py-1.5">
-                Limpiar
-              </button>
-            </div>
-          )}
         </div>
+        {(dateFrom || dateTo) && (
+          <button onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="btn-ghost text-xs w-full justify-center">
+            Limpiar filtro de fechas
+          </button>
+        )}
       </div>
 
       {/* List */}

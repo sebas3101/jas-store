@@ -30,8 +30,8 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-6">
-          <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6">
+        <main className="flex-1 overflow-y-auto lg:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+          <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6 lg:!pb-6">
             {hasAccess ? <Outlet /> : <AccessDenied />}
           </div>
         </main>

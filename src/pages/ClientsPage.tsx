@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Building2, Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import {
   clientStatusLabel,
   clientStatusColor,
@@ -62,7 +63,7 @@ function ClientForm({
         </div>
         <div>
           <label className="label">Celular *</label>
-          <input className="input-field" required value={form.phone}
+          <input type="tel" inputMode="numeric" className="input-field" required value={form.phone}
             onChange={e => set('phone', e.target.value)} placeholder="3101234567" />
         </div>
         <div>
@@ -86,8 +87,8 @@ function ClientForm({
         </div>
         <div>
           <label className="label">Límite de crédito ($)</label>
-          <input className="input-field" type="number" value={form.creditLimit ?? 0}
-            onChange={e => set('creditLimit', Number(e.target.value))} />
+          <CurrencyInput value={form.creditLimit ?? 0} min={0}
+            onChange={v => set('creditLimit', v)} />
         </div>
         <div className="col-span-2">
           <label className="label">Notas</label>
@@ -228,7 +229,7 @@ export function ClientsPage() {
       {/* Filters */}
       <div className="card !p-4 space-y-3">
         <div className="relative">
-          <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-3.5 text-gray-400" />
           <input
             className="input-field pl-9"
             placeholder="Buscar por nombre o celular..."
@@ -236,12 +237,13 @@ export function ClientsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
+        {/* Estado — scrollable horizontal */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {STATUSES.map(s => (
             <button
               key={s.value}
               onClick={() => setFilterStatus(s.value)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+              className={`text-xs px-3 py-2 rounded-full font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
                 filterStatus === s.value
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -250,21 +252,22 @@ export function ClientsPage() {
               {s.label}
             </button>
           ))}
-          <div className="ml-auto flex gap-2">
-            {['all','external','internal'].map(t => (
-              <button
-                key={t}
-                onClick={() => setFilterType(t as typeof filterType)}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-                  filterType === t
-                    ? 'bg-gray-800 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {t === 'all' ? 'Todos' : t === 'internal' ? 'Internos' : 'Externos'}
-              </button>
-            ))}
-          </div>
+        </div>
+        {/* Tipo */}
+        <div className="flex gap-2">
+          {['all','external','internal'].map(t => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t as typeof filterType)}
+              className={`text-xs px-3 py-2 rounded-full font-medium flex-1 transition-colors ${
+                filterType === t
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {t === 'all' ? 'Todos' : t === 'internal' ? 'Internos' : 'Externos'}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -286,66 +289,57 @@ export function ClientsPage() {
             const debt = getClientDebt(client.id);
             const clientOrders = orders.filter(o => o.clientId === client.id);
             return (
-              <div key={client.id} className="card !p-4 flex items-center gap-4 hover:shadow-md transition-shadow">
-                {/* Indicator */}
-                <div className={`w-2 h-12 rounded-full flex-shrink-0 ${INDICATOR[client.status]}`} />
-
-                {/* Avatar */}
-                <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-primary-700 font-bold text-sm">
-                    {client.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-gray-900 text-sm">{client.name}</p>
-                    <span className={clientStatusColor[client.status] + ' text-[10px]'}>
-                      {clientStatusLabel[client.status]}
-                    </span>
-                    {client.isInternal && (
-                      <span className="badge-blue text-[10px]">Interno</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <Phone size={10} /> {client.phone}
-                    </span>
-                    {client.company && (
-                      <span className="flex items-center gap-1 hidden sm:flex">
-                        <Building2 size={10} /> {client.company}
+              <div key={client.id} className="card !p-3 sm:!p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-center gap-3">
+                  {/* Indicator + Avatar */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className={`w-1.5 h-10 rounded-full ${INDICATOR[client.status]}`} />
+                    <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center">
+                      <span className="text-primary-700 font-bold text-sm">
+                        {client.name.charAt(0).toUpperCase()}
                       </span>
-                    )}
-                    <span>{clientOrders.length} pedido{clientOrders.length !== 1 ? 's' : ''}</span>
+                    </div>
                   </div>
-                </div>
 
-                {/* Debt */}
-                <div className="text-right hidden sm:block">
-                  {debt > 0 ? (
-                    <>
-                      <p className="text-sm font-bold text-red-600">{formatCurrency(debt)}</p>
-                      <p className="text-xs text-gray-400">Deuda</p>
-                    </>
-                  ) : (
-                    <p className="text-sm font-semibold text-emerald-600">Al día ✓</p>
-                  )}
-                </div>
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{client.name}</p>
+                      <span className={clientStatusColor[client.status] + ' text-[10px]'}>
+                        {clientStatusLabel[client.status]}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[11px] text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <Phone size={9} /> {client.phone}
+                      </span>
+                      <span>{clientOrders.length} pedido{clientOrders.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {/* Deuda — visible siempre en móvil */}
+                    <div className="mt-1">
+                      {debt > 0 ? (
+                        <span className="text-xs font-bold text-red-600">{formatCurrency(debt)} pendiente</span>
+                      ) : (
+                        <span className="text-xs font-semibold text-emerald-600">Al día ✓</span>
+                      )}
+                    </div>
+                  </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {can('clientes', 'editar') && (
-                    <button
-                      onClick={() => { setEditing(client); setModalOpen(true); }}
-                      className="btn-ghost text-xs !px-2 !py-1.5"
-                    >
-                      Editar
-                    </button>
-                  )}
-                  <Link to={`/clientes/${client.id}`} className="btn-primary !px-2.5 !py-1.5">
-                    <ArrowRight size={14} />
-                  </Link>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {can('clientes', 'editar') && (
+                      <button
+                        onClick={() => { setEditing(client); setModalOpen(true); }}
+                        className="text-xs text-gray-500 hover:text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-100 font-medium transition-colors"
+                      >
+                        Editar
+                      </button>
+                    )}
+                    <Link to={`/clientes/${client.id}`}
+                      className="p-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors">
+                      <ArrowRight size={15} />
+                    </Link>
+                  </div>
                 </div>
               </div>
             );

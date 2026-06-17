@@ -118,12 +118,14 @@ function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`w-8 h-4 rounded-full transition-colors flex items-center ${
+      aria-checked={value}
+      role="switch"
+      className={`w-11 h-6 rounded-full transition-colors flex items-center flex-shrink-0 ${
         value ? 'bg-primary-500' : 'bg-gray-200'
       }`}
     >
-      <span className={`w-3 h-3 rounded-full bg-white shadow transition-transform mx-0.5 ${
-        value ? 'translate-x-4' : 'translate-x-0'
+      <span className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform mx-0.5 ${
+        value ? 'translate-x-5' : 'translate-x-0'
       }`} />
     </button>
   );
@@ -153,31 +155,44 @@ function PermissionsMatrix({
   };
 
   return (
-    <div className={`space-y-2 ${compact ? 'max-h-72 overflow-y-auto pr-1' : ''}`}>
+    <div className={`space-y-2 ${compact ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>
       {ALL_MODULES.map(mod => {
         const actions = MODULE_ACTIONS[mod];
         const modPerms = perms[mod] ?? {};
         const allOn = actions.every(a => modPerms[a.action]);
+        const someOn = actions.some(a => modPerms[a.action]);
         return (
-          <div key={mod} className="bg-gray-50 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
+          <div key={mod} className={`rounded-xl border transition-colors ${allOn ? 'bg-primary-50 border-primary-100' : someOn ? 'bg-amber-50 border-amber-100' : 'bg-gray-50 border-gray-100'}`}>
+            {/* Módulo header — toca para activar/desactivar todo */}
+            <button
+              type="button"
+              onClick={() => toggleModule(mod, allOn)}
+              className="w-full flex items-center justify-between p-3 text-left"
+            >
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => toggleModule(mod, allOn)}
-                  className="text-gray-400 hover:text-primary-600">
-                  {allOn ? <CheckSquare size={14} /> : <Square size={14} />}
-                </button>
-                <span className="text-xs font-semibold text-gray-700">{MODULE_LABELS[mod]}</span>
+                {allOn
+                  ? <CheckSquare size={15} className="text-primary-600 flex-shrink-0" />
+                  : someOn
+                    ? <Square size={15} className="text-amber-500 flex-shrink-0" />
+                    : <Square size={15} className="text-gray-300 flex-shrink-0" />}
+                <span className="text-xs font-bold text-gray-800">{MODULE_LABELS[mod]}</span>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                allOn ? 'bg-primary-100 text-primary-700' : someOn ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-400'
+              }`}>
+                {allOn ? 'Todo activo' : someOn ? `${actions.filter(a => modPerms[a.action]).length}/${actions.length}` : 'Sin acceso'}
+              </span>
+            </button>
+            {/* Acciones — siempre visibles */}
+            <div className="flex flex-wrap gap-2 px-3 pb-3">
               {actions.map(({ action, label }) => (
                 <label key={action}
-                  className="flex items-center gap-1.5 cursor-pointer">
+                  className="flex items-center gap-2 cursor-pointer bg-white rounded-lg px-2 py-1.5 border border-gray-100 select-none">
                   <Toggle
                     value={modPerms[action] ?? false}
                     onChange={val => setAction(mod, action, val)}
                   />
-                  <span className="text-[11px] text-gray-600">{label}</span>
+                  <span className="text-[11px] font-medium text-gray-700">{label}</span>
                 </label>
               ))}
             </div>
@@ -352,45 +367,45 @@ export function SettingsPage() {
                 {/* Activar/desactivar */}
                 {can('configuracion', 'editar') && user.id !== currentUser?.id && (
                   <button
-                    title={user.active ? 'Desactivar usuario' : 'Activar usuario'}
+                    aria-label={user.active ? 'Desactivar usuario' : 'Activar usuario'}
                     onClick={() => handleToggleActive(user)}
-                    className={`p-1.5 rounded-lg transition-colors ${
+                    className={`p-2 rounded-xl transition-colors ${
                       user.active
                         ? 'hover:bg-amber-50 text-gray-400 hover:text-amber-500'
                         : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'
                     }`}
                   >
-                    {user.active ? <UserX size={13} /> : <UserCheck size={13} />}
+                    {user.active ? <UserX size={16} /> : <UserCheck size={16} />}
                   </button>
                 )}
                 {/* Administrar accesos */}
                 {can('configuracion', 'administrar_accesos') && (
                   <button
-                    title="Administrar accesos"
+                    aria-label="Administrar accesos"
                     onClick={() => setPermUser(user)}
-                    className="p-1.5 hover:bg-violet-50 rounded-lg text-gray-400 hover:text-violet-600"
+                    className="p-2 hover:bg-violet-50 rounded-xl text-gray-400 hover:text-violet-600 transition-colors"
                   >
-                    <Key size={13} />
+                    <Key size={16} />
                   </button>
                 )}
                 {/* Editar */}
                 {can('configuracion', 'editar') && (
                   <button
-                    title="Editar usuario"
+                    aria-label="Editar usuario"
                     onClick={() => { setEditing(user); setModal(true); }}
-                    className="p-1.5 hover:bg-white rounded-lg text-gray-400 hover:text-gray-600"
+                    className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    <Edit2 size={13} />
+                    <Edit2 size={16} />
                   </button>
                 )}
                 {/* Eliminar */}
                 {can('configuracion', 'eliminar') && user.id !== currentUser?.id && (
                   <button
-                    title="Eliminar usuario"
+                    aria-label="Eliminar usuario"
                     onClick={() => setDeleting(user)}
-                    className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500"
+                    className="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={16} />
                   </button>
                 )}
               </div>

@@ -145,12 +145,12 @@ export function DashboardPage() {
       </div>
 
       {/* Second row KPIs */}
-      <div className="grid grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard title="Pedidos activos"   value={pendingOrders}   icon={ShoppingBag} color="purple" />
-        <StatCard title="Entregados"        value={deliveredOrders} icon={CheckCircle2} color="green" />
-        <StatCard title="Por recoger"       value={ordersToPickup}  icon={Package}     color="yellow" />
-        <StatCard title="Con deuda"         value={clientsWithDebt} icon={AlertTriangle} color="red" className="hidden lg:flex" />
-        <StatCard title="Al día"            value={clientsUpToDate} icon={Users}       color="green" className="hidden lg:flex" />
+      <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
+        <StatCard title="Activos"      value={pendingOrders}   icon={ShoppingBag}  color="purple" />
+        <StatCard title="Entregados"   value={deliveredOrders} icon={CheckCircle2} color="green"  />
+        <StatCard title="Por recoger"  value={ordersToPickup}  icon={Package}      color="yellow" />
+        <StatCard title="Con deuda"    value={clientsWithDebt} icon={AlertTriangle} color="red"   className="hidden lg:flex" />
+        <StatCard title="Al día"       value={clientsUpToDate} icon={Users}        color="green"  className="hidden lg:flex" />
       </div>
 
       {/* Charts row */}
@@ -161,9 +161,9 @@ export function DashboardPage() {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={weeklyData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis dataKey="day" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false}
-                tickFormatter={(v) => v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
+              <XAxis dataKey="day" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+              <YAxis width={48} tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}
+                tickFormatter={(v) => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
               <Tooltip
                 formatter={(v: number) => [formatCurrency(v), 'Cobrado']}
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
