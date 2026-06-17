@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase, toCamel, toSnake } from '../lib/supabase';
+import { supabase, supabaseAdmin, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
@@ -135,7 +135,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   currentUser: null,
 
   login: async (email, password) => {
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
       .from('app_users')
       .select('*')
       .eq('email', email)

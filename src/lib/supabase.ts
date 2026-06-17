@@ -1,13 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const url        = import.meta.env.VITE_SUPABASE_URL         as string;
+const key        = import.meta.env.VITE_SUPABASE_ANON_KEY    as string;
+const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY as string;
 
 if (!url || !key) {
   throw new Error('Faltan variables de entorno VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(url, key);
+export const supabase      = createClient(url, key);
+export const supabaseAdmin = createClient(url, serviceKey || key);
 
 // ─── Helpers de conversión snake_case ↔ camelCase ────────────────────────────
 
