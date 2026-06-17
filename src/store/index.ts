@@ -135,23 +135,22 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   currentUser: null,
 
   login: async (email, password) => {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const authKey = (import.meta.env.VITE_SUPABASE_SERVICE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string;
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/app_users?email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}&active=eq.true&select=*`,
-      {
-        headers: {
-          'apikey': authKey,
-          'Authorization': `Bearer ${authKey}`,
-          'Accept': 'application/vnd.pgrst.object+json',
-        },
+    try {
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const key = (import.meta.env.VITE_SUPABASE_SERVICE_KEY as string)
+               || (import.meta.env.VITE_SUPABASE_ANON_KEY    as string);
+      const res = await fetch(
+        `${baseUrl}/rest/v1/app_users?select=*&email=eq.${encodeURIComponent(email)}&password=eq.${encodeURIComponent(password)}&active=eq.true&limit=1`,
+        { headers: { apikey: key, Authorization: `Bearer ${key}` } }
+      );
+      if (res.ok) {
+        const rows = await res.json() as Record<string, unknown>[];
+        if (rows.length > 0) {
+          set({ currentUser: toCamel(rows[0]) as User });
+          return true;
+        }
       }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      set({ currentUser: toCamel(data) as User });
-      return true;
-    }
+    } catch { /* error de red */ }
     return false;
   },
 
