@@ -192,13 +192,13 @@ export function FinancesPage() {
           <h2 className="section-title flex items-center gap-2"><Calendar size={16} /> Flujo de caja</h2>
           <div className="space-y-2">
             {[
-              { label: 'Recaudo de clientes', value: totalCollected,  color: 'text-emerald-600' },
-              { label: 'Compras a proveedores', value: totalPurchases, color: 'text-red-500' },
-              { label: 'Saldo neto',             value: netBalance,    color: netBalance >= 0 ? 'text-emerald-700' : 'text-red-700' },
+              { label: 'Recaudo clientes',   value: totalCollected,  color: 'text-emerald-600' },
+              { label: 'Compras proveedores', value: totalPurchases,  color: 'text-red-500'    },
+              { label: 'Saldo neto',          value: netBalance,      color: netBalance >= 0 ? 'text-emerald-700' : 'text-red-700' },
             ].map(row => (
-              <div key={row.label} className="flex justify-between text-sm">
-                <span className="text-gray-600">{row.label}</span>
-                <span className={`font-bold ${row.color}`}>{formatCurrency(row.value)}</span>
+              <div key={row.label} className="flex justify-between items-center gap-2 text-sm py-0.5">
+                <span className="text-gray-600 text-xs sm:text-sm">{row.label}</span>
+                <span className={`font-bold text-sm flex-shrink-0 ${row.color}`}>{formatCurrency(row.value)}</span>
               </div>
             ))}
           </div>
@@ -230,8 +230,8 @@ export function FinancesPage() {
         {rangeOrders.length === 0 ? (
           <p className="text-xs text-gray-400 py-4 text-center">Sin pedidos en el período seleccionado</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="w-full text-xs" style={{ minWidth: '460px' }}>
               <thead>
                 <tr className="border-b border-gray-100">
                   <th className="text-left py-2 px-2 text-gray-500 font-medium">Pedido</th>
