@@ -143,10 +143,19 @@ export function ProductsPage() {
   });
 
   const handleSave = (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // Supabase rechaza strings vacíos en campos UUID — convertir a undefined
+    const clean: typeof data = {
+      ...data,
+      responsibleId: data.responsibleId || undefined,
+      size:      data.size?.trim()      || undefined,
+      color:     data.color?.trim()     || undefined,
+      reference: data.reference?.trim() || undefined,
+      notes:     data.notes?.trim()     || undefined,
+    };
     if (editing) {
-      updateProduct(editing.id, data);
+      updateProduct(editing.id, clean);
     } else {
-      addProduct(data);
+      addProduct(clean);
     }
     setModalOpen(false);
     setEditing(null);
