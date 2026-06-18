@@ -244,3 +244,92 @@ set permissions = '{
   "reportes":  {"ver":true}
 }'::jsonb
 where role = 'consulta';
+
+-- =====================================================================
+-- MIGRACIÓN v1.6 — Proveedor en pedidos, Garantías y Comprobantes
+-- Ejecutar en Supabase SQL Editor (después de v1.3)
+-- =====================================================================
+
+-- ─── 1. Columnas de proveedor en orders ──────────────────────────────
+alter table orders
+  add column if not exists supplier_id             uuid references suppliers(id) on delete set null,
+  add column if not exists supplier_payment_status text,
+  add column if not exists supplier_payment_amount numeric,
+  add column if not exists supplier_payment_method text;
+
+-- ─── 2. Tabla de garantías ───────────────────────────────────────────
+create table if not exists warranties (
+  id              uuid primary key default uuid_generate_v4(),
+  order_id        uuid not null references orders(id) on delete restrict,
+  client_id       uuid not null references clients(id) on delete restrict,
+  type            text not null,
+  status          text not null default 'abierta',
+  description     text not null,
+  opened_at       timestamptz not null default now(),
+  resolved_at     timestamptz,
+  new_size        text,
+  new_product     text,
+  supplier_id     uuid references suppliers(id) on delete set null,
+  notes           text,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+-- ─── 3. Tabla de comprobantes de pago ────────────────────────────────
+create table if not exists payment_proofs (
+  id               uuid primary key default uuid_generate_v4(),
+  client_id        uuid references clients(id) on delete set null,
+  order_ids        text[] not null default '{}',
+  amount           numeric,
+  date             timestamptz,
+  bank             text,
+  reference        text,
+  sender_name      text,
+  raw_text         text,
+  status           text not null default 'pendiente_revision',
+  reviewed_by_id   uuid references app_users(id) on delete set null,
+  notes            text,
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
+);
+
+-- ─── 4. RLS para las nuevas tablas ───────────────────────────────────
+alter table warranties     enable row level security;
+alter table payment_proofs enable row level security;
+
+drop policy if exists "jas_all_warranties"     on warranties;
+drop policy if exists "jas_all_payment_proofs" on payment_proofs;
+
+create policy "jas_all_warranties"     on warranties     for all using (true) with check (true);
+create policy "jas_all_payment_proofs" on payment_proofs for all using (true) with check (true);
+
+-- ─── 5. Actualizar permisos existentes para incluir nuevos módulos ───
+
+-- Admin: permisos completos en todos los módulos incluyendo los nuevos
+update app_users
+set permissions = permissions
+  || '{"garantias":{"ver":true,"crear":true,"editar":true,"eliminar":true}}'::jsonb
+  || '{"comprobantes":{"ver":true,"crear":true,"registrar_pago":true,"eliminar":true}}'::jsonb
+  || '{"finanzas":{"ver":true,"exportar":true,"ver_financiero":true}}'::jsonb
+  || '{"metas":{"ver":true,"crear":true,"editar":true,"eliminar":true}}'::jsonb
+where role = 'admin';
+
+-- Jennifer: garantías (ver, crear, editar) y comprobantes (ver, crear)
+update app_users
+set permissions = permissions
+  || '{"garantias":{"ver":true,"crear":true,"editar":true}}'::jsonb
+  || '{"comprobantes":{"ver":true,"crear":true}}'::jsonb
+where role = 'jennifer';
+
+-- Alexis: garantías (ver) y comprobantes (ver)
+update app_users
+set permissions = permissions
+  || '{"garantias":{"ver":true}}'::jsonb
+  || '{"comprobantes":{"ver":true}}'::jsonb
+where role = 'alexis';
+
+-- Vendedor: garantías (ver)
+update app_users
+set permissions = permissions
+  || '{"garantias":{"ver":true}}'::jsonb
+where role = 'vendedor';
