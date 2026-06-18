@@ -41,13 +41,45 @@ function parseResult(text: string): ExtractedPayment | null {
   }
 }
 
-/** Extrae datos de un comprobante con Google Gemini (gratis, 1500 req/día). */
+/** Extrae datos con Groq — gratis sin tarjeta (6000 req/día). Key en console.groq.com */
+async function extractWithGroq(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
+  const apiKey = import.meta.env.VITE_GROQ_KEY as string | undefined;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+            { type: 'text', text: PROMPT },
+          ],
+        }],
+        max_tokens: 512,
+        temperature: 0,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return parseResult(data.choices?.[0]?.message?.content ?? '');
+  } catch {
+    return null;
+  }
+}
+
+/** Extrae datos con Google Gemini (requiere vincular tarjeta en Google Cloud). */
 async function extractWithGemini(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
   const apiKey = import.meta.env.VITE_GEMINI_KEY as string | undefined;
   if (!apiKey) return null;
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -64,14 +96,13 @@ async function extractWithGemini(imageBase64: string, mimeType: string): Promise
     );
     if (!res.ok) return null;
     const data = await res.json();
-    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    return parseResult(text);
+    return parseResult(data.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
   } catch {
     return null;
   }
 }
 
-/** Extrae datos de un comprobante con Claude API (de pago). */
+/** Extrae datos con Claude API (de pago). */
 async function extractWithClaude(imageBase64: string, mimeType: 'image/jpeg' | 'image/png' | 'image/webp'): Promise<ExtractedPayment | null> {
   const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined;
   if (!apiKey) return null;
@@ -106,14 +137,14 @@ async function extractWithClaude(imageBase64: string, mimeType: 'image/jpeg' | '
 
 /**
  * Extrae datos de pago de un comprobante.
- * Usa Gemini (gratis) si VITE_GEMINI_KEY está configurada,
- * o Claude si VITE_ANTHROPIC_KEY está configurada.
+ * Orden de prioridad: Groq (gratis, sin tarjeta) → Gemini → Claude
  */
 export async function extractPaymentData(
   imageBase64: string,
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
 ): Promise<ExtractedPayment | null> {
-  return (await extractWithGemini(imageBase64, mimeType))
+  return (await extractWithGroq(imageBase64, mimeType))
+      ?? (await extractWithGemini(imageBase64, mimeType))
       ?? (await extractWithClaude(imageBase64, mimeType));
 }
 
@@ -124,7 +155,7 @@ export function compressImageToBase64(
   quality = 0.8,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const img    = new Image();
+    const img     = new Image();
     const blobUrl = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(blobUrl);
@@ -135,8 +166,7 @@ export function compressImageToBase64(
       canvas.width  = w;
       canvas.height = h;
       canvas.getContext('2d')!.drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', quality);
-      resolve(dataUrl.split(',')[1]);
+      resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
     };
     img.onerror = reject;
     img.src = blobUrl;
