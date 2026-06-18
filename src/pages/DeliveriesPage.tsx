@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock } from 'lucide-react';
+import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -30,8 +30,13 @@ const statusBg: Partial<Record<OrderStatus, string>> = {
 
 type Tab = 'recogidas' | 'entregas';
 
+function openMaps(address: string) {
+  const encoded = encodeURIComponent(address);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank');
+}
+
 export function DeliveriesPage() {
-  const { orders, clients, users, updateOrder } = useAppStore();
+  const { orders, clients, users, suppliers, updateOrder } = useAppStore();
   const { can } = usePermissions();
   const [tab, setTab]       = useState<Tab>('recogidas');
   const [search, setSearch] = useState('');
@@ -42,10 +47,12 @@ export function DeliveriesPage() {
   const entregas  = orders.filter(o => ['recogido', 'entregado', 'pagado'].includes(o.status));
 
   const activeOrders = (tab === 'recogidas' ? recogidas : entregas).filter(o => {
-    const client = clients.find(c => c.id === o.clientId);
+    const client   = clients.find(c => c.id === o.clientId);
+    const supplier = suppliers.find(s => s.id === o.supplierId);
     return (
       o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (client?.name ?? '').toLowerCase().includes(search.toLowerCase())
+      (client?.name ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (supplier?.name ?? '').toLowerCase().includes(search.toLowerCase())
     );
   }).sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
@@ -111,7 +118,7 @@ export function DeliveriesPage() {
 
         <div className="relative">
           <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-          <input className="input-field pl-9" placeholder="Buscar pedido o cliente..."
+          <input className="input-field pl-9" placeholder={tab === 'recogidas' ? 'Buscar pedido o proveedor...' : 'Buscar pedido o cliente...'}
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -121,8 +128,8 @@ export function DeliveriesPage() {
         tab === 'recogidas' ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-700'
       }`}>
         {tab === 'recogidas'
-          ? <><ShoppingBag size={13} /> Pedidos que hay que ir a buscar al proveedor o almacén</>
-          : <><Truck size={13} /> Pedidos recogidos listos para entregar al cliente</>
+          ? <><Store size={13} /> Pedidos que hay que ir a buscar al proveedor — foco en pago y mercancía</>
+          : <><Truck size={13} /> Pedidos recogidos listos para entregar al cliente — prendas y dirección</>
         }
       </div>
 
@@ -133,19 +140,24 @@ export function DeliveriesPage() {
           description={tab === 'recogidas' ? 'No hay pedidos por recoger' : 'Todos los pedidos han sido entregados'}
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {activeOrders.map(order => {
-            const client       = clients.find(c => c.id === order.clientId);
+            const client         = clients.find(c => c.id === order.clientId);
+            const supplier       = suppliers.find(s => s.id === order.supplierId);
             const deliveryPerson = users.find(u => u.id === order.deliveryPersonId);
+            const hasAddress     = !!client?.address;
+
             return (
               <div key={order.id}
                 className={`card !p-4 ${statusBg[order.status] ?? ''} hover:shadow-md transition-shadow`}>
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${
+
+                {/* Header */}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     tab === 'recogidas' ? 'bg-amber-50' : 'bg-primary-50'
                   }`}>
                     {tab === 'recogidas'
-                      ? <ShoppingBag size={14} className="text-amber-600" />
+                      ? <Store size={14} className="text-amber-600" />
                       : <Truck size={14} className="text-primary-600" />
                     }
                   </div>
@@ -155,27 +167,15 @@ export function DeliveriesPage() {
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[order.status]}`}>
                         {orderStatusLabel[order.status]}
                       </span>
-                      {client?.isInternal && (
-                        <span className="badge-blue text-[10px]">Interno</span>
-                      )}
                     </div>
-                    <p className="text-xs text-gray-700 font-medium mt-0.5">
-                      {client?.name ?? 'Cliente'}
+                    <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                      <Clock size={9} /> {formatDate(order.orderDate)}
+                      {order.estimatedDeliveryDate && ` · est. ${formatDate(order.estimatedDeliveryDate)}`}
                     </p>
-                    {client?.address && (
-                      <p className="text-xs text-gray-400 mt-0.5">📍 {client.address}</p>
-                    )}
-                    <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
-                      <Clock size={10} /> Pedido: {formatDate(order.orderDate)}
-                      {order.estimatedDeliveryDate && ` · Entrega est.: ${formatDate(order.estimatedDeliveryDate)}`}
-                    </p>
-                    {deliveryPerson && (
-                      <p className="text-xs text-primary-600 mt-0.5">🏍️ {deliveryPerson.name}</p>
-                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
-                    <p className={`text-xs font-semibold ${(order.totalAmount - order.amountPaid) > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                    <p className={`text-xs font-semibold ${(order.totalAmount - order.amountPaid) > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {(order.totalAmount - order.amountPaid) > 0
                         ? `Debe ${formatCurrency(order.totalAmount - order.amountPaid)}`
                         : 'Pagado ✓'}
@@ -183,6 +183,139 @@ export function DeliveriesPage() {
                   </div>
                 </div>
 
+                {/* ─── RECOGIDAS: foco en proveedor y mercancía ─── */}
+                {tab === 'recogidas' && (
+                  <div className="space-y-2">
+                    {/* Proveedor */}
+                    {supplier ? (
+                      <div className="bg-amber-50 rounded-xl p-3 space-y-1">
+                        <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                          <Store size={11} /> {supplier.name}
+                        </p>
+                        {supplier.address && (
+                          <p className="text-[11px] text-amber-700">📍 {supplier.address}</p>
+                        )}
+                        {supplier.phone && (
+                          <p className="text-[11px] text-amber-700">📞 {supplier.phone}</p>
+                        )}
+                        {/* Pago al proveedor */}
+                        {order.supplierPaymentAmount != null && order.supplierPaymentAmount > 0 && (
+                          <div className="border-t border-amber-200 pt-2 mt-2 space-y-0.5">
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-amber-700 font-medium">Pago proveedor:</span>
+                              <span className="font-bold text-amber-900">{formatCurrency(order.supplierPaymentAmount)}</span>
+                            </div>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-amber-700">Estado:</span>
+                              <span className={`font-semibold px-1.5 py-0.5 rounded-full text-[10px] ${
+                                order.supplierPaymentStatus === 'pagado'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {order.supplierPaymentStatus === 'pagado' ? 'Pagado ✓' : '⚠️ Pendiente'}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-[11px]">
+                              <span className="text-amber-700">Método:</span>
+                              <span className="font-medium text-amber-900">
+                                {order.supplierPaymentMethod === 'transferencia' ? 'Transferencia' : 'Efectivo'}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">Sin proveedor asignado</p>
+                    )}
+
+                    {/* Mercancía a recoger */}
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Prendas a recoger</p>
+                      {order.items.map((it, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                          <Package size={10} className="text-gray-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0 text-xs">
+                            <span className="font-medium text-gray-800">{it.productName}</span>
+                            {it.size  && <span className="text-gray-500 ml-1">Talla {it.size}</span>}
+                            {it.color && <span className="text-gray-500 ml-1">· {it.color}</span>}
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 flex-shrink-0">
+                            ×{it.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cliente (referencia) */}
+                    <p className="text-[11px] text-gray-500">
+                      Para: <span className="font-medium text-gray-700">{client?.name ?? '—'}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* ─── ENTREGAS: foco en cliente, prendas y dirección ─── */}
+                {tab === 'entregas' && (
+                  <div className="space-y-2">
+                    {/* Cliente */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-bold text-gray-800">{client?.name ?? 'Cliente'}</p>
+                        {client?.phone && (
+                          <p className="text-xs text-gray-500">📞 {client.phone}</p>
+                        )}
+                        {hasAddress
+                          ? <p className="text-xs text-gray-500">📍 {client!.address}</p>
+                          : <p className="text-xs text-amber-600 italic">Sin dirección registrada</p>
+                        }
+                      </div>
+                      {/* Google Maps */}
+                      <button
+                        onClick={() => {
+                          if (hasAddress) {
+                            openMaps(client!.address!);
+                          } else {
+                            alert('Este cliente no tiene dirección registrada.');
+                          }
+                        }}
+                        className={`flex-shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl transition-colors ${
+                          hasAddress
+                            ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <MapPin size={11} /> Ver en Maps
+                      </button>
+                    </div>
+
+                    {/* Prendas a entregar */}
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Prendas a entregar</p>
+                      {order.items.map((it, idx) => (
+                        <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                          <Package size={10} className="text-gray-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0 text-xs">
+                            <span className="font-medium text-gray-800">{it.productName}</span>
+                            {it.size  && <span className="text-gray-500 ml-1">Talla {it.size}</span>}
+                            {it.color && <span className="text-gray-500 ml-1">· {it.color}</span>}
+                          </div>
+                          <span className="text-xs font-semibold text-gray-700 flex-shrink-0">×{it.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {deliveryPerson && (
+                      <p className="text-xs text-primary-600">🏍️ {deliveryPerson.name}</p>
+                    )}
+                  </div>
+                )}
+
+                {order.notes && (
+                  <p className="text-[11px] text-gray-500 bg-gray-50 rounded-lg px-3 py-2 mt-2">
+                    📝 {order.notes}
+                  </p>
+                )}
+
+                {/* Controles */}
                 {can('entregas', 'cambiar_estado') && (
                   <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50 flex-wrap">
                     <div className="flex-1 min-w-0">
@@ -210,13 +343,6 @@ export function DeliveriesPage() {
                         ))}
                       </select>
                     </div>
-                    {order.notes && (
-                      <div className="w-full">
-                        <p className="text-[10px] text-gray-500 bg-gray-50 rounded-lg px-2 py-1.5">
-                          {order.notes}
-                        </p>
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
