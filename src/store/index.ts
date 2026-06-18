@@ -545,21 +545,52 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       remaining -= toApply;
     }
 
-    // 3. Marcar comprobante como confirmado
-    await get().updatePaymentProof(id, {
-      status:       'confirmado',
-      confirmedAt:  new Date().toISOString(),
-      reviewedById: currentUser?.id,
-    });
+    // 3. Marcar comprobante como confirmado — solo columnas garantizadas en DB
+    const confirmedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('payment_proofs')
+      .update(toSnake({ status: 'confirmado', reviewedById: currentUser?.id ?? null, updatedAt: confirmedAt }))
+      .eq('id', id);
+    if (!error) {
+      // Intentar guardar confirmed_at si la migración v1.7 ya se ejecutó
+      supabase.from('payment_proofs').update({ confirmed_at: confirmedAt }).eq('id', id).then(() => {});
+    }
+    // Siempre actualizar estado local (funciona aunque falle la columna en DB)
+    set(s => ({
+      paymentProofs: s.paymentProofs.map(p =>
+        p.id === id
+          ? { ...p, status: 'confirmado', reviewedById: currentUser?.id, confirmedAt }
+          : p
+      ),
+    }));
   },
 
   rejectPaymentProof: async (id, reason) => {
-    const { currentUser } = get();
-    await get().updatePaymentProof(id, {
-      status:          'rechazado',
-      rejectionReason: reason || undefined,
-      reviewedById:    currentUser?.id,
-    });
+    const { currentUser, paymentProofs } = get();
+    const proof = paymentProofs.find(p => p.id === id);
+    const now   = new Date().toISOString();
+
+    // Guardar motivo en notes como fallback hasta que exista la columna rejection_reason
+    const existingNotes  = proof?.notes ?? '';
+    const notesWithReason = reason
+      ? (existingNotes ? `${existingNotes} | Rechazado: ${reason}` : `Rechazado: ${reason}`)
+      : existingNotes;
+
+    const { error } = await supabase
+      .from('payment_proofs')
+      .update(toSnake({ status: 'rechazado', reviewedById: currentUser?.id ?? null, notes: notesWithReason, updatedAt: now }))
+      .eq('id', id);
+    if (!error) {
+      // Intentar guardar rejection_reason si la migración v1.7 ya se ejecutó
+      supabase.from('payment_proofs').update({ rejection_reason: reason || null }).eq('id', id).then(() => {});
+    }
+    set(s => ({
+      paymentProofs: s.paymentProofs.map(p =>
+        p.id === id
+          ? { ...p, status: 'rechazado', reviewedById: currentUser?.id, rejectionReason: reason, notes: notesWithReason }
+          : p
+      ),
+    }));
   },
 
   // ── Computed helpers ──────────────────────────────────────────────────────
