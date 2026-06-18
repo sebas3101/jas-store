@@ -1,4 +1,6 @@
 export type PaymentMethod = 'transferencia' | 'efectivo' | 'credito' | 'fiado' | 'abono';
+export type SupplierPaymentStatus = 'pendiente' | 'pagado';
+export type SupplierPaymentMethod = 'efectivo' | 'transferencia';
 export type OrderStatus =
   | 'tomado'
   | 'por_recoger'
@@ -133,6 +135,11 @@ export interface Order {
   estimatedDeliveryDate?: string;
   deliveredAt?: string;
   notes?: string;
+  // Proveedor asociado al pedido (para recogidas)
+  supplierId?: string;
+  supplierPaymentStatus?: SupplierPaymentStatus;
+  supplierPaymentAmount?: number;
+  supplierPaymentMethod?: SupplierPaymentMethod;
   createdAt: string;
   updatedAt: string;
 }
@@ -184,6 +191,69 @@ export interface Publication {
   notes?: string;
   createdAt: string;
 }
+
+// ─── Garantías ────────────────────────────────────────────────────────────────
+
+export type WarrantyType =
+  | 'imperfecto'
+  | 'cambio_talla'
+  | 'cambio_producto'
+  | 'otro';
+
+export type WarrantyStatus =
+  | 'solicitada'
+  | 'en_revision'
+  | 'aprobada'
+  | 'rechazada'
+  | 'en_cambio'
+  | 'solucionada'
+  | 'cancelada';
+
+export interface Warranty {
+  id: string;
+  orderId: string;
+  clientId: string;
+  productName: string;
+  originalSize?: string;
+  warrantyType: WarrantyType;
+  description: string;
+  status: WarrantyStatus;
+  supplierId?: string;
+  newProductName?: string;
+  newSize?: string;
+  requestDate: string;
+  resolvedDate?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ─── Comprobantes de pago ─────────────────────────────────────────────────────
+
+export type PaymentProofStatus =
+  | 'pendiente_revision'
+  | 'confirmado'
+  | 'rechazado'
+  | 'duplicado';
+
+export interface PaymentProof {
+  id: string;
+  clientId?: string;
+  orderIds?: string[];
+  amount?: number;
+  date?: string;
+  bank?: string;
+  reference?: string;
+  senderName?: string;
+  imageUrl?: string;
+  rawText?: string;
+  status: PaymentProofStatus;
+  reviewedById?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+// ─── Metas mensuales ──────────────────────────────────────────────────────────
 
 export interface MonthlyGoal {
   id: string;
