@@ -19,27 +19,30 @@ import type { PaymentMethod } from '../types';
 function PaymentForm({ onClose }: { onClose: () => void }) {
   const { clients, orders, currentUser, addPayment, updateOrder, updateClient } = useAppStore();
 
-  const [clientId, setClientId]           = useState('');
-  const [amount, setAmount]               = useState(0);
-  const [method, setMethod]               = useState<PaymentMethod>('transferencia');
-  const [date, setDate]                   = useState(new Date().toISOString().slice(0, 10));
-  const [notes, setNotes]                 = useState('');
-  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [clientId, setClientId] = useState('');
+  const [amount, setAmount]     = useState(0);
+  const [method, setMethod]     = useState<PaymentMethod>('transferencia');
+  const [date, setDate]         = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes]       = useState('');
 
-  const clientOrders = orders.filter(
-    o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado'
-  );
+  // Pedidos pendientes del cliente seleccionado, ordenados FIFO
+  const pendingOrders = orders
+    .filter(o =>
+      o.clientId === clientId &&
+      o.status !== 'pagado' &&
+      o.status !== 'cancelado'
+    )
+    .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
-  const toggleOrder = (oid: string) =>
-    setSelectedOrders(prev =>
-      prev.includes(oid) ? prev.filter(x => x !== oid) : [...prev, oid]
-    );
+  const deudaTotal = pendingOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Registrar el abono vinculado a todos los pedidos pendientes (auditoría)
     addPayment({
       clientId,
-      orderIds: selectedOrders,
+      orderIds: pendingOrders.map(o => o.id),
       amount,
       method,
       date: new Date(date).toISOString(),
@@ -47,21 +50,9 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
       registeredById: currentUser?.id ?? 'u1',
     });
 
-    // Distribuir el abono entre los pedidos seleccionados (FIFO por fecha)
-    const ordersToProcess = selectedOrders.length > 0
-      ? orders
-          .filter(o => selectedOrders.includes(o.id))
-          .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())
-      : [];
-
-    // Calcular deuda total del cliente antes de distribuir (para saber si queda en cero)
-    const allClientOrders = orders.filter(
-      o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado'
-    );
-    const deudaAntes = allClientOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-
+    // Distribuir automáticamente en FIFO entre todos los pedidos pendientes
     let remaining = amount;
-    for (const order of ordersToProcess) {
+    for (const order of pendingOrders) {
       if (remaining <= 0) break;
       const pendiente = order.totalAmount - order.amountPaid;
       if (pendiente <= 0) continue;
@@ -74,8 +65,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
       remaining -= toApply;
     }
 
-    // Actualizar estado del cliente si la deuda queda saldada
-    if (clientId && deudaAntes - amount <= 0) {
+    if (clientId && deudaTotal - amount <= 0) {
       updateClient(clientId, { status: 'al_dia' });
     }
 
@@ -87,28 +77,23 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
       <div>
         <label className="label">Cliente *</label>
         <select className="input-field" required value={clientId}
-          onChange={e => { setClientId(e.target.value); setSelectedOrders([]); }}>
+          onChange={e => setClientId(e.target.value)}>
           <option value="">Seleccionar cliente...</option>
           {clients.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </div>
-      {clientOrders.length > 0 && (
-        <div>
-          <label className="label">Pedidos a abonar</label>
-          <div className="space-y-1.5 max-h-40 overflow-y-auto">
-            {clientOrders.map(o => (
-              <label key={o.id} className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100">
-                <input type="checkbox" checked={selectedOrders.includes(o.id)}
-                  onChange={() => toggleOrder(o.id)}
-                  className="accent-primary-600 w-4 h-4 rounded" />
-                <span className="text-sm text-gray-700 flex-1">
-                  {o.orderNumber} — {formatCurrency(o.totalAmount - o.amountPaid)} pendiente
-                </span>
-              </label>
-            ))}
-          </div>
+      {clientId && (
+        <div className={`rounded-xl px-4 py-3 text-sm ${
+          deudaTotal > 0
+            ? 'bg-amber-50 border border-amber-100 text-amber-700'
+            : 'bg-emerald-50 border border-emerald-100 text-emerald-700'
+        }`}>
+          {deudaTotal > 0
+            ? <>Saldo pendiente: <strong>{formatCurrency(deudaTotal)}</strong> en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''}. El abono se aplicará del más antiguo al más reciente.</>
+            : 'Este cliente no tiene saldo pendiente.'
+          }
         </div>
       )}
       <div className="grid grid-cols-2 gap-3">
@@ -274,9 +259,11 @@ export function PaymentsPage() {
                   <p className="text-lg font-bold text-emerald-600">
                     {formatCurrency(payment.amount)}
                   </p>
-                  <p className="text-xs text-gray-400">
-                    {payment.orderIds.length} pedido(s)
-                  </p>
+                  {payment.orderIds.length > 0 && (
+                    <p className="text-xs text-gray-400">
+                      Aplicado a {payment.orderIds.length} pedido{payment.orderIds.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
             );
