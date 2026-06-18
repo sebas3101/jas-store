@@ -115,9 +115,11 @@ interface AppStore {
 
   // Payment Proofs
   paymentProofs: PaymentProof[];
-  addPaymentProof:    (p: Omit<PaymentProof, 'id' | 'createdAt'>) => Promise<void>;
-  updatePaymentProof: (id: string, p: Partial<PaymentProof>) => Promise<void>;
-  deletePaymentProof: (id: string) => Promise<void>;
+  addPaymentProof:       (p: Omit<PaymentProof, 'id' | 'createdAt'>) => Promise<void>;
+  updatePaymentProof:    (id: string, p: Partial<PaymentProof>) => Promise<void>;
+  deletePaymentProof:    (id: string) => Promise<void>;
+  confirmPaymentProof:   (id: string) => Promise<void>;
+  rejectPaymentProof:    (id: string, reason: string) => Promise<void>;
 
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
@@ -502,6 +504,62 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { error } = await supabase.from('payment_proofs').delete().eq('id', id);
     if (error) { console.error('deletePaymentProof:', error); return; }
     set(s => ({ paymentProofs: s.paymentProofs.filter(x => x.id !== id) }));
+  },
+
+  confirmPaymentProof: async (id) => {
+    const { paymentProofs, orders, currentUser } = get();
+    const proof = paymentProofs.find(p => p.id === id);
+    if (!proof || !proof.clientId || !proof.amount) return;
+
+    // Pedidos pendientes del cliente, ordenados FIFO
+    const pendingOrders = orders
+      .filter(o =>
+        o.clientId === proof.clientId &&
+        o.status !== 'pagado' &&
+        o.status !== 'cancelado'
+      )
+      .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+
+    // 1. Registrar pago real (el addPayment ya sincroniza estado del cliente)
+    await get().addPayment({
+      clientId:       proof.clientId,
+      orderIds:       pendingOrders.map(o => o.id),
+      amount:         proof.amount,
+      method:         'transferencia',
+      date:           proof.date ?? new Date().toISOString(),
+      notes:          proof.notes,
+      registeredById: currentUser?.id ?? '',
+    });
+
+    // 2. Distribuir FIFO entre pedidos pendientes
+    let remaining = proof.amount;
+    for (const order of pendingOrders) {
+      if (remaining <= 0) break;
+      const pendiente = order.totalAmount - order.amountPaid;
+      if (pendiente <= 0) continue;
+      const toApply = Math.min(remaining, pendiente);
+      await get().updateOrder(order.id, {
+        amountPaid: order.amountPaid + toApply,
+        status: order.amountPaid + toApply >= order.totalAmount ? 'pagado' : order.status,
+      });
+      remaining -= toApply;
+    }
+
+    // 3. Marcar comprobante como confirmado
+    await get().updatePaymentProof(id, {
+      status:       'confirmado',
+      confirmedAt:  new Date().toISOString(),
+      reviewedById: currentUser?.id,
+    });
+  },
+
+  rejectPaymentProof: async (id, reason) => {
+    const { currentUser } = get();
+    await get().updatePaymentProof(id, {
+      status:          'rechazado',
+      rejectionReason: reason || undefined,
+      reviewedById:    currentUser?.id,
+    });
   },
 
   // ── Computed helpers ──────────────────────────────────────────────────────

@@ -333,3 +333,36 @@ update app_users
 set permissions = permissions
   || '{"garantias":{"ver":true}}'::jsonb
 where role = 'vendedor';
+
+-- =====================================================================
+-- MIGRACIÓN v1.7 — Mejoras en comprobantes: imagen, confirmación, rechazo
+-- Ejecutar en Supabase SQL Editor (después de v1.6)
+-- =====================================================================
+
+-- ─── 1. Nuevas columnas en payment_proofs ────────────────────────────
+alter table payment_proofs
+  add column if not exists image_url        text,
+  add column if not exists confirmed_at     timestamptz,
+  add column if not exists rejection_reason text;
+
+-- ─── 2. Permisos para confirmar/rechazar comprobantes ────────────────
+
+-- Admin: todos los permisos de comprobantes
+update app_users
+set permissions = permissions
+  || '{"comprobantes":{"ver":true,"crear":true,"registrar_pago":true,"eliminar":true,"confirmar_comprobante":true,"rechazar_comprobante":true}}'::jsonb
+where role = 'admin';
+
+-- Jennifer: puede ver, crear, confirmar y rechazar
+update app_users
+set permissions = permissions
+  || '{"comprobantes":{"ver":true,"crear":true,"confirmar_comprobante":true,"rechazar_comprobante":true}}'::jsonb
+where role = 'jennifer';
+
+-- Alexis y Vendedor: solo ver
+-- (ya tienen comprobantes.ver de la migración anterior, no se agrega nada)
+
+-- ─── Nota: crear bucket de almacenamiento ─────────────────────────────
+-- Para subir imágenes de comprobantes, crear manualmente en Supabase Dashboard:
+--   Storage → New bucket → nombre: "comprobantes" → Public: true
+-- Esto permite guardar y ver las imágenes de los comprobantes.

@@ -58,7 +58,9 @@ export type PermAction =
   | 'registrar_abono'
   | 'ver_financiero'
   | 'cambiar_estado'
-  | 'administrar_accesos';
+  | 'administrar_accesos'
+  | 'confirmar_comprobante'
+  | 'rechazar_comprobante';
 
 export type ModulePerms = Partial<Record<PermAction, boolean>>;
 export type UserPermissions = Partial<Record<PermModule, ModulePerms>>;
@@ -251,6 +253,8 @@ export interface PaymentProof {
   rawText?: string;
   status: PaymentProofStatus;
   reviewedById?: string;
+  confirmedAt?: string;
+  rejectionReason?: string;
   notes?: string;
   createdAt: string;
 }
