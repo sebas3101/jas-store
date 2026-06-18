@@ -23,14 +23,58 @@ Reglas:
 - notes: observación si algo es dudoso o ambiguo, sino null
 Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
 
-/** Llama a Claude API para extraer datos de un comprobante (imagen en base64). */
-export async function extractPaymentData(
-  imageBase64: string,
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
-): Promise<ExtractedPayment | null> {
+function parseResult(text: string): ExtractedPayment | null {
+  try {
+    const cleaned = text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
+    const parsed  = JSON.parse(cleaned);
+    return {
+      amount:     parsed.amount     ?? undefined,
+      date:       parsed.date       ?? undefined,
+      bank:       parsed.bank       ?? undefined,
+      reference:  parsed.reference  ?? undefined,
+      senderName: parsed.senderName ?? undefined,
+      confidence: (['alta','media','baja'].includes(parsed.confidence) ? parsed.confidence : 'baja') as ExtractedPayment['confidence'],
+      notes:      parsed.notes      ?? undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Extrae datos de un comprobante con Google Gemini (gratis, 1500 req/día). */
+async function extractWithGemini(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
+  const apiKey = import.meta.env.VITE_GEMINI_KEY as string | undefined;
+  if (!apiKey) return null;
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inlineData: { mimeType, data: imageBase64 } },
+              { text: PROMPT },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 512, temperature: 0 },
+        }),
+      }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    return parseResult(text);
+  } catch {
+    return null;
+  }
+}
+
+/** Extrae datos de un comprobante con Claude API (de pago). */
+async function extractWithClaude(imageBase64: string, mimeType: 'image/jpeg' | 'image/png' | 'image/webp'): Promise<ExtractedPayment | null> {
   const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined;
   if (!apiKey) return null;
-
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -46,33 +90,31 @@ export async function extractPaymentData(
         messages: [{
           role: 'user',
           content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mimeType, data: imageBase64 },
-            },
+            { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
             { type: 'text', text: PROMPT },
           ],
         }],
       }),
     });
-
     if (!res.ok) return null;
     const data = await res.json();
-    const text: string = data.content?.[0]?.text ?? '';
-    const cleaned = text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return {
-      amount:     parsed.amount     ?? undefined,
-      date:       parsed.date       ?? undefined,
-      bank:       parsed.bank       ?? undefined,
-      reference:  parsed.reference  ?? undefined,
-      senderName: parsed.senderName ?? undefined,
-      confidence: (['alta','media','baja'].includes(parsed.confidence) ? parsed.confidence : 'baja') as ExtractedPayment['confidence'],
-      notes:      parsed.notes      ?? undefined,
-    };
+    return parseResult(data.content?.[0]?.text ?? '');
   } catch {
     return null;
   }
+}
+
+/**
+ * Extrae datos de pago de un comprobante.
+ * Usa Gemini (gratis) si VITE_GEMINI_KEY está configurada,
+ * o Claude si VITE_ANTHROPIC_KEY está configurada.
+ */
+export async function extractPaymentData(
+  imageBase64: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
+): Promise<ExtractedPayment | null> {
+  return (await extractWithGemini(imageBase64, mimeType))
+      ?? (await extractWithClaude(imageBase64, mimeType));
 }
 
 /** Redimensiona y comprime una imagen a JPEG base64 (sin prefijo data:...). */

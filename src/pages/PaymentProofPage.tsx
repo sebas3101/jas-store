@@ -13,7 +13,8 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import { extractPaymentData, compressImageToBase64 } from '../utils/ocr';
 import type { PaymentProof, PaymentProofStatus } from '../types';
 
-const HAS_AI = !!(import.meta.env.VITE_ANTHROPIC_KEY as string | undefined);
+const HAS_AI = !!(import.meta.env.VITE_GEMINI_KEY as string | undefined)
+           || !!(import.meta.env.VITE_ANTHROPIC_KEY as string | undefined);
 
 const STATUS_LABEL: Record<PaymentProofStatus, string> = {
   pendiente_revision: 'Pendiente revisión',
