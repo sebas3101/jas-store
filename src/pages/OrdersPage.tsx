@@ -396,7 +396,9 @@ export function OrdersPage() {
       {/* Modal WhatsApp confirmación de pedido */}
       {waOrder && (() => {
         const client  = clients.find(c => c.id === waOrder.clientId);
-        const message = client ? buildOrderConfirmationMessage(client, waOrder) : '';
+        const { getClientDebt } = useAppStore.getState();
+        const previousDebt = client ? Math.max(0, getClientDebt(client.id) - Math.max(0, waOrder.totalAmount - waOrder.amountPaid)) : 0;
+        const message = client ? buildOrderConfirmationMessage(client, waOrder, previousDebt) : '';
         return (
           <Modal isOpen={!!waOrder} onClose={() => setWaOrder(null)} title="Pedido creado">
             <div className="space-y-4">
