@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store } from 'lucide-react';
 import { useState } from 'react';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
@@ -12,17 +12,19 @@ import {
   paymentMethodLabel,
   categoryLabel,
 } from '../utils/formatters';
+import { buildAvailabilityMessage, openWhatsApp } from '../utils/whatsapp';
 import type { OrderStatus } from '../types';
 
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, clients, users, updateOrder, deleteOrder } = useAppStore();
+  const { orders, clients, users, suppliers, updateOrder, deleteOrder } = useAppStore();
 
   const order = orders.find(o => o.id === id);
-  const [statusModal, setStatusModal] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState(false);
-  const [newStatus, setNewStatus]   = useState<OrderStatus>('entregado');
+  const [statusModal, setStatusModal]     = useState(false);
+  const [deleteDialog, setDeleteDialog]   = useState(false);
+  const [newStatus, setNewStatus]         = useState<OrderStatus>('entregado');
+  const [availabilityModal, setAvailabilityModal] = useState(false);
 
   if (!order) {
     return (
@@ -38,8 +40,12 @@ export function OrderDetailPage() {
   const client   = clients.find(c => c.id === order.clientId);
   const seller   = users.find(u => u.id === order.sellerId);
   const delivery = users.find(u => u.id === order.deliveryPersonId);
+  const supplier = suppliers.find(s => s.id === order.supplierId);
   const balance  = order.totalAmount - order.amountPaid;
   const profit   = order.totalAmount - order.totalCost;
+
+  // La deuda solo se suma al cliente cuando el pedido está entregado o pendiente_pago
+  const countAsDebt = order.status === 'entregado' || order.status === 'pendiente_pago';
 
   const STATUS_FLOW: OrderStatus[] = [
     'tomado', 'por_recoger', 'recogido', 'entregado', 'pagado', 'pendiente_pago', 'cancelado',
@@ -55,6 +61,10 @@ export function OrderDetailPage() {
     }
     updateOrder(order.id, updates);
     setStatusModal(false);
+    // Al pasar a 'por_recoger', ofrecer enviar mensaje de disponibilidad
+    if (newStatus === 'por_recoger' && client?.phone) {
+      setAvailabilityModal(true);
+    }
   };
 
   return (
@@ -185,6 +195,59 @@ export function OrderDetailPage() {
         </div>
       </div>
 
+      {/* Proveedor */}
+      {supplier && (
+        <div className="card">
+          <h2 className="section-title mb-3 flex items-center gap-2">
+            <Store size={14} className="text-amber-500" /> Proveedor
+          </h2>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Proveedor:</span>
+              <span className="font-semibold text-gray-800">{supplier.name}</span>
+            </div>
+            {supplier.address && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Dirección:</span>
+                <span className="font-medium text-gray-700 text-right max-w-[60%]">{supplier.address}</span>
+              </div>
+            )}
+            {order.supplierPaymentAmount != null && order.supplierPaymentAmount > 0 && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Pago al proveedor:</span>
+                  <span className="font-bold text-gray-800">{formatCurrency(order.supplierPaymentAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Estado pago:</span>
+                  <span className={`font-semibold text-xs px-2 py-0.5 rounded-full ${
+                    order.supplierPaymentStatus === 'pagado'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {order.supplierPaymentStatus === 'pagado' ? 'Pagado ✓' : 'Pendiente'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Método:</span>
+                  <span className="font-medium text-gray-700">
+                    {order.supplierPaymentMethod === 'transferencia' ? 'Transferencia' : 'Efectivo'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Aviso deuda */}
+      {!countAsDebt && balance > 0 && (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-xs text-blue-700">
+          ℹ️ Este pedido <strong>no suma deuda</strong> al cliente hasta que pase a estado <strong>Entregado</strong>.
+          Estado actual: <strong>{orderStatusLabel[order.status]}</strong>
+        </div>
+      )}
+
       {/* Status modal */}
       <Modal isOpen={statusModal} onClose={() => setStatusModal(false)} title="Cambiar estado" size="sm">
         <div className="space-y-4">
@@ -197,11 +260,48 @@ export function OrderDetailPage() {
               ))}
             </select>
           </div>
+          {newStatus === 'por_recoger' && client?.phone && (
+            <div className="bg-emerald-50 rounded-xl p-3 text-xs text-emerald-700">
+              ✓ Al guardar, podrás enviar un WhatsApp de disponibilidad a {client.name}.
+            </div>
+          )}
           <button onClick={handleStatusUpdate} className="btn-primary w-full justify-center">
             Actualizar estado
           </button>
         </div>
       </Modal>
+
+      {/* Modal WhatsApp disponibilidad */}
+      {client && (
+        <Modal isOpen={availabilityModal} onClose={() => setAvailabilityModal(false)} title="Confirmar disponibilidad">
+          <div className="space-y-4">
+            <div className="bg-emerald-50 rounded-xl p-3">
+              <p className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-1">
+                <MessageCircle size={12} /> Mensaje para {client.name}
+              </p>
+              <p className="text-xs text-gray-700 whitespace-pre-line">
+                {buildAvailabilityMessage(client, order)}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setAvailabilityModal(false)} className="btn-ghost flex-1 justify-center">
+                Omitir
+              </button>
+              {client.phone && (
+                <button
+                  onClick={() => {
+                    openWhatsApp(client.phone!, buildAvailabilityMessage(client, order));
+                    setAvailabilityModal(false);
+                  }}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                >
+                  <MessageCircle size={14} /> Enviar WhatsApp
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <ConfirmDialog
         isOpen={deleteDialog}
