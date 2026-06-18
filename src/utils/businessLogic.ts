@@ -1,12 +1,19 @@
-import type { Client, Order, ClientStatus, OrderStatus } from '../types';
+import type { Client, Order, Payment, ClientStatus, OrderStatus } from '../types';
 
 // ─── Deuda del cliente ────────────────────────────────────────────────────────
 
-/** Suma la deuda pendiente de un cliente. Excluye pedidos pagados y cancelados. */
+/**
+ * Suma la deuda pendiente de un cliente.
+ * Solo cuenta pedidos en estado 'entregado' o 'pendiente_pago'.
+ * Un pedido no suma deuda hasta ser entregado.
+ */
 export function calculateClientDebt(clientId: string, orders: Order[]): number {
   return orders
-    .filter(o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado')
-    .reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
+    .filter(o =>
+      o.clientId === clientId &&
+      (o.status === 'entregado' || o.status === 'pendiente_pago')
+    )
+    .reduce((sum, o) => sum + Math.max(0, o.totalAmount - o.amountPaid), 0);
 }
 
 // ─── Distribución FIFO ───────────────────────────────────────────────────────
@@ -49,12 +56,51 @@ export function distributeFifo(amount: number, orders: Order[]): FifoApplication
 
 /**
  * Determina el estado correcto de un cliente según su deuda real.
- * 'credito_cerrado' nunca se modifica automáticamente (decisión del admin).
+ *
+ * Reglas:
+ * - 'credito_cerrado' nunca se modifica automáticamente.
+ * - Sin deuda → 'al_dia'.
+ * - Con deuda Y deuda > límite de crédito → 'mora'.
+ * - Con deuda Y último abono hace >30 días (o sin abonos y pedido entregado >30 días) → 'mora'.
+ * - Con deuda reciente → 'pendiente'.
  */
-export function deriveClientStatus(client: Client, orders: Order[]): ClientStatus {
+export function deriveClientStatus(
+  client: Client,
+  orders: Order[],
+  payments: Payment[] = [],
+): ClientStatus {
   if (client.status === 'credito_cerrado') return 'credito_cerrado';
+
   const debt = calculateClientDebt(client.id, orders);
   if (debt <= 0) return 'al_dia';
+
+  // Mora inmediata si supera el límite de crédito
   if (debt > (client.creditLimit ?? 200_000)) return 'mora';
+
+  // Calcular días desde el último abono o desde el pedido entregado más antiguo sin pagar
+  const clientPayments = payments
+    .filter(p => p.clientId === client.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const lastPaymentDate = clientPayments[0]
+    ? new Date(clientPayments[0].date)
+    : null;
+
+  const oldestUnpaidDate = orders
+    .filter(o =>
+      o.clientId === client.id &&
+      (o.status === 'entregado' || o.status === 'pendiente_pago') &&
+      o.amountPaid < o.totalAmount,
+    )
+    .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())[0]
+    ?.orderDate;
+
+  const referenceDate = lastPaymentDate ?? (oldestUnpaidDate ? new Date(oldestUnpaidDate) : null);
+  if (referenceDate) {
+    const diffMs   = Date.now() - referenceDate.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays > 30) return 'mora';
+  }
+
   return 'pendiente';
 }

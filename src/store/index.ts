@@ -21,11 +21,12 @@ async function syncOneClientStatus(
   clientId: string,
   clients: Client[],
   orders: Order[],
+  payments: Payment[],
   setStore: (fn: (s: { clients: Client[] }) => Partial<{ clients: Client[] }>) => void
 ) {
   const client = clients.find(c => c.id === clientId);
   if (!client) return;
-  const newStatus = deriveClientStatus(client, orders);
+  const newStatus = deriveClientStatus(client, orders, payments);
   if (newStatus === client.status) return;
   const now = new Date().toISOString();
   // Actualizar UI de inmediato (sin esperar a Supabase)
@@ -144,12 +145,13 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('publications').select('*').order('created_at'),
       ]);
 
-      const loadedClients = cam(clients ?? []) as Client[];
-      const loadedOrders  = cam(orders  ?? []) as Order[];
+      const loadedClients  = cam(clients  ?? []) as Client[];
+      const loadedOrders   = cam(orders   ?? []) as Order[];
+      const loadedPayments = cam(payments ?? []) as Payment[];
 
-      // Corregir estados de clientes al arrancar, usando la deuda real
+      // Corregir estados de clientes al arrancar, usando la deuda real y los pagos
       const syncedClients = loadedClients.map(c => {
-        const correct = deriveClientStatus(c, loadedOrders);
+        const correct = deriveClientStatus(c, loadedOrders, loadedPayments);
         return correct !== c.status ? { ...c, status: correct } : c;
       });
       const changedClients = syncedClients.filter(
@@ -161,7 +163,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         clients:      syncedClients,
         products:     cam(products     ?? []) as Product[],
         orders:       loadedOrders,
-        payments:     cam(payments     ?? []) as Payment[],
+        payments:     loadedPayments,
         suppliers:    cam(suppliers    ?? []) as Supplier[],
         purchases:    cam(purchases    ?? []) as SupplierPurchase[],
         publications: cam(publications ?? []) as Publication[],
@@ -311,8 +313,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { console.error('addOrder:', error); return; }
     set(s => ({ orders: [...s.orders, toCamel(data) as Order] }));
     // Resincronizar status del cliente tras agregar un pedido (genera deuda)
-    const { clients, orders } = get();
-    await syncOneClientStatus(o.clientId, clients, orders, set);
+    const { clients, orders, payments } = get();
+    await syncOneClientStatus(o.clientId, clients, orders, payments, set);
   },
 
   updateOrder: async (id, o) => {
@@ -328,8 +330,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     }));
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
-      const { clients, orders } = get();
-      await syncOneClientStatus(clientId, clients, orders, set);
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(clientId, clients, orders, payments, set);
     }
   },
 
@@ -341,8 +343,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
     // Resincronizar: eliminar un pedido puede reducir la deuda del cliente
     if (clientId) {
-      const { clients, orders } = get();
-      await syncOneClientStatus(clientId, clients, orders, set);
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(clientId, clients, orders, payments, set);
     }
   },
 
@@ -354,6 +356,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { data, error } = await supabase.from('payments').insert(row).select().single();
     if (error) { console.error('addPayment:', error); return; }
     set(s => ({ payments: [...s.payments, toCamel(data) as Payment] }));
+    // Re-sincronizar estado del cliente: un abono puede sacar de mora
+    const { clients, orders, payments: updatedPayments } = get();
+    await syncOneClientStatus(p.clientId, clients, orders, updatedPayments, set);
   },
 
   updatePayment: async (id, p) => {
