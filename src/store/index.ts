@@ -3,6 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
+  Warranty, PaymentProof,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
@@ -105,6 +106,18 @@ interface AppStore {
   addPublication:    (p: Omit<Publication, 'id' | 'createdAt'>) => Promise<void>;
   updatePublication: (id: string, p: Partial<Publication>) => Promise<void>;
   deletePublication: (id: string) => Promise<void>;
+
+  // Warranties
+  warranties: Warranty[];
+  addWarranty:    (w: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateWarranty: (id: string, w: Partial<Warranty>) => Promise<void>;
+  deleteWarranty: (id: string) => Promise<void>;
+
+  // Payment Proofs
+  paymentProofs: PaymentProof[];
+  addPaymentProof:    (p: Omit<PaymentProof, 'id' | 'createdAt'>) => Promise<void>;
+  updatePaymentProof: (id: string, p: Partial<PaymentProof>) => Promise<void>;
+  deletePaymentProof: (id: string) => Promise<void>;
 
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
@@ -445,11 +458,60 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     set(s => ({ publications: s.publications.filter(x => x.id !== id) }));
   },
 
+  // ── Warranties ────────────────────────────────────────────────────────────
+  warranties: [],
+
+  addWarranty: async (w) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...w, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('warranties').insert(row).select().single();
+    if (error) { console.error('addWarranty:', error); return; }
+    set(s => ({ warranties: [...s.warranties, toCamel(data) as Warranty] }));
+  },
+
+  updateWarranty: async (id, w) => {
+    const row = toSnake({ ...w, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('warranties').update(row).eq('id', id);
+    if (error) { console.error('updateWarranty:', error); return; }
+    set(s => ({ warranties: s.warranties.map(x => x.id === id ? { ...x, ...w, updatedAt: new Date().toISOString() } : x) }));
+  },
+
+  deleteWarranty: async (id) => {
+    const { error } = await supabase.from('warranties').delete().eq('id', id);
+    if (error) { console.error('deleteWarranty:', error); return; }
+    set(s => ({ warranties: s.warranties.filter(x => x.id !== id) }));
+  },
+
+  // ── Payment Proofs ────────────────────────────────────────────────────────
+  paymentProofs: [],
+
+  addPaymentProof: async (p) => {
+    const row = toSnake({ ...p, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('payment_proofs').insert(row).select().single();
+    if (error) { console.error('addPaymentProof:', error); return; }
+    set(s => ({ paymentProofs: [...s.paymentProofs, toCamel(data) as PaymentProof] }));
+  },
+
+  updatePaymentProof: async (id, p) => {
+    const { error } = await supabase.from('payment_proofs').update(toSnake(p)).eq('id', id);
+    if (error) { console.error('updatePaymentProof:', error); return; }
+    set(s => ({ paymentProofs: s.paymentProofs.map(x => x.id === id ? { ...x, ...p } : x) }));
+  },
+
+  deletePaymentProof: async (id) => {
+    const { error } = await supabase.from('payment_proofs').delete().eq('id', id);
+    if (error) { console.error('deletePaymentProof:', error); return; }
+    set(s => ({ paymentProofs: s.paymentProofs.filter(x => x.id !== id) }));
+  },
+
   // ── Computed helpers ──────────────────────────────────────────────────────
   getClientDebt: (clientId) =>
     get().orders
-      .filter(o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado')
-      .reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0),
+      .filter(o =>
+        o.clientId === clientId &&
+        (o.status === 'entregado' || o.status === 'pendiente_pago')
+      )
+      .reduce((sum, o) => sum + Math.max(0, o.totalAmount - o.amountPaid), 0),
 
   getClientTotalPaid: (clientId) =>
     get().payments

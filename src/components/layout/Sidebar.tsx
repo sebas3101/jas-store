@@ -13,6 +13,8 @@ import {
   Store,
   TrendingUp,
   Target,
+  ShieldCheck,
+  FileImage,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -20,18 +22,20 @@ import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
 
 const ALL_NAV_ITEMS = [
-  { to: '/',             icon: LayoutDashboard, label: 'Inicio'       },
-  { to: '/clientes',     icon: Users,           label: 'Clientes'     },
-  { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'      },
-  { to: '/pagos',        icon: CreditCard,      label: 'Pagos'        },
-  { to: '/productos',    icon: Package,         label: 'Productos'    },
-  { to: '/proveedores',  icon: Store,           label: 'Proveedores'  },
-  { to: '/entregas',     icon: Truck,           label: 'Entregas'     },
-  { to: '/publicaciones',icon: Megaphone,       label: 'Publicaciones'},
-  { to: '/reportes',     icon: BarChart3,       label: 'Reportes'     },
-  { to: '/finanzas',     icon: TrendingUp,      label: 'Finanzas'     },
-  { to: '/metas',        icon: Target,          label: 'Metas'        },
-  { to: '/configuracion',icon: Settings,        label: 'Configuración'},
+  { to: '/',              icon: LayoutDashboard, label: 'Inicio'        },
+  { to: '/clientes',      icon: Users,           label: 'Clientes'      },
+  { to: '/pedidos',       icon: ShoppingBag,     label: 'Pedidos'       },
+  { to: '/pagos',         icon: CreditCard,      label: 'Pagos'         },
+  { to: '/productos',     icon: Package,         label: 'Productos'     },
+  { to: '/proveedores',   icon: Store,           label: 'Proveedores'   },
+  { to: '/entregas',      icon: Truck,           label: 'Entregas'      },
+  { to: '/garantias',     icon: ShieldCheck,     label: 'Garantías'     },
+  { to: '/comprobantes',  icon: FileImage,       label: 'Comprobantes'  },
+  { to: '/publicaciones', icon: Megaphone,       label: 'Publicaciones' },
+  { to: '/reportes',      icon: BarChart3,       label: 'Reportes'      },
+  { to: '/finanzas',      icon: TrendingUp,      label: 'Finanzas'      },
+  { to: '/metas',         icon: Target,          label: 'Metas'         },
+  { to: '/configuracion', icon: Settings,        label: 'Configuración' },
 ];
 
 export function Sidebar() {

@@ -43,7 +43,9 @@ export type PermModule =
   | 'reportes'
   | 'configuracion'
   | 'finanzas'
-  | 'metas';
+  | 'metas'
+  | 'garantias'
+  | 'comprobantes';
 
 /** Acciones posibles por módulo */
 export type PermAction =

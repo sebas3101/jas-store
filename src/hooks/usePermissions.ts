@@ -16,6 +16,8 @@ const ROUTE_MODULE: Record<string, PermModule> = {
   '/configuracion': 'configuracion',
   '/finanzas':      'finanzas',
   '/metas':         'metas',
+  '/garantias':     'garantias',
+  '/comprobantes':  'comprobantes',
 };
 
 // ─── Plantillas de permisos ───────────────────────────────────────────────────
@@ -43,20 +45,24 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
   },
 
   jennifer: {
-    dashboard:    { ver: true },
-    clientes:     { ver: true, crear: true, editar: true, ver_financiero: true },
-    pedidos:      { ver: true, crear: true, editar: true, cambiar_estado: true },
-    pagos:        { ver: true, registrar_pago: true, registrar_abono: true, ver_financiero: true },
-    entregas:     { ver: true },
-    publicaciones:{ ver: true, crear: true },
-    reportes:     { ver: true },
-    productos:    { ver: true },
+    dashboard:     { ver: true },
+    clientes:      { ver: true, crear: true, editar: true, ver_financiero: true },
+    pedidos:       { ver: true, crear: true, editar: true, cambiar_estado: true },
+    pagos:         { ver: true, registrar_pago: true, registrar_abono: true, ver_financiero: true },
+    entregas:      { ver: true },
+    publicaciones: { ver: true, crear: true },
+    reportes:      { ver: true },
+    productos:     { ver: true },
+    garantias:     { ver: true, crear: true, editar: true },
+    comprobantes:  { ver: true, crear: true },
   },
 
   alexis: {
-    dashboard: { ver: true },
-    pedidos:   { ver: true, cambiar_estado: true },
-    entregas:  { ver: true, cambiar_estado: true },
+    dashboard:    { ver: true },
+    pedidos:      { ver: true, cambiar_estado: true },
+    entregas:     { ver: true, cambiar_estado: true },
+    garantias:    { ver: true },
+    comprobantes: { ver: true },
   },
 
   vendedor: {
@@ -64,6 +70,7 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
     productos:    { ver: true },
     pedidos:      { ver: true, crear: true },
     publicaciones:{ ver: true, crear: true },
+    garantias:    { ver: true },
   },
 
   consulta: {
@@ -142,6 +149,18 @@ export const MODULE_ACTIONS: Record<PermModule, { action: PermAction; label: str
     { action: 'editar',   label: 'Editar' },
     { action: 'eliminar', label: 'Eliminar' },
   ],
+  garantias: [
+    { action: 'ver',      label: 'Ver' },
+    { action: 'crear',    label: 'Crear' },
+    { action: 'editar',   label: 'Editar' },
+    { action: 'eliminar', label: 'Eliminar' },
+  ],
+  comprobantes: [
+    { action: 'ver',             label: 'Ver' },
+    { action: 'crear',           label: 'Registrar comprobante' },
+    { action: 'registrar_pago',  label: 'Confirmar pago' },
+    { action: 'eliminar',        label: 'Rechazar / Eliminar' },
+  ],
 };
 
 export const MODULE_LABELS: Record<PermModule, string> = {
@@ -157,12 +176,14 @@ export const MODULE_LABELS: Record<PermModule, string> = {
   configuracion:'Configuración',
   finanzas:     'Finanzas',
   metas:        'Metas',
+  garantias:    'Garantías',
+  comprobantes: 'Comprobantes',
 };
 
 export const ALL_MODULES: PermModule[] = [
   'dashboard','clientes','pedidos','productos','publicaciones',
   'pagos','proveedores','entregas','reportes','configuracion',
-  'finanzas','metas',
+  'finanzas','metas','garantias','comprobantes',
 ];
 
 // ─── Hook principal ───────────────────────────────────────────────────────────
