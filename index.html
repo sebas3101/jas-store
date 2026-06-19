@@ -3,9 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/jpeg" href="/logo.jpeg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>JAS Store — Sistema de Gestión</title>
     <meta name="description" content="Sistema de gestión para tienda virtual de ropa, lociones y cosméticos" />
+
+    <!-- PWA iOS (Safari requiere estas etiquetas — no lee el manifest) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="JAS Store" />
+    <link rel="apple-touch-icon" href="/logo.jpeg" />
+
+    <!-- Theme color (Android Chrome + Safari 15+) -->
+    <meta name="theme-color" content="#7c3aed" />
   </head>
   <body>
     <div id="root"></div>
