@@ -43,6 +43,7 @@ export type PermModule =
   | 'reportes'
   | 'configuracion'
   | 'finanzas'
+  | 'gastos'
   | 'metas'
   | 'garantias'
   | 'comprobantes';
@@ -77,6 +78,22 @@ export interface User {
   active: boolean;
   createdAt: string;
   permissions?: UserPermissions;
+  requirePasswordChange?: boolean;
+}
+
+export type ExpenseType = 'comida' | 'gasolina' | 'logistica' | 'transporte' | 'empaques' | 'otro';
+
+export interface Expense {
+  id: string;
+  date: string;
+  type: ExpenseType;
+  description?: string;
+  amount: number;
+  responsible?: string;
+  paymentMethod: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Client {

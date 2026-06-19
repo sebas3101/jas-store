@@ -1,5 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppStore } from './store';
 import { AppLayout } from './components/layout/AppLayout';
 // LoginPage carga de forma estática — es la primera pantalla, debe estar disponible de inmediato
@@ -25,10 +25,16 @@ const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ 
 const WarrantiesPage     = lazy(() => import('./pages/WarrantiesPage').then(m => ({ default: m.WarrantiesPage })));
 const PaymentProofPage   = lazy(() => import('./pages/PaymentProofPage').then(m => ({ default: m.PaymentProofPage })));
 const RecordatoriosPage  = lazy(() => import('./pages/RecordatoriosPage').then(m => ({ default: m.RecordatoriosPage })));
+const ExpensesPage       = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
+const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useAppStore(s => s.currentUser);
+  const { pathname } = useLocation();
   if (!currentUser) return <Navigate to="/login" replace />;
+  if (currentUser.requirePasswordChange && pathname !== '/cambiar-contrasena') {
+    return <Navigate to="/cambiar-contrasena" replace />;
+  }
   return <>{children}</>;
 }
 
@@ -97,8 +103,10 @@ export default function App() {
             <Route path="configuracion"   element={<SettingsPage />} />
             <Route path="garantias"       element={<WarrantiesPage />} />
             <Route path="comprobantes"    element={<PaymentProofPage />} />
-            <Route path="recordatorios"   element={<RecordatoriosPage />} />
-            <Route path="*"               element={<Navigate to="/" replace />} />
+            <Route path="recordatorios"      element={<RecordatoriosPage />} />
+            <Route path="gastos"             element={<ExpensesPage />} />
+            <Route path="cambiar-contrasena" element={<ChangePasswordPage />} />
+            <Route path="*"                  element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </Suspense>

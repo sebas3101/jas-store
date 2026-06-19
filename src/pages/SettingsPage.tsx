@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -53,9 +53,19 @@ function UserForm({
             onChange={e => set('name', e.target.value)} />
         </div>
         <div>
-          <label className="label">Correo *</label>
-          <input type="email" className="input-field" required value={form.email}
-            onChange={e => set('email', e.target.value)} />
+          <label className="label">Usuario *</label>
+          <input type="text" className="input-field" required value={form.email}
+            onChange={e => {
+              const v = e.target.value.trim();
+              set('email', v.includes('@') ? v : v ? `${v}@jasstore.co` : '');
+            }}
+            placeholder="ej: maria → maria@jasstore.co"
+            autoCapitalize="none" autoCorrect="off" />
+          {form.email && (
+            <p className="text-[10px] text-gray-400 mt-0.5">
+              Correo: {form.email}
+            </p>
+          )}
         </div>
         <div>
           <label className="label">Contraseña *</label>
@@ -251,10 +261,13 @@ export function SettingsPage() {
   const { users, currentUser, addUser, updateUser, deleteUser } = useAppStore();
   const { can, isAdmin } = usePermissions();
 
-  const [modalOpen, setModal]       = useState(false);
-  const [editing, setEditing]       = useState<UserType | null>(null);
-  const [deleting, setDeleting]     = useState<UserType | null>(null);
-  const [permUser, setPermUser]     = useState<UserType | null>(null);
+  const [modalOpen,    setModal]    = useState(false);
+  const [editing,      setEditing]  = useState<UserType | null>(null);
+  const [deleting,     setDeleting] = useState<UserType | null>(null);
+  const [permUser,     setPermUser] = useState<UserType | null>(null);
+  const [resetUser,    setResetUser]= useState<UserType | null>(null);
+  const [tempPwd,      setTempPwd]  = useState('');
+  const [resetDone,    setResetDone]= useState(false);
 
   // Solo admins o usuarios con administrar_accesos llegan aquí
   if (!isAdmin && !can('configuracion', 'ver')) {
@@ -286,6 +299,12 @@ export function SettingsPage() {
 
   const handleToggleActive = (user: UserType) => {
     updateUser(user.id, { active: !user.active });
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser || !tempPwd) return;
+    await updateUser(resetUser.id, { password: tempPwd, requirePasswordChange: true });
+    setResetDone(true);
   };
 
   return (
@@ -378,6 +397,17 @@ export function SettingsPage() {
                     {user.active ? <UserX size={16} /> : <UserCheck size={16} />}
                   </button>
                 )}
+                {/* Restablecer contraseña */}
+                {can('configuracion', 'editar') && user.id !== currentUser?.id && (
+                  <button
+                    aria-label="Restablecer contraseña"
+                    onClick={() => { setResetUser(user); setTempPwd(''); setResetDone(false); }}
+                    className="p-2 hover:bg-amber-50 rounded-xl text-gray-400 hover:text-amber-600 transition-colors"
+                    title="Restablecer contraseña"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                )}
                 {/* Administrar accesos */}
                 {can('configuracion', 'administrar_accesos') && (
                   <button
@@ -420,6 +450,7 @@ export function SettingsPage() {
         <div className="flex flex-wrap gap-3 text-xs text-gray-500">
           <span className="flex items-center gap-1"><UserX size={12} className="text-amber-500" /> Desactivar sin borrar historial</span>
           <span className="flex items-center gap-1"><UserCheck size={12} className="text-emerald-500" /> Reactivar usuario</span>
+          <span className="flex items-center gap-1"><RotateCcw size={12} className="text-amber-500" /> Restablecer contraseña (fuerza cambio)</span>
           <span className="flex items-center gap-1"><Key size={12} className="text-violet-600" /> Administrar accesos por módulo</span>
           <span className="flex items-center gap-1"><Edit2 size={12} className="text-gray-500" /> Editar datos del usuario</span>
         </div>
@@ -459,6 +490,65 @@ export function SettingsPage() {
         confirmLabel="Eliminar"
         danger
       />
+
+      {/* Modal restablecer contraseña */}
+      <Modal
+        isOpen={!!resetUser}
+        onClose={() => { setResetUser(null); setResetDone(false); setTempPwd(''); }}
+        title={`Restablecer contraseña — ${resetUser?.name}`}
+      >
+        {resetDone ? (
+          <div className="space-y-4 text-center py-4">
+            <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto">
+              <Key size={24} className="text-emerald-600" />
+            </div>
+            <p className="text-sm font-semibold text-gray-800">Contraseña restablecida</p>
+            <p className="text-xs text-gray-500">
+              La nueva contraseña temporal es: <span className="font-bold text-gray-900">{tempPwd}</span>
+            </p>
+            <p className="text-xs text-amber-600">El usuario deberá cambiarla en el próximo inicio de sesión.</p>
+            <button
+              onClick={() => { setResetUser(null); setResetDone(false); setTempPwd(''); }}
+              className="btn-primary w-full justify-center"
+            >
+              Listo
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              Define una contraseña temporal para <strong>{resetUser?.name}</strong>. Al iniciar sesión,
+              el usuario será obligado a cambiarla.
+            </p>
+            <div>
+              <label className="label">Contraseña temporal *</label>
+              <input
+                type="text"
+                className="input-field"
+                value={tempPwd}
+                onChange={e => setTempPwd(e.target.value)}
+                placeholder="Mínimo 6 caracteres"
+                autoComplete="off"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => { setResetUser(null); setTempPwd(''); }}
+                className="btn-ghost flex-1 justify-center"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleResetPassword}
+                disabled={tempPwd.length < 6}
+                className="btn-primary flex-1 justify-center disabled:opacity-50"
+              >
+                Restablecer
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

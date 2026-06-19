@@ -25,6 +25,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/metas':          'Metas',
   '/garantias':      'Garantías',
   '/comprobantes':   'Comprobantes',
+  '/gastos':         'Gastos Operativos',
   '/configuracion':  'Configuración',
 };
 

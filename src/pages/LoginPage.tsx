@@ -25,7 +25,12 @@ export function LoginPage() {
     setLoading(false);
     if (ok) {
       sessionStorage.removeItem('jas_logout_reason');
-      navigate('/');
+      const { currentUser } = useAppStore.getState();
+      if (currentUser?.requirePasswordChange) {
+        navigate('/cambiar-contrasena');
+      } else {
+        navigate('/');
+      }
     } else {
       setError('Usuario o contraseña incorrectos');
     }

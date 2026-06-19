@@ -18,7 +18,7 @@ import { formatCurrency, formatDate, paymentMethodLabel } from '../utils/formatt
 type ViewMode = 'month' | 'range';
 
 export function FinancesPage() {
-  const { orders, payments, purchases } = useAppStore();
+  const { orders, payments, purchases, expenses } = useAppStore();
   const { can } = usePermissions();
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -47,6 +47,8 @@ export function FinancesPage() {
   const rangePayments = payments.filter(p => inRange(p.date));
   // Purchases in range
   const rangePurchases = purchases.filter(p => inRange(p.purchaseDate));
+  // Expenses in range
+  const rangeExpenses = (expenses ?? []).filter(e => inRange(e.date));
 
   // KPIs
   const totalSales     = rangeOrders.reduce((s, o) => s + o.totalAmount, 0);
@@ -54,7 +56,8 @@ export function FinancesPage() {
   const grossProfit    = totalSales - totalCost;
   const totalCollected = rangePayments.reduce((s, p) => s + p.amount, 0);
   const totalPurchases = rangePurchases.reduce((s, p) => s + p.cost, 0);
-  const netBalance     = totalCollected - totalPurchases;
+  const totalExpenses  = rangeExpenses.reduce((s, e) => s + e.amount, 0);
+  const netBalance     = totalCollected - totalPurchases - totalExpenses;
   const totalDebt      = rangeOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
 
   // Payment method breakdown
@@ -77,6 +80,7 @@ export function FinancesPage() {
       ['Ganancia bruta',          grossProfit],
       ['Recaudo (pagos recibidos)', totalCollected],
       ['Compras a proveedores',   totalPurchases],
+      ['Gastos operativos',       totalExpenses],
       ['Saldo neto',              netBalance],
       ['Deuda pendiente clientes', totalDebt],
     ];
@@ -120,6 +124,24 @@ export function FinancesPage() {
       ]),
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(purchaseRows), 'Compras');
+
+    // Sheet 5: Expenses
+    if (rangeExpenses.length > 0) {
+      const expenseRows = [
+        ['Fecha', 'Tipo', 'Descripción', 'Responsable', 'Método', 'Valor'],
+        ...rangeExpenses.map(e => [
+          formatDate(e.date),
+          e.type,
+          e.description ?? '',
+          e.responsible ?? '',
+          e.paymentMethod,
+          e.amount,
+        ]),
+        [],
+        ['TOTAL', '', '', '', '', totalExpenses],
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expenseRows), 'Gastos');
+    }
 
     const label = viewMode === 'month'
       ? format(from, 'yyyy-MM', { locale: es })
@@ -194,6 +216,7 @@ export function FinancesPage() {
             {[
               { label: 'Recaudo clientes',   value: totalCollected,  color: 'text-emerald-600' },
               { label: 'Compras proveedores', value: totalPurchases,  color: 'text-red-500'    },
+              { label: 'Gastos operativos',   value: totalExpenses,   color: 'text-orange-500' },
               { label: 'Saldo neto',          value: netBalance,      color: netBalance >= 0 ? 'text-emerald-700' : 'text-red-700' },
             ].map(row => (
               <div key={row.label} className="flex justify-between items-center gap-2 text-sm py-0.5">

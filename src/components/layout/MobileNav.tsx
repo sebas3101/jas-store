@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   FileImage,
   Bell,
+  Receipt,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAppStore } from '../../store';
@@ -33,6 +34,7 @@ const ALL_NAV_ITEMS = [
   { to: '/publicaciones',  icon: Megaphone,       label: 'Publi.'    },
   { to: '/reportes',       icon: BarChart3,       label: 'Reportes'  },
   { to: '/finanzas',       icon: TrendingUp,      label: 'Finanzas'  },
+  { to: '/gastos',         icon: Receipt,         label: 'Gastos'    },
   { to: '/metas',          icon: Target,          label: 'Metas'     },
   { to: '/configuracion',  icon: Settings,        label: 'Config.'   },
 ];

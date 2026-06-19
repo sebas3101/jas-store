@@ -3,7 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
-  Warranty, PaymentProof,
+  Warranty, PaymentProof, Expense,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
@@ -121,6 +121,12 @@ interface AppStore {
   confirmPaymentProof:   (id: string) => Promise<void>;
   rejectPaymentProof:    (id: string, reason: string) => Promise<void>;
 
+  // Expenses
+  expenses: Expense[];
+  addExpense:    (e: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateExpense: (id: string, e: Partial<Expense>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
   getClientTotalPaid:(clientId: string) => number;
@@ -151,6 +157,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: publications },
         { data: warranties },
         { data: paymentProofs },
+        { data: expenses },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -162,6 +169,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('publications').select('*').order('created_at'),
         supabase.from('warranties').select('*').order('created_at'),
         supabase.from('payment_proofs').select('*').order('created_at'),
+        supabase.from('expenses').select('*').order('created_at'),
       ]);
 
       const loadedClients  = cam(clients  ?? []) as Client[];
@@ -188,6 +196,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         publications:  cam(publications  ?? []) as Publication[],
         warranties:    cam(warranties    ?? []) as Warranty[],
         paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
+        expenses:      cam(expenses      ?? []) as Expense[],
         initialized: true,
         isLoading: false,
       });
@@ -597,6 +606,32 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           : p
       ),
     }));
+  },
+
+  // ── Expenses ──────────────────────────────────────────────────────────────
+  expenses: [],
+
+  addExpense: async (e) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...e, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('expenses').insert(row).select().single();
+    if (error) { console.error('addExpense:', error); return; }
+    set(s => ({ expenses: [...s.expenses, toCamel(data) as Expense] }));
+  },
+
+  updateExpense: async (id, e) => {
+    const row = toSnake({ ...e, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('expenses').update(row).eq('id', id);
+    if (error) { console.error('updateExpense:', error); return; }
+    set(s => ({
+      expenses: s.expenses.map(x => x.id === id ? { ...x, ...e, updatedAt: new Date().toISOString() } : x),
+    }));
+  },
+
+  deleteExpense: async (id) => {
+    const { error } = await supabase.from('expenses').delete().eq('id', id);
+    if (error) { console.error('deleteExpense:', error); return; }
+    set(s => ({ expenses: s.expenses.filter(x => x.id !== id) }));
   },
 
   // ── Computed helpers ──────────────────────────────────────────────────────

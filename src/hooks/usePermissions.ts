@@ -16,6 +16,7 @@ const ROUTE_MODULE: Record<string, PermModule> = {
   '/reportes':       'reportes',
   '/configuracion':  'configuracion',
   '/finanzas':       'finanzas',
+  '/gastos':         'gastos',
   '/metas':          'metas',
   '/garantias':      'garantias',
   '/comprobantes':   'comprobantes',
@@ -42,6 +43,7 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
     reportes:     { ...FULL },
     configuracion:{ ...FULL },
     finanzas:     { ...FULL },
+    gastos:       { ...FULL },
     metas:        { ...FULL },
   },
 
@@ -56,6 +58,7 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
     productos:     { ver: true },
     garantias:     { ver: true, crear: true, editar: true },
     comprobantes:  { ver: true, crear: true },
+    gastos:        { ver: true, crear: true, editar: true },
   },
 
   alexis: {
@@ -162,6 +165,13 @@ export const MODULE_ACTIONS: Record<PermModule, { action: PermAction; label: str
     { action: 'registrar_pago',  label: 'Confirmar pago' },
     { action: 'eliminar',        label: 'Rechazar / Eliminar' },
   ],
+  gastos: [
+    { action: 'ver',      label: 'Ver' },
+    { action: 'crear',    label: 'Registrar gasto' },
+    { action: 'editar',   label: 'Editar' },
+    { action: 'eliminar', label: 'Eliminar' },
+    { action: 'exportar', label: 'Exportar' },
+  ],
 };
 
 export const MODULE_LABELS: Record<PermModule, string> = {
@@ -176,6 +186,7 @@ export const MODULE_LABELS: Record<PermModule, string> = {
   reportes:     'Reportes',
   configuracion:'Configuración',
   finanzas:     'Finanzas',
+  gastos:       'Gastos Operativos',
   metas:        'Metas',
   garantias:    'Garantías',
   comprobantes: 'Comprobantes',
@@ -184,7 +195,7 @@ export const MODULE_LABELS: Record<PermModule, string> = {
 export const ALL_MODULES: PermModule[] = [
   'dashboard','clientes','pedidos','productos','publicaciones',
   'pagos','proveedores','entregas','reportes','configuracion',
-  'finanzas','metas','garantias','comprobantes',
+  'finanzas','gastos','metas','garantias','comprobantes',
 ];
 
 // ─── Hook principal ───────────────────────────────────────────────────────────
