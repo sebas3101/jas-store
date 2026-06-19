@@ -1,13 +1,9 @@
-import * as XLSX from 'xlsx';
 import type { Client, Order, Payment } from '../types';
 import { formatDate } from './formatters';
 import { calculateClientDebt } from './businessLogic';
 
-function download(wb: XLSX.WorkBook, filename: string) {
-  XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
-}
-
-export function exportPagos(payments: Payment[], clients: Client[]) {
+export async function exportPagos(payments: Payment[], clients: Client[]) {
+  const XLSX = await import('xlsx');
   const rows = payments
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .map(p => ({
@@ -17,15 +13,15 @@ export function exportPagos(payments: Payment[], clients: Client[]) {
       Método:   p.method,
       Notas:    p.notes ?? '',
     }));
-
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{ wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 16 }, { wch: 30 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pagos');
-  download(wb, 'pagos_jas');
+  XLSX.writeFile(wb, `pagos_jas_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-export function exportPedidos(orders: Order[], clients: Client[]) {
+export async function exportPedidos(orders: Order[], clients: Client[]) {
+  const XLSX = await import('xlsx');
   const rows = orders
     .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime())
     .map(o => ({
@@ -38,15 +34,15 @@ export function exportPedidos(orders: Order[], clients: Client[]) {
       Estado:       o.status.replace(/_/g, ' '),
       'Método pago': o.paymentMethod,
     }));
-
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{ wch: 12 }, { wch: 14 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 16 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Pedidos');
-  download(wb, 'pedidos_jas');
+  XLSX.writeFile(wb, `pedidos_jas_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-export function exportClientes(clients: Client[], orders: Order[], _payments: Payment[]) {
+export async function exportClientes(clients: Client[], orders: Order[], _payments: Payment[]) {
+  const XLSX = await import('xlsx');
   const rows = clients.map(c => {
     const deuda = calculateClientDebt(c.id, orders);
     const totalCompras = orders
@@ -54,20 +50,19 @@ export function exportClientes(clients: Client[], orders: Order[], _payments: Pa
       .reduce((s, o) => s + o.totalAmount, 0);
     const numPedidos = orders.filter(o => o.clientId === c.id && o.status !== 'cancelado').length;
     return {
-      Nombre:        c.name,
-      Teléfono:      c.phone,
-      Estado:        c.status.replace(/_/g, ' '),
+      Nombre:          c.name,
+      Teléfono:        c.phone,
+      Estado:          c.status.replace(/_/g, ' '),
       'Total compras': totalCompras,
       'Deuda actual':  deuda,
       'N° pedidos':    numPedidos,
-      Dirección:     c.address ?? '',
-      Notas:         c.notes   ?? '',
+      Dirección:       c.address ?? '',
+      Notas:           c.notes   ?? '',
     };
   });
-
   const ws = XLSX.utils.json_to_sheet(rows);
   ws['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 14 }, { wch: 16 }, { wch: 14 }, { wch: 10 }, { wch: 28 }, { wch: 30 }];
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Clientes');
-  download(wb, 'clientes_jas');
+  XLSX.writeFile(wb, `clientes_jas_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

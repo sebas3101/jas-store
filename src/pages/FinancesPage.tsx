@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { StatCard } from '../components/ui/StatCard';
@@ -69,7 +68,8 @@ export function FinancesPage() {
     return acc;
   }, {});
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: Summary

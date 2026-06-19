@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw, Download } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
@@ -310,7 +309,8 @@ export function SettingsPage() {
     setResetDone(true);
   };
 
-  const handleBackup = () => {
+  const handleBackup = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const label = format(new Date(), 'yyyy-MM-dd');
 

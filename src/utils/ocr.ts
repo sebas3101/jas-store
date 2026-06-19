@@ -8,25 +8,28 @@ export interface ExtractedPayment {
   notes?:      string;
 }
 
-const PROMPT = `Eres un experto en leer comprobantes de pago colombianos (Nequi, Bancolombia, Daviplata, PSE, transferencias, Efecty, etc).
-
-Extrae SOLO los datos visibles en este comprobante. Responde ÚNICAMENTE con un JSON así:
-{"amount":150000,"date":"2024-01-15","bank":"Nequi","reference":"123456789","senderName":"Juan Pérez","confidence":"alta","notes":null}
-
-Reglas:
-- amount: número entero en pesos colombianos, sin puntos ni comas
-- date: formato YYYY-MM-DD (fecha de la transacción, NO la fecha actual)
-- bank: nombre del banco o billetera (Nequi, Bancolombia, Daviplata, etc)
-- reference: número de referencia, aprobación o transacción
-- senderName: nombre completo del remitente (quien envió el dinero)
-- confidence: "alta" si todo está claro, "media" si hay dudas, "baja" si el comprobante es ilegible
-- notes: observación si algo es dudoso o ambiguo, sino null
-Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
-
-function parseResult(text: string): ExtractedPayment | null {
+/**
+ * Extrae datos de pago de un comprobante.
+ * Llama al Edge Function de Supabase que guarda las API keys de forma segura.
+ */
+export async function extractPaymentData(
+  imageBase64: string,
+  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
+): Promise<ExtractedPayment | null> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!supabaseUrl) return null;
   try {
-    const cleaned = text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
-    const parsed  = JSON.parse(cleaned);
+    const res = await fetch(`${supabaseUrl}/functions/v1/ocr-extract`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+      },
+      body: JSON.stringify({ imageBase64, mimeType }),
+    });
+    if (!res.ok) return null;
+    const parsed = await res.json();
+    if (!parsed) return null;
     return {
       amount:     parsed.amount     ?? undefined,
       date:       parsed.date       ?? undefined,
@@ -39,113 +42,6 @@ function parseResult(text: string): ExtractedPayment | null {
   } catch {
     return null;
   }
-}
-
-/** Extrae datos con Groq — gratis sin tarjeta (6000 req/día). Key en console.groq.com */
-async function extractWithGroq(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
-  const apiKey = import.meta.env.VITE_GROQ_KEY as string | undefined;
-  if (!apiKey) return null;
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-            { type: 'text', text: PROMPT },
-          ],
-        }],
-        max_tokens: 512,
-        temperature: 0,
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseResult(data.choices?.[0]?.message?.content ?? '');
-  } catch {
-    return null;
-  }
-}
-
-/** Extrae datos con Google Gemini (requiere vincular tarjeta en Google Cloud). */
-async function extractWithGemini(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
-  const apiKey = import.meta.env.VITE_GEMINI_KEY as string | undefined;
-  if (!apiKey) return null;
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inlineData: { mimeType, data: imageBase64 } },
-              { text: PROMPT },
-            ],
-          }],
-          generationConfig: { maxOutputTokens: 512, temperature: 0 },
-        }),
-      }
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseResult(data.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
-  } catch {
-    return null;
-  }
-}
-
-/** Extrae datos con Claude API (de pago). */
-async function extractWithClaude(imageBase64: string, mimeType: 'image/jpeg' | 'image/png' | 'image/webp'): Promise<ExtractedPayment | null> {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined;
-  if (!apiKey) return null;
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-            { type: 'text', text: PROMPT },
-          ],
-        }],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseResult(data.content?.[0]?.text ?? '');
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extrae datos de pago de un comprobante.
- * Orden de prioridad: Groq (gratis, sin tarjeta) → Gemini → Claude
- */
-export async function extractPaymentData(
-  imageBase64: string,
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg',
-): Promise<ExtractedPayment | null> {
-  return (await extractWithGroq(imageBase64, mimeType))
-      ?? (await extractWithGemini(imageBase64, mimeType))
-      ?? (await extractWithClaude(imageBase64, mimeType));
 }
 
 /** Redimensiona y comprime una imagen a JPEG base64 (sin prefijo data:...). */

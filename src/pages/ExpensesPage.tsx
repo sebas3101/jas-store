@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
-import * as XLSX from 'xlsx';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
@@ -167,7 +166,8 @@ export function ExpensesPage() {
     setEditing(null);
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
     const label = viewMode === 'month'
       ? format(from, 'yyyy-MM')
