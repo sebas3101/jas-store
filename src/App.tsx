@@ -22,8 +22,9 @@ const ReportsPage      = lazy(() => import('./pages/ReportsPage').then(m => ({ d
 const FinancesPage     = lazy(() => import('./pages/FinancesPage').then(m => ({ default: m.FinancesPage })));
 const GoalsPage        = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
 const SettingsPage     = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
-const WarrantiesPage   = lazy(() => import('./pages/WarrantiesPage').then(m => ({ default: m.WarrantiesPage })));
-const PaymentProofPage = lazy(() => import('./pages/PaymentProofPage').then(m => ({ default: m.PaymentProofPage })));
+const WarrantiesPage     = lazy(() => import('./pages/WarrantiesPage').then(m => ({ default: m.WarrantiesPage })));
+const PaymentProofPage   = lazy(() => import('./pages/PaymentProofPage').then(m => ({ default: m.PaymentProofPage })));
+const RecordatoriosPage  = lazy(() => import('./pages/RecordatoriosPage').then(m => ({ default: m.RecordatoriosPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useAppStore(s => s.currentUser);
@@ -96,6 +97,7 @@ export default function App() {
             <Route path="configuracion"   element={<SettingsPage />} />
             <Route path="garantias"       element={<WarrantiesPage />} />
             <Route path="comprobantes"    element={<PaymentProofPage />} />
+            <Route path="recordatorios"   element={<RecordatoriosPage />} />
             <Route path="*"               element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

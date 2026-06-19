@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { exportPedidos } from '../utils/exportExcel';
 import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -348,11 +349,16 @@ export function OrdersPage() {
           <h1 className="page-title">Pedidos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{orders.length} pedidos en total</p>
         </div>
-        {can('pedidos', 'crear') && (
-          <button onClick={() => setModalOpen(true)} className="btn-primary">
-            <Plus size={16} /> Nuevo pedido
+        <div className="flex gap-2">
+          <button onClick={() => exportPedidos(filtered, clients)} className="btn-ghost">
+            <Download size={15} /> Excel
           </button>
-        )}
+          {can('pedidos', 'crear') && (
+            <button onClick={() => setModalOpen(true)} className="btn-primary">
+              <Plus size={16} /> Nuevo pedido
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

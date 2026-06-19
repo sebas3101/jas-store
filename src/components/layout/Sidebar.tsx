@@ -15,6 +15,7 @@ import {
   Target,
   ShieldCheck,
   FileImage,
+  Bell,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -23,26 +24,34 @@ import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
 
 const ALL_NAV_ITEMS = [
-  { to: '/',              icon: LayoutDashboard, label: 'Inicio'        },
-  { to: '/clientes',      icon: Users,           label: 'Clientes'      },
-  { to: '/pedidos',       icon: ShoppingBag,     label: 'Pedidos'       },
-  { to: '/pagos',         icon: CreditCard,      label: 'Pagos'         },
-  { to: '/productos',     icon: Package,         label: 'Productos'     },
-  { to: '/proveedores',   icon: Store,           label: 'Proveedores'   },
-  { to: '/entregas',      icon: Truck,           label: 'Entregas'      },
-  { to: '/garantias',     icon: ShieldCheck,     label: 'Garantías'     },
-  { to: '/comprobantes',  icon: FileImage,       label: 'Comprobantes'  },
-  { to: '/publicaciones', icon: Megaphone,       label: 'Publicaciones' },
-  { to: '/reportes',      icon: BarChart3,       label: 'Reportes'      },
-  { to: '/finanzas',      icon: TrendingUp,      label: 'Finanzas'      },
-  { to: '/metas',         icon: Target,          label: 'Metas'         },
-  { to: '/configuracion', icon: Settings,        label: 'Configuración' },
+  { to: '/',               icon: LayoutDashboard, label: 'Inicio'         },
+  { to: '/clientes',       icon: Users,           label: 'Clientes'       },
+  { to: '/pedidos',        icon: ShoppingBag,     label: 'Pedidos'        },
+  { to: '/pagos',          icon: CreditCard,      label: 'Pagos'          },
+  { to: '/recordatorios',  icon: Bell,            label: 'Recordatorios'  },
+  { to: '/productos',      icon: Package,         label: 'Productos'      },
+  { to: '/proveedores',    icon: Store,           label: 'Proveedores'    },
+  { to: '/entregas',       icon: Truck,           label: 'Entregas'       },
+  { to: '/garantias',      icon: ShieldCheck,     label: 'Garantías'      },
+  { to: '/comprobantes',   icon: FileImage,       label: 'Comprobantes'   },
+  { to: '/publicaciones',  icon: Megaphone,       label: 'Publicaciones'  },
+  { to: '/reportes',       icon: BarChart3,       label: 'Reportes'       },
+  { to: '/finanzas',       icon: TrendingUp,      label: 'Finanzas'       },
+  { to: '/metas',          icon: Target,          label: 'Metas'          },
+  { to: '/configuracion',  icon: Settings,        label: 'Configuración'  },
 ];
 
 export function Sidebar() {
-  const { currentUser, logout } = useAppStore();
+  const { currentUser, logout, clients, orders } = useAppStore();
   const { filterNavItems } = usePermissions();
   const navItems = filterNavItems(ALL_NAV_ITEMS);
+
+  const debtorCount = clients.filter(c => {
+    const debt = orders
+      .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
+      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+    return debt > 0;
+  }).length;
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0 shadow-sm">
@@ -72,7 +81,12 @@ export function Sidebar() {
             }
           >
             <Icon size={18} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {to === '/recordatorios' && debtorCount > 0 && (
+              <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                {debtorCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

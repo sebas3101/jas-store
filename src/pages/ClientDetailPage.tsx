@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Copy,
   CheckCircle2,
+  FileText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAppStore } from '../store';
@@ -25,7 +26,132 @@ import {
 } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, openWhatsApp } from '../utils/whatsapp';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
-import type { PaymentMethod } from '../types';
+import type { Client, Order, Payment, PaymentMethod } from '../types';
+
+// ─── Estado de cuenta imprimible ─────────────────────────────────────────────
+function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments: Payment[]) {
+  const totalOrdered = clientOrders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
+  const totalAbonado = clientPayments.reduce((s, p) => s + p.amount, 0);
+  const deuda = clientOrders
+    .filter(o => !['pagado', 'cancelado'].includes(o.status))
+    .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+
+  const today = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const ordersRows = clientOrders.map(o => {
+    const prods    = o.items.map(it => `${it.quantity}x ${it.productName}`).join(', ');
+    const pendiente = o.totalAmount - o.amountPaid;
+    return `<tr>
+      <td>${o.orderNumber}</td>
+      <td>${formatDate(o.orderDate)}</td>
+      <td style="max-width:220px">${prods}</td>
+      <td>${formatCurrency(o.totalAmount)}</td>
+      <td>${formatCurrency(o.amountPaid)}</td>
+      <td style="color:${pendiente > 0 ? '#dc2626' : '#16a34a'};font-weight:600">${pendiente > 0 ? formatCurrency(pendiente) : 'Pagado'}</td>
+      <td>${orderStatusLabel[o.status]}</td>
+    </tr>`;
+  }).join('');
+
+  const payRows = clientPayments.length > 0
+    ? clientPayments.map(p => `<tr>
+        <td>${formatDate(p.date)}</td>
+        <td>${paymentMethodLabel[p.method]}</td>
+        <td style="font-weight:600;color:#16a34a">${formatCurrency(p.amount)}</td>
+        ${p.notes ? `<td>${p.notes}</td>` : '<td>—</td>'}
+      </tr>`).join('')
+    : '<tr><td colspan="4" style="color:#999;text-align:center">Sin abonos registrados</td></tr>';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Estado de Cuenta — ${client.name}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#1a1a1a;padding:24px;max-width:900px;margin:0 auto}
+    h1{font-size:18px;color:#7c3aed}
+    h2{font-size:12px;font-weight:700;border-bottom:2px solid #7c3aed;padding-bottom:4px;margin:20px 0 8px;color:#7c3aed}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:2px solid #7c3aed;margin-bottom:16px}
+    .info-box{background:#f5f3ff;border:1px solid #e9d5ff;border-radius:6px;padding:10px 14px;margin-bottom:14px}
+    .info-box strong{font-size:13px}
+    .summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+    .summary-cell{background:#f9fafb;border:1px solid #e5e7eb;border-radius:6px;padding:10px;text-align:center}
+    .summary-cell .label{font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+    .summary-cell .value{font-size:15px;font-weight:700;margin-top:3px}
+    table{width:100%;border-collapse:collapse;margin-bottom:14px}
+    th{background:#f5f3ff;padding:6px 8px;text-align:left;font-size:10px;font-weight:700;color:#6d28d9}
+    td{padding:5px 8px;border-bottom:1px solid #f3f4f6;font-size:11px}
+    tr:last-child td{border-bottom:none}
+    .balance{background:${deuda > 0 ? '#fef2f2' : '#f0fdf4'};border:2px solid ${deuda > 0 ? '#fca5a5' : '#86efac'};border-radius:8px;padding:16px;text-align:center;margin-top:16px}
+    .balance .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
+    .balance .amount{font-size:24px;font-weight:700;color:${deuda > 0 ? '#dc2626' : '#16a34a'};margin-top:4px}
+    .footer{margin-top:20px;text-align:center;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px}
+    @media print{body{padding:10px}}
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>JAS Store</h1>
+      <p style="color:#6b7280;margin-top:3px;font-size:10px">Estado de Cuenta del Cliente</p>
+    </div>
+    <div style="text-align:right">
+      <p style="font-size:10px;color:#6b7280">Fecha de corte</p>
+      <p style="font-weight:700;font-size:12px">${today}</p>
+    </div>
+  </div>
+
+  <div class="info-box">
+    <strong>${client.name}</strong><br>
+    <span style="color:#6b7280">Tel: ${client.phone}${client.address ? ' · Dir: ' + client.address : ''}${client.company ? ' · ' + client.company : ''}</span>
+  </div>
+
+  <div class="summary">
+    <div class="summary-cell">
+      <div class="label">Total pedidos</div>
+      <div class="value">${formatCurrency(totalOrdered)}</div>
+    </div>
+    <div class="summary-cell">
+      <div class="label">Total abonado</div>
+      <div class="value" style="color:#16a34a">${formatCurrency(totalAbonado)}</div>
+    </div>
+    <div class="summary-cell">
+      <div class="label">Saldo pendiente</div>
+      <div class="value" style="color:${deuda > 0 ? '#dc2626' : '#16a34a'}">${formatCurrency(deuda)}</div>
+    </div>
+  </div>
+
+  <h2>Pedidos (${clientOrders.length})</h2>
+  <table>
+    <thead>
+      <tr><th>N° Pedido</th><th>Fecha</th><th>Productos</th><th>Total</th><th>Abonado</th><th>Pendiente</th><th>Estado</th></tr>
+    </thead>
+    <tbody>${ordersRows || '<tr><td colspan="7" style="color:#999;text-align:center">Sin pedidos</td></tr>'}</tbody>
+  </table>
+
+  <h2>Abonos registrados (${clientPayments.length})</h2>
+  <table>
+    <thead><tr><th>Fecha</th><th>Método</th><th>Monto</th><th>Notas</th></tr></thead>
+    <tbody>${payRows}</tbody>
+  </table>
+
+  <div class="balance">
+    <div class="label">${deuda > 0 ? 'Saldo pendiente' : 'Estado'}</div>
+    <div class="amount">${deuda > 0 ? formatCurrency(deuda) : '¡Al día!'}</div>
+  </div>
+
+  <div class="footer">
+    Documento generado por JAS Store · ${today} · Confidencial
+  </div>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank', 'width=960,height=720');
+  if (!w) { alert('Permite ventanas emergentes para imprimir el estado de cuenta.'); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.focus(); w.print(); }, 400);
+}
 
 // ─── Formulario de abono — fuera del padre para evitar re-mount en cada render
 function ClientPaymentForm({
@@ -216,9 +342,18 @@ export function ClientDetailPage() {
               </div>
             </div>
           </div>
-          <button onClick={() => setPayModal(true)} className="btn-primary">
-            <CreditCard size={16} /> Registrar abono
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => printEstadoCuenta(client, clientOrders, clientPayments)}
+              className="btn-ghost"
+              title="Imprimir estado de cuenta"
+            >
+              <FileText size={16} /> Estado de cuenta
+            </button>
+            <button onClick={() => setPayModal(true)} className="btn-primary">
+              <CreditCard size={16} /> Registrar abono
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5 pt-5 border-t border-gray-100">
