@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { TrendingUp, DollarSign, Users, ShoppingBag } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, ShoppingBag, Package, Percent, ReceiptText } from 'lucide-react';
 import { useAppStore } from '../store';
 import { StatCard } from '../components/ui/StatCard';
 import {
@@ -84,14 +84,30 @@ export function ReportsPage() {
   })).sort((a, b) => b.total - a.total).slice(0, 5);
 
   // KPIs
-  const totalSales    = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
-  const totalProfit   = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
+  const activeOrders  = orders.filter(o => o.status !== 'cancelado');
+  const totalSales    = activeOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const totalCollected = activeOrders.reduce((s, o) => s + o.amountPaid, 0);
+  const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
   const totalDebt     = clients.reduce((s, c) => {
     const debt = orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status))
       .reduce((ss, o) => ss + (o.totalAmount - o.amountPaid), 0);
     return s + debt;
   }, 0);
   const totalInvestment = purchases.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.cost, 0);
+
+  // Indicadores de rendimiento
+  const tasaCobro = totalSales > 0 ? Math.round((totalCollected / totalSales) * 100) : 0;
+  const ticketPromedio = activeOrders.length > 0 ? totalSales / activeOrders.length : 0;
+  const margenPromedio = totalSales > 0 ? Math.round((totalProfit / totalSales) * 100) : 0;
+
+  // Top productos más vendidos (todos los tiempos)
+  const productMap: Record<string, { name: string; units: number; revenue: number }> = {};
+  activeOrders.forEach(o => o.items.forEach(it => {
+    if (!productMap[it.productId]) productMap[it.productId] = { name: it.productName, units: 0, revenue: 0 };
+    productMap[it.productId].units += it.quantity;
+    productMap[it.productId].revenue += it.salePrice * it.quantity;
+  }));
+  const topProducts = Object.values(productMap).sort((a, b) => b.units - a.units).slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -106,6 +122,74 @@ export function ReportsPage() {
         <StatCard title="Ganancia estimada" value={formatCurrency(totalProfit)}     icon={TrendingUp}  color="green" />
         <StatCard title="Deuda total"       value={formatCurrency(totalDebt)}       icon={Users}       color="red" />
         <StatCard title="Inversión"         value={formatCurrency(totalInvestment)} icon={ShoppingBag} color="yellow" />
+      </div>
+
+      {/* Indicadores de rendimiento */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="card !p-4 flex items-center gap-4">
+          <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <Percent size={20} className="text-emerald-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 font-medium">Tasa de cobro</p>
+            <p className="text-xl font-bold text-emerald-600">{tasaCobro}%</p>
+            <p className="text-[10px] text-gray-400">del total vendido</p>
+          </div>
+        </div>
+        <div className="card !p-4 flex items-center gap-4">
+          <div className="w-11 h-11 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ReceiptText size={20} className="text-primary-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 font-medium">Ticket promedio</p>
+            <p className="text-xl font-bold text-primary-600">{formatCurrency(ticketPromedio)}</p>
+            <p className="text-[10px] text-gray-400">{activeOrders.length} pedidos</p>
+          </div>
+        </div>
+        <div className="card !p-4 flex items-center gap-4 col-span-2 lg:col-span-1">
+          <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <TrendingUp size={20} className="text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 font-medium">Margen promedio</p>
+            <p className="text-xl font-bold text-amber-600">{margenPromedio}%</p>
+            <p className="text-[10px] text-gray-400">ganancia / ventas</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top productos más vendidos */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-4">
+          <Package size={16} className="text-primary-600" />
+          <h2 className="section-title">Productos más vendidos</h2>
+        </div>
+        {topProducts.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">Sin datos de productos</p>
+        ) : (
+          <div className="space-y-3">
+            {topProducts.map((p, i) => (
+              <div key={p.name} className="flex items-center gap-3">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                  i === 0 ? 'bg-amber-100 text-amber-700' :
+                  i === 1 ? 'bg-gray-100 text-gray-600' :
+                  i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-gray-50 text-gray-500'
+                }`}>{i + 1}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
+                  <p className="text-xs text-gray-400">{p.units} unidad{p.units !== 1 ? 'es' : ''} vendidas</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-gray-900">{formatCurrency(p.revenue)}</p>
+                </div>
+                <div className="w-20 bg-gray-100 rounded-full h-1.5 flex-shrink-0">
+                  <div className="bg-primary-500 h-1.5 rounded-full"
+                    style={{ width: `${Math.min(100, (p.units / (topProducts[0]?.units || 1)) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Monthly sales */}

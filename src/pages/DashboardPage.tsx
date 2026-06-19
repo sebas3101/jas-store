@@ -1,7 +1,7 @@
 import {
   DollarSign, TrendingUp, AlertTriangle, CheckCircle2,
   ShoppingBag, Clock, Package, Users, ArrowRight,
-  Star, TrendingDown, Target, Bell,
+  Star, TrendingDown, Target, Bell, Trophy,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useAppStore } from '../store';
+import { useGoalsStore } from '../store/goals';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
 import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays } from 'date-fns';
@@ -17,6 +18,7 @@ import { getReminderLog, daysSinceReminder } from '../utils/reminders';
 
 export function DashboardPage() {
   const { orders, clients, payments, products, currentUser } = useAppStore();
+  const { goals } = useGoalsStore();
 
   const now = new Date();
 
@@ -61,6 +63,31 @@ export function DashboardPage() {
     const daysRemind = daysSinceReminder(c.id, reminderLog);
     return daysSincePay >= 15 && (daysRemind === null || daysRemind >= 7);
   }).length;
+
+  // ── Productos más vendidos del mes ───────────────────────────────────────────
+  const monthOrders = orders.filter(o => {
+    try {
+      const d = parseISO(o.orderDate);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+        && o.status !== 'cancelado';
+    } catch { return false; }
+  });
+  const productSalesMap: Record<string, { name: string; units: number; revenue: number }> = {};
+  monthOrders.forEach(o => o.items.forEach(it => {
+    if (!productSalesMap[it.productId]) {
+      productSalesMap[it.productId] = { name: it.productName, units: 0, revenue: 0 };
+    }
+    productSalesMap[it.productId].units += it.quantity;
+    productSalesMap[it.productId].revenue += it.salePrice * it.quantity;
+  }));
+  const topProductsMes = Object.values(productSalesMap)
+    .sort((a, b) => b.units - a.units)
+    .slice(0, 5);
+
+  // ── Meta del mes ─────────────────────────────────────────────────────────────
+  const monthKey = format(now, 'yyyy-MM');
+  const metaMes = goals.find(g => g.month === monthKey);
+  const ventasMes = monthOrders.reduce((s, o) => s + o.totalAmount, 0);
 
   // ── Top deudores ─────────────────────────────────────────────────────────────
   const topDeudores = clients
@@ -335,6 +362,82 @@ export function DashboardPage() {
             <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
               style={{ width: `${pctCobrado}%` }} />
           </div>
+        </div>
+      </div>
+
+      {/* Meta del mes + Productos más vendidos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Meta del mes */}
+        <div className="card">
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy size={16} className="text-amber-500" />
+            <h2 className="section-title">Meta del mes — {format(now, 'MMMM', { locale: es })}</h2>
+          </div>
+          {metaMes ? (
+            <div className="space-y-4">
+              {metaMes.salesTarget > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                    <span>Ventas: {formatCurrency(ventasMes)} / {formatCurrency(metaMes.salesTarget)}</span>
+                    <span className="font-semibold">{Math.min(100, Math.round(ventasMes / metaMes.salesTarget * 100))}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div className="bg-primary-500 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (ventasMes / metaMes.salesTarget) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {metaMes.collectionTarget > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                    <span>Recaudo: {formatCurrency(cobradoMes)} / {formatCurrency(metaMes.collectionTarget)}</span>
+                    <span className="font-semibold">{Math.min(100, Math.round(cobradoMes / metaMes.collectionTarget * 100))}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2.5">
+                    <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, (cobradoMes / metaMes.collectionTarget) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+              {metaMes.notes && (
+                <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">{metaMes.notes}</p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center py-6 text-center gap-2">
+              <Target size={28} className="text-gray-200" />
+              <p className="text-sm text-gray-400">Sin meta para este mes</p>
+              <Link to="/metas" className="text-xs text-primary-600 font-medium hover:underline">Definir meta →</Link>
+            </div>
+          )}
+        </div>
+
+        {/* Productos más vendidos del mes */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Package size={16} className="text-primary-600" />
+              <h2 className="section-title">Más vendidos — {format(now, 'MMMM', { locale: es })}</h2>
+            </div>
+          </div>
+          {topProductsMes.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">Sin ventas este mes</p>
+          ) : (
+            <ul className="space-y-2">
+              {topProductsMes.map((p, i) => (
+                <li key={p.name} className="flex items-center gap-3">
+                  <span className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0 ${rankBadge(i)}`}>
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
+                    <p className="text-xs text-gray-400">{p.units} unidad{p.units !== 1 ? 'es' : ''}</p>
+                  </div>
+                  <p className="text-sm font-bold text-primary-600 flex-shrink-0">{formatCurrency(p.revenue)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 

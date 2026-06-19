@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store } from 'lucide-react';
+import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
@@ -13,7 +13,46 @@ import {
   categoryLabel,
 } from '../utils/formatters';
 import { buildAvailabilityMessage, openWhatsApp } from '../utils/whatsapp';
-import type { OrderStatus } from '../types';
+import type { Order, OrderStatus } from '../types';
+
+function printReceipt(order: Order, clientName: string, payMethod: string) {
+  const itemRows = order.items.map(it =>
+    `<tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;">${it.productName}${it.size ? ` (T.${it.size})` : ''}${it.color ? ` / ${it.color}` : ''}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:center;">${it.quantity}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;">${formatCurrency(it.salePrice)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600;">${formatCurrency(it.salePrice * it.quantity)}</td>
+    </tr>`
+  ).join('');
+  const balance = order.totalAmount - order.amountPaid;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo ${order.orderNumber}</title>
+  <style>body{font-family:sans-serif;font-size:13px;color:#111;margin:0;padding:24px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;color:#6b7280;padding:6px 8px;border-bottom:2px solid #e5e7eb}td{font-size:13px}.footer{margin-top:24px;font-size:11px;color:#9ca3af;text-align:center}@media print{body{padding:12px}}</style>
+  </head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
+    <div><h1 style="color:#7c3aed">JAS Store</h1><p style="color:#6b7280;margin:4px 0 0">Recibo de pedido</p></div>
+    <div style="text-align:right"><p style="font-weight:700;font-size:16px">${order.orderNumber}</p><p style="color:#6b7280;margin:2px 0">${formatDate(order.orderDate)}</p></div>
+  </div>
+  <div style="background:#f9fafb;border-radius:8px;padding:12px 16px;margin-bottom:20px">
+    <p style="margin:0;font-weight:600">${clientName}</p>
+    <p style="margin:4px 0 0;color:#6b7280;font-size:12px">Forma de pago: ${payMethod}</p>
+    ${order.notes ? `<p style="margin:4px 0 0;color:#6b7280;font-size:12px">Nota: ${order.notes}</p>` : ''}
+  </div>
+  <table><thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">Precio</th><th style="text-align:right">Total</th></tr></thead>
+  <tbody>${itemRows}</tbody></table>
+  <div style="margin-top:16px;border-top:2px solid #e5e7eb;padding-top:12px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#6b7280">Total</span><span style="font-weight:700;font-size:15px">${formatCurrency(order.totalAmount)}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:#6b7280">Pagado</span><span style="color:#10b981;font-weight:600">${formatCurrency(order.amountPaid)}</span></div>
+    <div style="display:flex;justify-content:space-between"><span style="font-weight:700">Saldo pendiente</span><span style="font-weight:700;color:${balance > 0 ? '#ef4444' : '#10b981'}">${formatCurrency(balance)}</span></div>
+  </div>
+  <p class="footer">Gracias por su compra — JAS Store</p>
+  </body></html>`;
+  const win = window.open('', '_blank', 'width=600,height=700');
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 400);
+}
 
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -87,6 +126,12 @@ export function OrderDetailPage() {
         <button onClick={() => { setNewStatus(order.status); setStatusModal(true); }}
           className="btn-primary">
           <Edit2 size={14} /> Cambiar estado
+        </button>
+        <button
+          onClick={() => printReceipt(order, client?.name ?? 'Cliente', paymentMethodLabel[order.paymentMethod])}
+          className="btn-ghost"
+        >
+          <Printer size={14} /> Recibo
         </button>
         <button onClick={() => setDeleteDialog(true)} className="btn-secondary text-red-500 hover:text-red-600">
           <Trash2 size={14} /> Eliminar
