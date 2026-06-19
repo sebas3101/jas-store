@@ -1,28 +1,15 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Users,
-  ShoppingBag,
-  CreditCard,
-  Package,
-  Truck,
-  Megaphone,
-  BarChart3,
-  Settings,
-  LogOut,
-  Store,
-  TrendingUp,
-  Target,
-  ShieldCheck,
-  FileImage,
-  Bell,
-  Receipt,
+  LayoutDashboard, Users, ShoppingBag, CreditCard, Package,
+  Truck, Megaphone, BarChart3, Settings, LogOut, Store,
+  TrendingUp, Target, ShieldCheck, FileImage, Bell, Receipt,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
 import { GlobalSearch } from '../ui/GlobalSearch';
 import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
+import { calculateClientDebt } from '../../utils/businessLogic';
 
 const ALL_NAV_ITEMS = [
   { to: '/',               icon: LayoutDashboard, label: 'Inicio'         },
@@ -48,71 +35,84 @@ export function Sidebar() {
   const { filterNavItems } = usePermissions();
   const navItems = filterNavItems(ALL_NAV_ITEMS);
 
-  const debtorCount = clients.filter(c => {
-    const debt = orders
-      .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
-      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-    return debt > 0;
-  }).length;
+  const debtorCount = clients.filter(c => calculateClientDebt(c.id, orders) > 0).length;
+
+  const initial = currentUser?.name.charAt(0).toUpperCase() ?? '?';
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0 shadow-sm">
+    <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #0f0f1a 0%, #12121f 100%)' }}>
+
+      {/* Thin purple accent line at top */}
+      <div className="h-0.5 w-full bg-gradient-to-r from-primary-600 via-primary-500 to-primary-800 flex-shrink-0" />
+
       {/* Brand */}
-      <div className="px-5 py-5 border-b border-gray-100 flex items-center gap-3">
-        <img src={logoUrl} alt="JAS Store" className="w-10 h-10 rounded-xl object-cover" />
-        <div>
-          <p className="font-bold text-gray-900 text-sm">JAS Store</p>
-          <p className="text-xs text-gray-400">Sistema de Gestión</p>
+      <div className="px-5 py-5 flex items-center gap-3 border-b border-white/8 flex-shrink-0">
+        <div className="relative">
+          <img src={logoUrl} alt="JAS Store" className="w-10 h-10 rounded-xl object-cover ring-2 ring-primary-500/30" />
+          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-[#0f0f1a]" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-bold text-white text-sm tracking-tight">JAS Store</p>
+          <p className="text-[11px] text-slate-500 font-medium">Sistema de Gestión</p>
         </div>
       </div>
 
       {/* Search */}
-      <div className="px-3 py-3 border-b border-gray-100">
-        <GlobalSearch />
+      <div className="px-3 py-3 border-b border-white/8 flex-shrink-0">
+        <GlobalSearch dark />
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5 scrollbar-hide">
         {navItems.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
             to={to}
             end={to === '/'}
             className={({ isActive }) =>
-              `nav-link ${isActive ? 'active' : ''}`
+              isActive
+                ? 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-150 relative group'
+                : 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white transition-all duration-150 group'
+            }
+            style={({ isActive }) => isActive
+              ? { background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)', boxShadow: '0 2px 12px rgb(124 58 237 / 0.4)' }
+              : undefined
             }
           >
-            <Icon size={18} />
-            <span className="flex-1">{label}</span>
-            {to === '/recordatorios' && debtorCount > 0 && (
-              <span className="ml-auto min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                {debtorCount}
-              </span>
+            {({ isActive }) => (
+              <>
+                {!isActive && (
+                  <span className="absolute inset-0 rounded-xl bg-white/0 group-hover:bg-white/8 transition-colors duration-150" />
+                )}
+                <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} className="flex-shrink-0 relative" />
+                <span className="flex-1 relative">{label}</span>
+                {to === '/recordatorios' && debtorCount > 0 && (
+                  <span className="relative min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 flex-shrink-0">
+                    {debtorCount}
+                  </span>
+                )}
+              </>
             )}
           </NavLink>
         ))}
       </nav>
 
       {/* User */}
-      <div className="px-4 py-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 bg-primary-100 rounded-xl flex items-center justify-center">
-            <span className="text-primary-700 font-bold text-sm">
-              {currentUser?.name.charAt(0).toUpperCase()}
-            </span>
+      <div className="px-4 py-4 border-t border-white/8 flex-shrink-0">
+        <div className="flex items-center gap-3 mb-3 px-1">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)' }}>
+            <span className="text-white font-bold text-sm">{initial}</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">
-              {currentUser?.name}
-            </p>
-            <p className="text-xs text-gray-400">
-              {currentUser ? roleLabel[currentUser.role] : ''}
-            </p>
+            <p className="text-sm font-semibold text-white truncate">{currentUser?.name}</p>
+            <p className="text-[11px] text-slate-500">{currentUser ? roleLabel[currentUser.role] : ''}</p>
           </div>
         </div>
         <button
           onClick={logout}
-          className="btn-ghost w-full justify-center text-red-500 hover:bg-red-50 hover:text-red-600"
+          className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
         >
           <LogOut size={16} />
           Cerrar sesión

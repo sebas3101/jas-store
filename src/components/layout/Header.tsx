@@ -205,7 +205,7 @@ export function Header() {
 
   return (
     <>
-      <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+      <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100/80 px-4 py-3 flex items-center gap-3">
         <img src={logoUrl} alt="JAS" className="w-8 h-8 rounded-lg object-cover flex-shrink-0" />
         <p className="font-bold text-gray-900 text-sm flex-1 truncate">{pageTitle}</p>
         <div className="flex items-center gap-1 flex-shrink-0">
