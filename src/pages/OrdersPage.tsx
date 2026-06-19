@@ -336,9 +336,11 @@ export function OrdersPage() {
   const [advancingId, setAdvancingId] = useState<string | null>(null);
 
   const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-    tomado:      { status: 'por_recoger', label: 'Por recoger' },
-    por_recoger: { status: 'recogido',    label: 'Recogido' },
-    recogido:    { status: 'entregado',   label: 'Entregado' },
+    tomado:        { status: 'por_recoger',   label: '→ Por recoger'    },
+    por_recoger:   { status: 'recogido',      label: '→ Recogido'       },
+    recogido:      { status: 'entregado',     label: '→ Entregado'      },
+    entregado:     { status: 'pendiente_pago', label: '→ Pendiente pago' },
+    pendiente_pago:{ status: 'pagado',        label: '→ Pagado'         },
   };
 
   const handleAdvanceStatus = async (order: Order) => {
@@ -469,7 +471,7 @@ export function OrdersPage() {
                       </span>
                     ))}
                   </div>
-                  {can('pedidos', 'editar') && NEXT_STATUS[order.status] && (
+                  {can('pedidos', 'cambiar_estado') && NEXT_STATUS[order.status] && (
                     <button
                       onClick={() => handleAdvanceStatus(order)}
                       disabled={advancingId === order.id}
