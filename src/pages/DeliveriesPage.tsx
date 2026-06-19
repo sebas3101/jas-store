@@ -28,7 +28,7 @@ const statusBg: Partial<Record<OrderStatus, string>> = {
   cancelado:   'border-l-4 border-gray-300',
 };
 
-type Tab = 'recogidas' | 'entregas';
+type Tab = 'recogidas' | 'entregas' | 'historial';
 
 function openMaps(address: string) {
   const encoded = encodeURIComponent(address);
@@ -43,10 +43,12 @@ export function DeliveriesPage() {
 
   // Recogidas: pedidos pendientes de ir a buscar (por_recoger)
   const recogidas = orders.filter(o => o.status === 'por_recoger');
-  // Entregas: pedidos recogidos listos para llevar al cliente, o ya entregados
-  const entregas  = orders.filter(o => ['recogido', 'entregado', 'pagado'].includes(o.status));
+  // Entregas pendientes: solo recogido (en camino). Entregados/pagados van al historial.
+  const entregas        = orders.filter(o => o.status === 'recogido');
+  const historialEntregas = orders.filter(o => ['entregado', 'pagado'].includes(o.status));
 
-  const activeOrders = (tab === 'recogidas' ? recogidas : entregas).filter(o => {
+  const sourceList = tab === 'recogidas' ? recogidas : tab === 'entregas' ? entregas : historialEntregas;
+  const activeOrders = sourceList.filter(o => {
     const client   = clients.find(c => c.id === o.clientId);
     const supplier = suppliers.find(s => s.id === o.supplierId);
     return (
@@ -78,41 +80,28 @@ export function DeliveriesPage() {
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        <StatCard title="Por recoger"  value={recogidas.length}  icon={ShoppingBag} color="yellow" />
-        <StatCard title="En camino"    value={entregas.filter(o => o.status === 'recogido').length} icon={Truck} color="blue" />
-        <StatCard title="Entregados"   value={entregas.filter(o => ['entregado','pagado'].includes(o.status)).length} icon={CheckCircle2} color="green" />
+        <StatCard title="Por recoger" value={recogidas.length}         icon={ShoppingBag} color="yellow" />
+        <StatCard title="En camino"   value={entregas.length}           icon={Truck}       color="blue"   />
+        <StatCard title="Entregados"  value={historialEntregas.length}  icon={CheckCircle2} color="green" />
       </div>
 
       {/* Tabs */}
       <div className="card !p-4 space-y-3">
         <div className="flex gap-2">
-          <button
-            onClick={() => setTab('recogidas')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              tab === 'recogidas'
-                ? 'bg-amber-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <ShoppingBag size={15} />
-            Recogidas
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === 'recogidas' ? 'bg-amber-400 text-white' : 'bg-gray-200 text-gray-600'}`}>
-              {recogidas.length}
-            </span>
+          <button onClick={() => setTab('recogidas')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'recogidas' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            <ShoppingBag size={13} /> Recogidas
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'recogidas' ? 'bg-amber-400 text-white' : 'bg-gray-200 text-gray-600'}`}>{recogidas.length}</span>
           </button>
-          <button
-            onClick={() => setTab('entregas')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-              tab === 'entregas'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Truck size={15} />
-            Entregas
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${tab === 'entregas' ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
-              {entregas.length}
-            </span>
+          <button onClick={() => setTab('entregas')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'entregas' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            <Truck size={13} /> En camino
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'entregas' ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{entregas.length}</span>
+          </button>
+          <button onClick={() => setTab('historial')}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'historial' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            <CheckCircle2 size={13} /> Historial
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'historial' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{historialEntregas.length}</span>
           </button>
         </div>
 
@@ -125,19 +114,20 @@ export function DeliveriesPage() {
 
       {/* Context banner */}
       <div className={`rounded-xl px-4 py-2.5 text-xs font-medium flex items-center gap-2 ${
-        tab === 'recogidas' ? 'bg-amber-50 text-amber-700' : 'bg-primary-50 text-primary-700'
+        tab === 'recogidas' ? 'bg-amber-50 text-amber-700' :
+        tab === 'entregas'  ? 'bg-primary-50 text-primary-700' :
+                              'bg-emerald-50 text-emerald-700'
       }`}>
-        {tab === 'recogidas'
-          ? <><Store size={13} /> Pedidos que hay que ir a buscar al proveedor — foco en pago y mercancía</>
-          : <><Truck size={13} /> Pedidos recogidos listos para entregar al cliente — prendas y dirección</>
-        }
+        {tab === 'recogidas' ? <><Store size={13} /> Pedidos que hay que ir a buscar al proveedor — foco en pago y mercancía</> :
+         tab === 'entregas'  ? <><Truck size={13} /> Pedidos recogidos en camino al cliente — pendientes de entrega</> :
+                               <><CheckCircle2 size={13} /> Historial de pedidos ya entregados</>}
       </div>
 
       {activeOrders.length === 0 ? (
         <EmptyState
-          icon={tab === 'recogidas' ? Package : Truck}
-          title={tab === 'recogidas' ? 'Sin recogidas pendientes' : 'Sin entregas pendientes'}
-          description={tab === 'recogidas' ? 'No hay pedidos por recoger' : 'Todos los pedidos han sido entregados'}
+          icon={tab === 'recogidas' ? Package : tab === 'entregas' ? Truck : CheckCircle2}
+          title={tab === 'recogidas' ? 'Sin recogidas pendientes' : tab === 'entregas' ? 'Sin entregas en camino' : 'Sin historial aún'}
+          description={tab === 'recogidas' ? 'No hay pedidos por recoger' : tab === 'entregas' ? 'Ningún pedido en camino al cliente' : 'Los pedidos entregados aparecerán aquí'}
         />
       ) : (
         <div className="space-y-3">
