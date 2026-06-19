@@ -169,11 +169,33 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Welcome */}
-      <div>
-        <h1 className="page-title">Hola, {currentUser?.name.split(' ')[0]} 👋</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Resumen general del negocio al {format(now, "d 'de' MMMM yyyy", { locale: es })}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 px-5 py-5 text-white"
+        style={{ boxShadow: '0 4px 24px rgb(124 58 237 / 0.25)' }}>
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, white 0%, transparent 60%)' }} />
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary-200 mb-1">
+          {format(now, "EEEE, d 'de' MMMM yyyy", { locale: es })}
         </p>
+        <h1 className="text-xl font-bold text-white leading-tight">
+          Hola, {currentUser?.name.split(' ')[0]}
+        </h1>
+        <p className="text-sm text-primary-200 mt-0.5">Resumen general del negocio</p>
+        <div className="flex items-center gap-4 mt-4 pt-4 border-t border-white/20">
+          <div className="text-center">
+            <p className="text-lg font-bold tabular-nums">{orders.filter(o => o.status !== 'cancelado').length}</p>
+            <p className="text-[10px] text-primary-200 font-medium">Pedidos</p>
+          </div>
+          <div className="w-px h-8 bg-white/20" />
+          <div className="text-center">
+            <p className="text-lg font-bold tabular-nums">{clients.length}</p>
+            <p className="text-[10px] text-primary-200 font-medium">Clientes</p>
+          </div>
+          <div className="w-px h-8 bg-white/20" />
+          <div className="text-center">
+            <p className="text-lg font-bold tabular-nums">{clientsWithDebt}</p>
+            <p className="text-[10px] text-primary-200 font-medium">Con deuda</p>
+          </div>
+        </div>
       </div>
 
       {/* Banner recordatorios urgentes */}
@@ -364,13 +386,13 @@ export function DashboardPage() {
           </div>
         </div>
         <div>
-          <div className="flex justify-between text-xs text-gray-400 mb-1.5">
+          <div className="flex justify-between text-xs text-gray-500 mb-2">
             <span>Cobrado este mes vs deuda total</span>
-            <span className="font-semibold text-gray-600">{pctCobrado}%</span>
+            <span className="font-bold text-emerald-600">{pctCobrado}%</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-2.5">
-            <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
-              style={{ width: `${pctCobrado}%` }} />
+          <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+            <div className="h-2.5 rounded-full transition-all duration-700"
+              style={{ width: `${pctCobrado}%`, background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)' }} />
           </div>
         </div>
       </div>
@@ -387,25 +409,25 @@ export function DashboardPage() {
             <div className="space-y-4">
               {metaMes.salesTarget > 0 && (
                 <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                  <div className="flex justify-between text-xs text-gray-500 mb-2">
                     <span>Ventas: {formatCurrency(ventasMes)} / {formatCurrency(metaMes.salesTarget)}</span>
-                    <span className="font-semibold">{Math.min(100, Math.round(ventasMes / metaMes.salesTarget * 100))}%</span>
+                    <span className="font-bold text-primary-600">{Math.min(100, Math.round(ventasMes / metaMes.salesTarget * 100))}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div className="bg-primary-500 h-2.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (ventasMes / metaMes.salesTarget) * 100)}%` }} />
+                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-2.5 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, (ventasMes / metaMes.salesTarget) * 100)}%`, background: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)' }} />
                   </div>
                 </div>
               )}
               {metaMes.collectionTarget > 0 && (
                 <div>
-                  <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+                  <div className="flex justify-between text-xs text-gray-500 mb-2">
                     <span>Recaudo: {formatCurrency(cobradoMes)} / {formatCurrency(metaMes.collectionTarget)}</span>
-                    <span className="font-semibold">{Math.min(100, Math.round(cobradoMes / metaMes.collectionTarget * 100))}%</span>
+                    <span className="font-bold text-emerald-600">{Math.min(100, Math.round(cobradoMes / metaMes.collectionTarget * 100))}%</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div className="bg-emerald-500 h-2.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, (cobradoMes / metaMes.collectionTarget) * 100)}%` }} />
+                  <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="h-2.5 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, (cobradoMes / metaMes.collectionTarget) * 100)}%`, background: 'linear-gradient(90deg, #10b981 0%, #34d399 100%)' }} />
                   </div>
                 </div>
               )}
