@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
+import sharp from 'sharp';
 import 'dotenv/config';
 import { extractPaymentData, type ExtractedPayment } from './ocr';
 import { searchClients, savePaymentProof, type DbClient } from './db';
@@ -37,10 +38,10 @@ async function downloadBase64(fileId: string): Promise<{ base64: string; mimeTyp
   const file = await bot.getFile(fileId);
   const url  = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
   const { data } = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer' });
-  const base64   = Buffer.from(data).toString('base64');
-  const ext      = file.file_path?.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-  return { base64, mimeType };
+  // Convertir siempre a JPEG: normaliza WebP (WhatsApp), PNG y otros formatos
+  const jpegBuffer = await sharp(Buffer.from(data)).jpeg({ quality: 85 }).toBuffer();
+  console.log(`[IMG] ${file.file_path} → JPEG ${Math.round(jpegBuffer.length / 1024)}KB`);
+  return { base64: jpegBuffer.toString('base64'), mimeType: 'image/jpeg' };
 }
 
 function buildResumen(ocr: ExtractedPayment | null, nombre: string, vinculado: boolean): string {
@@ -92,6 +93,16 @@ bot.onText(/\/start/, msg => {
 bot.onText(/\/cancelar/, msg => {
   sessions.delete(msg.chat.id);
   bot.sendMessage(msg.chat.id, '❌ Operación cancelada.');
+});
+
+bot.onText(/\/sin_cliente/, async msg => {
+  const chatId  = msg.chat.id;
+  const session = sessions.get(chatId);
+  if (!session) {
+    await bot.sendMessage(chatId, '⚠️ No hay ninguna operación activa.');
+    return;
+  }
+  await guardar(chatId, session, null, session.typedName ?? 'Sin nombre');
 });
 
 // ─── Recepción de imagen ───────────────────────────────────────────────────────
@@ -151,24 +162,28 @@ bot.on('message', async msg => {
       await bot.sendMessage(chatId, '⚠️ Escribe el nombre del cliente.');
       return;
     }
-    await bot.sendMessage(chatId, '🔍 Buscando cliente y analizando comprobante...');
+    session.typedName = nombre; // guardar siempre por si se usa /sin_cliente
+    await bot.sendMessage(chatId, '🔍 Buscando cliente...');
     const clients = await searchClients(nombre);
 
     if (clients.length === 0) {
-      await guardar(chatId, session, null, nombre);
-    } else if (clients.length === 1) {
-      await guardar(chatId, session, clients[0], nombre);
+      // Sin coincidencias → NO guardar, pedir que reintente
+      await bot.sendMessage(
+        chatId,
+        `⚠️ No encontré ningún cliente con el nombre *"${nombre}"*\\.\n\nIntenta con otro nombre o un apellido diferente\\.\n\n• /sin\\_cliente — guardar sin vincular de todas formas\n• /cancelar — cancelar`,
+        { parse_mode: 'MarkdownV2' },
+      );
+      return; // sesión sigue activa en waiting_name
     } else {
-      // Varias coincidencias → pedir selección numerada
+      // 1 o más coincidencias → siempre mostrar lista para que el usuario confirme
       session.phase      = 'waiting_selection';
-      session.typedName  = nombre;
       session.candidates = clients;
       const list = clients.map((c, i) =>
         `${i + 1}. ${c.name}${c.phone ? ` — ${c.phone}` : ''}`
       ).join('\n');
       await bot.sendMessage(
         chatId,
-        `Encontré varios clientes:\n\n${list}\n${clients.length + 1}. Usar "${nombre}" sin vincular\n\nResponde con el número:`,
+        `Encontré ${clients.length} cliente${clients.length > 1 ? 's' : ''}:\n\n${list}\n${clients.length + 1}. Ninguno de estos (guardar sin vincular)\n\nResponde con el número:`,
       );
     }
 

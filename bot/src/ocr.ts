@@ -25,6 +25,13 @@ Reglas:
 - notes: observación si algo es dudoso o ambiguo, sino null
 Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
 
+// Modelos Groq con visión, en orden de preferencia
+const MODELS = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'llama-3.2-90b-vision-preview',
+  'llama-3.2-11b-vision-preview',
+];
+
 function parse(text: string): ExtractedPayment | null {
   try {
     const cleaned = text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
@@ -41,17 +48,17 @@ function parse(text: string): ExtractedPayment | null {
   } catch { return null; }
 }
 
-export async function extractPaymentData(
+async function tryGroqModel(
   imageBase64: string,
-  mimeType = 'image/jpeg',
+  mimeType: string,
+  model: string,
+  key: string,
 ): Promise<ExtractedPayment | null> {
-  const key = process.env.GROQ_KEY;
-  if (!key) { console.error('GROQ_KEY no configurado en .env'); return null; }
   try {
     const { data } = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
       {
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        model,
         messages: [{
           role: 'user',
           content: [
@@ -64,9 +71,32 @@ export async function extractPaymentData(
       },
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } },
     );
-    return parse(data.choices?.[0]?.message?.content ?? '');
-  } catch (err) {
-    console.error('Groq OCR error:', err);
+    const raw = data.choices?.[0]?.message?.content ?? '';
+    console.log(`[OCR] ${model} →`, raw.slice(0, 120));
+    return parse(raw);
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error(`[OCR] ${model} falló:`, err.response?.status, JSON.stringify(err.response?.data));
+    } else {
+      console.error(`[OCR] ${model} falló:`, err);
+    }
     return null;
   }
+}
+
+export async function extractPaymentData(
+  imageBase64: string,
+  mimeType = 'image/jpeg',
+): Promise<ExtractedPayment | null> {
+  const key = process.env.GROQ_KEY;
+  if (!key) { console.error('[OCR] GROQ_KEY no configurado'); return null; }
+
+  for (const model of MODELS) {
+    const result = await tryGroqModel(imageBase64, mimeType, model, key);
+    if (result) return result;
+    console.log(`[OCR] Intentando siguiente modelo...`);
+  }
+
+  console.error('[OCR] Todos los modelos fallaron.');
+  return null;
 }
