@@ -284,14 +284,14 @@ export function ExpensesPage() {
       )}
 
       {/* Total */}
-      <div className="card !p-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Receipt size={18} className="text-red-500" />
-          <span className="text-sm font-semibold text-gray-700">
-            Total gastos — {viewMode === 'month' ? format(from, 'MMMM yyyy', { locale: es }) : `${formatDate(dateFrom)} — ${formatDate(dateTo)}`}
+      <div className="card !p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          <Receipt size={18} className="text-red-500 flex-shrink-0" />
+          <span className="text-sm font-semibold text-gray-700 truncate">
+            Total — {viewMode === 'month' ? format(from, 'MMMM yyyy', { locale: es }) : `${formatDate(dateFrom)} al ${formatDate(dateTo)}`}
           </span>
         </div>
-        <span className="text-lg font-bold text-red-600">{formatCurrency(totalAmount)}</span>
+        <span className="text-lg font-bold text-red-600 flex-shrink-0">{formatCurrency(totalAmount)}</span>
       </div>
 
       {/* Lista */}
@@ -308,34 +308,34 @@ export function ExpensesPage() {
               const TypeIcon = EXPENSE_TYPES.find(t => t.value === expense.type)?.icon ?? Receipt;
               return (
                 <div key={expense.id}
-                  className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 sm:gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                 >
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${TYPE_COLORS[expense.type]}`}>
                     <TypeIcon size={16} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-gray-800">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-semibold text-gray-800 truncate">
                         {expense.description || expenseTypeLabel(expense.type)}
                       </p>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${TYPE_COLORS[expense.type]}`}>
+                      <span className={`hidden sm:inline-flex text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${TYPE_COLORS[expense.type]}`}>
                         {expenseTypeLabel(expense.type)}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-gray-400 truncate">
                       {formatDate(expense.date)}
                       {expense.responsible ? ` · ${expense.responsible}` : ''}
-                      {expense.paymentMethod !== 'efectivo' ? ` · ${expense.paymentMethod}` : ''}
+                      <span className="sm:hidden"> · {expenseTypeLabel(expense.type)}</span>
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-red-600">{formatCurrency(expense.amount)}</p>
+                    <p className="text-sm font-bold text-red-600 whitespace-nowrap">{formatCurrency(expense.amount)}</p>
                   </div>
-                  <div className="flex gap-1 flex-shrink-0">
+                  <div className="flex gap-0.5 flex-shrink-0">
                     {can('gastos', 'editar') && (
                       <button
                         onClick={() => { setEditing(expense); setModal(true); }}
-                        className="p-2 hover:bg-white rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+                        className="p-1.5 hover:bg-white rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
                       >
                         <Edit2 size={14} />
                       </button>
@@ -343,7 +343,7 @@ export function ExpensesPage() {
                     {can('gastos', 'eliminar') && (
                       <button
                         onClick={() => setDeleting(expense)}
-                        className="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-1.5 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={14} />
                       </button>

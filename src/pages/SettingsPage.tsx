@@ -378,23 +378,23 @@ export function SettingsPage() {
                     <span className="text-[10px] text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">Inactivo</span>
                   )}
                 </div>
-                <p className="text-xs text-gray-400">{user.email}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
               </div>
 
               {/* Acciones */}
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 {/* Activar/desactivar */}
                 {can('configuracion', 'editar') && user.id !== currentUser?.id && (
                   <button
                     aria-label={user.active ? 'Desactivar usuario' : 'Activar usuario'}
                     onClick={() => handleToggleActive(user)}
-                    className={`p-2 rounded-xl transition-colors ${
+                    className={`p-1.5 rounded-xl transition-colors ${
                       user.active
                         ? 'hover:bg-amber-50 text-gray-400 hover:text-amber-500'
                         : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'
                     }`}
                   >
-                    {user.active ? <UserX size={16} /> : <UserCheck size={16} />}
+                    {user.active ? <UserX size={15} /> : <UserCheck size={15} />}
                   </button>
                 )}
                 {/* Restablecer contraseña */}
@@ -402,10 +402,10 @@ export function SettingsPage() {
                   <button
                     aria-label="Restablecer contraseña"
                     onClick={() => { setResetUser(user); setTempPwd(''); setResetDone(false); }}
-                    className="p-2 hover:bg-amber-50 rounded-xl text-gray-400 hover:text-amber-600 transition-colors"
+                    className="p-1.5 hover:bg-amber-50 rounded-xl text-gray-400 hover:text-amber-600 transition-colors"
                     title="Restablecer contraseña"
                   >
-                    <RotateCcw size={16} />
+                    <RotateCcw size={15} />
                   </button>
                 )}
                 {/* Administrar accesos */}
@@ -413,9 +413,9 @@ export function SettingsPage() {
                   <button
                     aria-label="Administrar accesos"
                     onClick={() => setPermUser(user)}
-                    className="p-2 hover:bg-violet-50 rounded-xl text-gray-400 hover:text-violet-600 transition-colors"
+                    className="p-1.5 hover:bg-violet-50 rounded-xl text-gray-400 hover:text-violet-600 transition-colors"
                   >
-                    <Key size={16} />
+                    <Key size={15} />
                   </button>
                 )}
                 {/* Editar */}
@@ -423,9 +423,9 @@ export function SettingsPage() {
                   <button
                     aria-label="Editar usuario"
                     onClick={() => { setEditing(user); setModal(true); }}
-                    className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+                    className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    <Edit2 size={16} />
+                    <Edit2 size={15} />
                   </button>
                 )}
                 {/* Eliminar */}
@@ -433,9 +433,9 @@ export function SettingsPage() {
                   <button
                     aria-label="Eliminar usuario"
                     onClick={() => setDeleting(user)}
-                    className="p-2 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
+                    className="p-1.5 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={15} />
                   </button>
                 )}
               </div>
