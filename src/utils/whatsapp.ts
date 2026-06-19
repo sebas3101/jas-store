@@ -159,6 +159,24 @@ export const buildAvailabilityMessage = (client: Client, order: Order) => {
   );
 };
 
+// ─── Mensaje de actualización de base de datos de clientes ───────────────────
+export const buildDataUpdateMessage = (client?: { name?: string }) => {
+  const greeting = client?.name ? `Hola ${client.name.split(' ')[0]}` : 'Hola';
+  return (
+    `${greeting}, esperamos que estés muy bien 😊\n\n` +
+    `Estamos actualizando nuestra base de datos de clientes para mejorar el control de pedidos, entregas, pagos y garantías.\n\n` +
+    `Por favor ayúdanos confirmando la siguiente información:\n\n` +
+    `👤 Nombre completo:\n` +
+    `📱 Celular:\n` +
+    `🏠 Dirección de entrega:\n` +
+    `🏢 Empresa o referencia (si aplica):\n` +
+    `🛍 Producto(s) pendiente(s) (si aplica):\n` +
+    `💰 Saldo pendiente o último abono (si aplica):\n\n` +
+    `Esta información nos ayudará a tener tus pedidos y pagos mejor organizados.\n\n` +
+    `Muchas gracias por tu apoyo. 🙏`
+  );
+};
+
 export const openWhatsApp = (phone: string, message: string) => {
   const cleaned = phone.replace(/\D/g, '');
   const full = cleaned.startsWith('57') ? cleaned : `57${cleaned}`;
