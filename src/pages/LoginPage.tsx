@@ -1,31 +1,34 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react';
 import { useAppStore } from '../store';
 import logoUrl from '../assets/logo.jpeg';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const login = useAppStore((s) => s.login);
-  const [email, setEmail]       = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd]   = useState(false);
   const [error, setError]       = useState('');
   const [loading, setLoading]   = useState(false);
-
-  const doLogin = async (e: string, p: string) => {
-    setError('');
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const ok = await login(e.trim(), p);
-    setLoading(false);
-    if (ok) navigate('/');
-    else setError('Correo o contraseña incorrectos');
-  };
+  const inactivityLogout = sessionStorage.getItem('jas_logout_reason') === 'inactividad';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await doLogin(email, password);
+    setError('');
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 400));
+    // Login acepta email completo o la parte antes del @ (usuario corto)
+    const emailToTry = username.includes('@') ? username : `${username}@jasstore.co`;
+    const ok = await login(emailToTry, password);
+    setLoading(false);
+    if (ok) {
+      sessionStorage.removeItem('jas_logout_reason');
+      navigate('/');
+    } else {
+      setError('Usuario o contraseña incorrectos');
+    }
   };
 
   return (
@@ -44,6 +47,12 @@ export function LoginPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-5 sm:p-8">
           <h2 className="text-xl font-bold text-gray-900 mb-6">Iniciar sesión</h2>
 
+          {inactivityLogout && !error && (
+            <div className="flex items-center gap-2 bg-amber-50 text-amber-700 text-sm px-4 py-3 rounded-xl mb-4">
+              <AlertCircle size={16} />
+              Tu sesión se cerró por inactividad. Ingresa nuevamente.
+            </div>
+          )}
           {error && (
             <div className="flex items-center gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl mb-4">
               <AlertCircle size={16} />
@@ -53,15 +62,17 @@ export function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Correo electrónico</label>
+              <label className="label">Usuario</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-3 text-gray-400" />
+                <User size={16} className="absolute left-3 top-3 text-gray-400" />
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   className="input-field pl-9"
-                  placeholder="usuario@jasstore.co"
+                  placeholder="admin"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   required
                 />
               </div>
@@ -97,30 +108,6 @@ export function LoginPage() {
               {loading ? 'Ingresando...' : 'Ingresar al sistema'}
             </button>
           </form>
-
-          {/* Demo accounts */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <p className="text-xs text-gray-400 text-center mb-3 font-medium">
-              Cuentas de demostración
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Admin', email: 'admin@jasstore.co',    pwd: 'admin123'    },
-                { label: 'Jennifer', email: 'jennifer@jasstore.co', pwd: 'jennifer123' },
-                { label: 'Alexis',   email: 'alexis@jasstore.co',   pwd: 'alexis123'   },
-                { label: 'Vendedor', email: 'vendedor@jasstore.co', pwd: 'vendedor123' },
-              ].map((acc) => (
-                <button
-                  key={acc.email}
-                  type="button"
-                  onClick={() => { setEmail(acc.email); setPassword(acc.pwd); doLogin(acc.email, acc.pwd); }}
-                  className="text-xs bg-gray-50 hover:bg-primary-50 hover:text-primary-700 text-gray-500 px-3 py-2 rounded-xl transition-colors font-medium"
-                >
-                  {acc.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
     </div>

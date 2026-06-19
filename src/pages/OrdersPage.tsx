@@ -149,7 +149,7 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
                   <div>
                     <input className="input-field text-xs" placeholder="Talla (S, M, L...)"
                       value={item.size ?? ''}
-                      onChange={e => setItem(i, 'size', e.target.value)} />
+                      onChange={e => setItem(i, 'size', e.target.value.toUpperCase())} />
                   </div>
                   <div>
                     <input className="input-field text-xs" placeholder="Color"

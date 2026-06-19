@@ -10,6 +10,7 @@ import {
   Copy,
   CheckCircle2,
   FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAppStore } from '../store';
@@ -24,7 +25,7 @@ import {
   paymentMethodLabel,
   clientStatusLabel,
 } from '../utils/formatters';
-import { buildDebtReminderMessage, buildDebtInfoMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, openWhatsApp } from '../utils/whatsapp';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { Client, Order, Payment, PaymentMethod } from '../types';
 
@@ -342,13 +343,23 @@ export function ClientDetailPage() {
               </div>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <button
+              onClick={() => {
+                if (!client.phone) { alert('El cliente no tiene número registrado.'); return; }
+                openWhatsApp(client.phone, buildDataUpdateMessage(client));
+              }}
+              className="btn-ghost text-xs"
+              title="Solicitar actualización de datos por WhatsApp"
+            >
+              <RefreshCw size={14} /> Actualizar datos
+            </button>
             <button
               onClick={() => printEstadoCuenta(client, clientOrders, clientPayments)}
-              className="btn-ghost"
+              className="btn-ghost text-xs"
               title="Imprimir estado de cuenta"
             >
-              <FileText size={16} /> Estado de cuenta
+              <FileText size={14} /> Estado de cuenta
             </button>
             <button onClick={() => setPayModal(true)} className="btn-primary">
               <CreditCard size={16} /> Registrar abono
