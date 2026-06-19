@@ -62,7 +62,17 @@ function buildResumen(ocr: ExtractedPayment | null, nombre: string, vinculado: b
 async function guardar(chatId: number, session: Session, client: DbClient | null, nombre: string) {
   sessions.delete(chatId);
   const ocr = await session.ocrPromise;
-  const id  = await savePaymentProof({
+
+  // No guardar si el OCR no extrajo ningún dato útil
+  if (!ocr || (!ocr.amount && !ocr.reference)) {
+    await bot.sendMessage(
+      chatId,
+      '📷 No pude leer el comprobante con suficiente claridad.\n\nReenvía la imagen procurando que esté bien iluminada, enfocada y sin recortes.',
+    );
+    return;
+  }
+
+  const id = await savePaymentProof({
     clientId:   client?.id,
     amount:     ocr?.amount,
     date:       ocr?.date,

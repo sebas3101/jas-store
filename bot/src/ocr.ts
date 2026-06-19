@@ -91,9 +91,13 @@ export async function extractPaymentData(
   if (!key) { console.error('[OCR] GROQ_KEY no configurado'); return null; }
 
   for (const model of MODELS) {
-    const result = await tryGroqModel(imageBase64, mimeType, model, key);
-    if (result) return result;
-    console.log(`[OCR] Intentando siguiente modelo...`);
+    // Hasta 3 intentos por modelo antes de pasar al siguiente
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const result = await tryGroqModel(imageBase64, mimeType, model, key);
+      if (result && (result.amount || result.reference)) return result;
+      if (attempt < 3) console.log(`[OCR] ${model} intento ${attempt} sin datos útiles, reintentando...`);
+    }
+    console.log(`[OCR] ${model} agotado, probando siguiente modelo...`);
   }
 
   console.error('[OCR] Todos los modelos fallaron.');
