@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, ChevronRight } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
+import { OrderStatusButton, NEXT_STATUS } from '../components/ui/OrderStatusButton';
 import { exportPedidos } from '../utils/exportExcel';
 import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
@@ -335,14 +336,6 @@ export function OrdersPage() {
   const [waOrder, setWaOrder]     = useState<Order | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
 
-  const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-    tomado:        { status: 'por_recoger',   label: '→ Por recoger'    },
-    por_recoger:   { status: 'recogido',      label: '→ Recogido'       },
-    recogido:      { status: 'entregado',     label: '→ Entregado'      },
-    entregado:     { status: 'pendiente_pago', label: '→ Pendiente pago' },
-    pendiente_pago:{ status: 'pagado',        label: '→ Pagado'         },
-  };
-
   const handleAdvanceStatus = async (order: Order) => {
     const next = NEXT_STATUS[order.status];
     if (!next || advancingId) return;
@@ -471,16 +464,13 @@ export function OrdersPage() {
                       </span>
                     ))}
                   </div>
-                  {can('pedidos', 'cambiar_estado') && NEXT_STATUS[order.status] && (
-                    <button
-                      onClick={() => handleAdvanceStatus(order)}
-                      disabled={advancingId === order.id}
-                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
-                    >
-                      {advancingId === order.id ? '...' : (
-                        <><ChevronRight size={10} /> {NEXT_STATUS[order.status]!.label}</>
-                      )}
-                    </button>
+                  {can('pedidos', 'cambiar_estado') && (
+                    <OrderStatusButton
+                      order={order}
+                      onAdvance={handleAdvanceStatus}
+                      advancing={advancingId === order.id}
+                      variant="pill"
+                    />
                   )}
                 </div>
               </div>

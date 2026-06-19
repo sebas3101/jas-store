@@ -4,13 +4,14 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
+import { OrderStatusButton, NEXT_STATUS } from '../components/ui/OrderStatusButton';
 import {
   formatCurrency,
   formatDate,
   orderStatusLabel,
   orderStatusColor,
 } from '../utils/formatters';
-import type { OrderStatus } from '../types';
+import type { Order, OrderStatus } from '../types';
 
 const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
   { value: 'por_recoger', label: 'Por recoger' },
@@ -60,6 +61,8 @@ export function DeliveriesPage() {
 
   const assignableUsers = users.filter(u => u.active);
 
+  const [advancingId, setAdvancingId] = useState<string | null>(null);
+
   const handleAssign = (orderId: string, userId: string) => {
     updateOrder(orderId, { deliveryPersonId: userId });
   };
@@ -70,6 +73,19 @@ export function DeliveriesPage() {
       updates.deliveredAt = new Date().toISOString();
     }
     updateOrder(orderId, updates);
+  };
+
+  const handleAdvanceStatus = async (order: Order) => {
+    if (advancingId) return;
+    const next = NEXT_STATUS[order.status];
+    if (!next) return;
+    setAdvancingId(order.id);
+    const updates: Parameters<typeof updateOrder>[1] = { status: next.status };
+    if (next.status === 'entregado' || next.status === 'pagado') {
+      updates.deliveredAt = new Date().toISOString();
+    }
+    await updateOrder(order.id, updates);
+    setAdvancingId(null);
   };
 
   return (
@@ -306,32 +322,42 @@ export function DeliveriesPage() {
                 )}
 
                 {/* Controles */}
-                {can('entregas', 'cambiar_estado') && (
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-gray-50 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-gray-400 mb-1">Repartidor</p>
-                      <select
-                        value={order.deliveryPersonId ?? ''}
-                        onChange={e => handleAssign(order.id, e.target.value)}
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 w-full max-w-[160px]"
-                      >
-                        <option value="">Sin asignar</option>
-                        {assignableUsers.map(u => (
-                          <option key={u.id} value={u.id}>{u.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-400 mb-1">Estado</p>
-                      <select
-                        value={order.status}
-                        onChange={e => handleStatusChange(order.id, e.target.value as OrderStatus)}
-                        className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
-                      >
-                        {STATUS_OPTIONS.map(s => (
-                          <option key={s.value} value={s.value}>{s.label}</option>
-                        ))}
-                      </select>
+                {can('entregas', 'cambiar_estado') && tab !== 'historial' && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                    {/* Botón de avance rápido — mismo sistema que en Pedidos */}
+                    <OrderStatusButton
+                      order={order}
+                      onAdvance={handleAdvanceStatus}
+                      advancing={advancingId === order.id}
+                      variant="full"
+                    />
+                    {/* Controles secundarios */}
+                    <div className="flex gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] text-gray-400 mb-1">Repartidor</p>
+                        <select
+                          value={order.deliveryPersonId ?? ''}
+                          onChange={e => handleAssign(order.id, e.target.value)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700 w-full max-w-[180px]"
+                        >
+                          <option value="">Sin asignar</option>
+                          {assignableUsers.map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 mb-1">Estado manual</p>
+                        <select
+                          value={order.status}
+                          onChange={e => handleStatusChange(order.id, e.target.value as OrderStatus)}
+                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white text-gray-700"
+                        >
+                          {STATUS_OPTIONS.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   </div>
                 )}
