@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download } from 'lucide-react';
+import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload } from 'lucide-react';
 import { exportClientes } from '../utils/exportExcel';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
@@ -131,7 +131,7 @@ function debtSeverity(daysOverdue: number): { label: string; bg: string; text: s
 
 export function ClientsPage() {
   const { clients, addClient, updateClient, orders, getClientDebt } = useAppStore();
-  const { can } = usePermissions();
+  const { can, isAdmin } = usePermissions();
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all');
   const [filterType, setFilterType]   = useState<'all' | 'internal' | 'external'>('all');
@@ -188,6 +188,11 @@ export function ClientsPage() {
           <button onClick={() => exportClientes(clients, orders, [])} className="btn-ghost">
             <Download size={15} /> Excel
           </button>
+          {isAdmin && (
+            <Link to="/clientes/importar" className="btn-ghost">
+              <Upload size={15} /> Importar
+            </Link>
+          )}
           {can('clientes', 'crear') && (
             <button
               onClick={() => { setEditing(null); setModalOpen(true); }}

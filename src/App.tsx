@@ -26,7 +26,8 @@ const WarrantiesPage     = lazy(() => import('./pages/WarrantiesPage').then(m =>
 const PaymentProofPage   = lazy(() => import('./pages/PaymentProofPage').then(m => ({ default: m.PaymentProofPage })));
 const RecordatoriosPage  = lazy(() => import('./pages/RecordatoriosPage').then(m => ({ default: m.RecordatoriosPage })));
 const ExpensesPage       = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
-const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
+const ChangePasswordPage    = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
+const ContactImportPage     = lazy(() => import('./pages/ContactImportPage').then(m => ({ default: m.ContactImportPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useAppStore(s => s.currentUser);
@@ -88,8 +89,9 @@ export default function App() {
             }
           >
             <Route index                  element={<DashboardPage />} />
-            <Route path="clientes"        element={<ClientsPage />} />
-            <Route path="clientes/:id"    element={<ClientDetailPage />} />
+            <Route path="clientes"          element={<ClientsPage />} />
+            <Route path="clientes/importar" element={<ContactImportPage />} />
+            <Route path="clientes/:id"      element={<ClientDetailPage />} />
             <Route path="pedidos"         element={<OrdersPage />} />
             <Route path="pedidos/:id"     element={<OrderDetailPage />} />
             <Route path="pagos"           element={<PaymentsPage />} />
