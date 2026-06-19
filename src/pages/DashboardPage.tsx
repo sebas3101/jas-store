@@ -1,7 +1,7 @@
 import {
   DollarSign, TrendingUp, AlertTriangle, CheckCircle2,
   ShoppingBag, Clock, Package, Users, ArrowRight,
-  Star, TrendingDown, Target,
+  Star, TrendingDown, Target, Bell,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -11,8 +11,9 @@ import {
 import { useAppStore } from '../store';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
-import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { getReminderLog, daysSinceReminder } from '../utils/reminders';
 
 export function DashboardPage() {
   const { orders, clients, payments, products, currentUser } = useAppStore();
@@ -42,6 +43,24 @@ export function DashboardPage() {
   const pctCobrado = (cobradoMes + totalPending) > 0
     ? Math.min(100, Math.round(cobradoMes / (cobradoMes + totalPending) * 100))
     : 100;
+
+  // ── Recordatorios urgentes (15+ días sin abonar, sin recordar en 7 días) ─────
+  const reminderLog = getReminderLog();
+  const urgentReminders = clients.filter(c => {
+    const pendingOrds = orders.filter(
+      o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status),
+    );
+    const debt = pendingOrds.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+    if (debt <= 0) return false;
+    const lastPay = payments
+      .filter(p => p.clientId === c.id)
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const daysSincePay = lastPay
+      ? differenceInDays(now, parseISO(lastPay.date))
+      : 999;
+    const daysRemind = daysSinceReminder(c.id, reminderLog);
+    return daysSincePay >= 15 && (daysRemind === null || daysRemind >= 7);
+  }).length;
 
   // ── Top deudores ─────────────────────────────────────────────────────────────
   const topDeudores = clients
@@ -135,6 +154,23 @@ export function DashboardPage() {
           Resumen general del negocio al {format(now, "d 'de' MMMM yyyy", { locale: es })}
         </p>
       </div>
+
+      {/* Banner recordatorios urgentes */}
+      {urgentReminders > 0 && (
+        <Link
+          to="/recordatorios"
+          className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 hover:bg-red-100 transition-colors"
+        >
+          <Bell size={18} className="text-red-500 flex-shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-red-700">
+              {urgentReminders} cliente{urgentReminders !== 1 ? 's' : ''} sin abonar hace 15+ días
+            </p>
+            <p className="text-xs text-red-400 mt-0.5">Toca para enviar recordatorios de cobro por WhatsApp</p>
+          </div>
+          <ArrowRight size={16} className="text-red-400 flex-shrink-0" />
+        </Link>
+      )}
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

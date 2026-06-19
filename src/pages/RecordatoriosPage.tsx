@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, MessageCircle, ArrowRight, Users, DollarSign,
-  CheckCircle2, AlertTriangle, Clock,
+  CheckCircle2, AlertTriangle, Clock, Send,
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
@@ -10,106 +10,196 @@ import { StatCard } from '../components/ui/StatCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, openWhatsApp } from '../utils/whatsapp';
+import {
+  getReminderLog, markReminderSent, daysSinceReminder, type ReminderLog,
+} from '../utils/reminders';
 
-type Filter = 'all' | 'mora' | 'pendiente';
+type Tab = 'urgente' | 'todos';
 
-function severityBg(days: number) {
-  if (days > 60) return 'bg-red-100 text-red-700';
-  if (days > 30) return 'bg-orange-100 text-orange-700';
-  return 'bg-amber-100 text-amber-700';
+function severityClass(days: number) {
+  if (days > 60) return { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' };
+  if (days > 30) return { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' };
+  return { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-200' };
 }
 
-export function RecordatoriosPage() {
-  const { clients, orders, payments } = useAppStore();
-  const [filter, setFilter] = useState<Filter>('all');
-
-  const debtors = clients
+function buildClientData(
+  clients: ReturnType<typeof useAppStore.getState>['clients'],
+  orders: ReturnType<typeof useAppStore.getState>['orders'],
+  payments: ReturnType<typeof useAppStore.getState>['payments'],
+  log: ReminderLog,
+) {
+  return clients
     .map(c => {
       const pendingOrds = orders.filter(
         o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status),
       );
       const debt = pendingOrds.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+      if (debt <= 0) return null;
+
+      const clientPayments = payments
+        .filter(p => p.clientId === c.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      const lastPayment = clientPayments[0];
+      const daysSincePayment = lastPayment
+        ? differenceInDays(new Date(), parseISO(lastPayment.date))
+        : 999;
+
       const oldest = [...pendingOrds].sort(
         (a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime(),
       )[0];
       const daysOverdue = oldest
         ? differenceInDays(new Date(), parseISO(oldest.orderDate))
         : 0;
-      return { ...c, debt, daysOverdue, pendingCount: pendingOrds.length };
+
+      const daysReminder = daysSinceReminder(c.id, log);
+      const needsReminder = daysSincePayment >= 15 && (daysReminder === null || daysReminder >= 7);
+
+      return {
+        ...c,
+        debt,
+        daysSincePayment,
+        daysOverdue,
+        pendingCount: pendingOrds.length,
+        clientPayments,
+        daysReminder,
+        needsReminder,
+      };
     })
-    .filter(c => c.debt > 0)
-    .filter(c => filter === 'all' || c.status === filter)
+    .filter((x): x is NonNullable<typeof x> => x !== null)
     .sort((a, b) => b.debt - a.debt);
+}
 
-  const allDebtors = clients
-    .map(c => {
-      const debt = orders
-        .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
-        .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-      return debt;
-    })
-    .filter(d => d > 0);
+export function RecordatoriosPage() {
+  const { clients, orders, payments } = useAppStore();
+  const [tab, setTab]         = useState<Tab>('urgente');
+  const [log, setLog]         = useState<ReminderLog>(getReminderLog);
 
-  const totalDebt = allDebtors.reduce((s, d) => s + d, 0);
-  const totalCount = allDebtors.length;
+  const all     = buildClientData(clients, orders, payments, log);
+  const urgente = all.filter(c => c.needsReminder);
+  const list    = tab === 'urgente' ? urgente : all;
 
-  const moraCount     = clients.filter(c => c.status === 'mora').length;
-  const pendienteCount = clients.filter(c => c.status === 'pendiente').length;
+  const totalDebt  = all.reduce((s, c) => s + c.debt, 0);
+  const totalCount = all.length;
+
+  function handleSend(clientId: string, phone: string, message: string) {
+    openWhatsApp(phone, message);
+    markReminderSent(clientId);
+    setLog(getReminderLog());
+  }
+
+  function handleSendAll() {
+    urgente.forEach((c, i) => {
+      const msg = buildDebtReminderMessage(c, c.debt, orders, c.clientPayments);
+      setTimeout(() => {
+        openWhatsApp(c.phone, msg);
+        markReminderSent(c.id);
+      }, i * 800);
+    });
+    setTimeout(() => setLog(getReminderLog()), urgente.length * 800 + 200);
+  }
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Recordatorios de cobro</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {totalCount} cliente{totalCount !== 1 ? 's' : ''} con deuda pendiente
+            {totalCount} cliente{totalCount !== 1 ? 's' : ''} con deuda activa
           </p>
         </div>
-        <Bell size={22} className="text-amber-500" />
+        <Bell size={22} className={urgente.length > 0 ? 'text-red-500 animate-pulse' : 'text-amber-500'} />
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard title="Total deuda"       value={formatCurrency(totalDebt)} icon={DollarSign}   color="red" />
-        <StatCard title="Clientes con deuda" value={String(totalCount)}        icon={Users}         color="yellow" />
+        <StatCard title="Deuda total"        value={formatCurrency(totalDebt)} icon={DollarSign} color="red"    />
+        <StatCard title="Clientes con deuda" value={String(totalCount)}         icon={Users}      color="yellow" />
       </div>
 
-      {/* Filter */}
-      <div className="flex gap-2">
-        {(['all', 'mora', 'pendiente'] as Filter[]).map(f => (
+      {/* Tabs */}
+      <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+        <button
+          onClick={() => setTab('urgente')}
+          className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
+            tab === 'urgente'
+              ? 'bg-red-500 text-white shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Urgente · {urgente.length}
+        </button>
+        <button
+          onClick={() => setTab('todos')}
+          className={`flex-1 text-xs font-semibold py-2 rounded-lg transition-all ${
+            tab === 'todos'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          Todos · {totalCount}
+        </button>
+      </div>
+
+      {/* Urgente banner + send all */}
+      {tab === 'urgente' && urgente.length > 0 && (
+        <div className="card bg-red-50 border border-red-200 !p-4 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-bold text-red-700">
+              {urgente.length} cliente{urgente.length !== 1 ? 's' : ''} sin abonar hace 15+ días
+            </p>
+            <p className="text-xs text-red-500 mt-0.5">
+              No han recibido recordatorio en los últimos 7 días
+            </p>
+          </div>
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`text-xs px-3 py-2 rounded-full font-medium flex-1 transition-colors ${
-              filter === f
-                ? f === 'mora' ? 'bg-red-500 text-white' : f === 'pendiente' ? 'bg-amber-500 text-white' : 'bg-gray-800 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
+            onClick={handleSendAll}
+            className="flex-shrink-0 text-xs bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-1.5 font-semibold transition-colors"
           >
-            {f === 'all' ? `Todos (${totalCount})` : f === 'mora' ? `En mora (${moraCount})` : `Pendiente (${pendienteCount})`}
+            <Send size={13} /> Enviar a todos
           </button>
-        ))}
-      </div>
+        </div>
+      )}
 
-      {/* List */}
-      {debtors.length === 0 ? (
+      {/* Empty states */}
+      {tab === 'urgente' && urgente.length === 0 && (
         <EmptyState
           icon={CheckCircle2}
-          title="Sin deudas en esta categoría"
+          title="Sin recordatorios urgentes"
+          description={
+            totalCount > 0
+              ? 'Todos los clientes con deuda fueron contactados recientemente'
+              : 'Todos los clientes están al día'
+          }
+        />
+      )}
+
+      {tab === 'todos' && list.length === 0 && (
+        <EmptyState
+          icon={CheckCircle2}
+          title="Sin deudas pendientes"
           description="Todos los clientes están al día"
         />
-      ) : (
+      )}
+
+      {/* List */}
+      {list.length > 0 && (
         <div className="space-y-3">
-          {debtors.map(c => {
-            const clientPayments = payments.filter(p => p.clientId === c.id);
-            const waReminder = buildDebtReminderMessage(c, c.debt, orders, clientPayments);
-            const waInfo     = buildDebtInfoMessage(c, c.debt, orders, clientPayments);
-            const sev        = severityBg(c.daysOverdue);
+          {list.map(c => {
+            const sev        = severityClass(c.daysOverdue);
+            const waReminder = buildDebtReminderMessage(c, c.debt, orders, c.clientPayments);
+            const waInfo     = buildDebtInfoMessage(c, c.debt, orders, c.clientPayments);
+            const alreadySent = c.daysReminder !== null && c.daysReminder < 7;
+
             return (
-              <div key={c.id} className="card !p-4 space-y-3">
+              <div
+                key={c.id}
+                className={`card !p-4 space-y-3 ${c.needsReminder ? `border ${sev.border}` : ''}`}
+              >
                 <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${sev.split(' ')[0]}`}>
-                    <span className={`font-bold text-sm ${sev.split(' ')[1]}`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${sev.bg}`}>
+                    <span className={`font-bold text-sm ${sev.text}`}>
                       {c.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
@@ -118,10 +208,10 @@ export function RecordatoriosPage() {
                     <p className="text-xs text-gray-400 mt-0.5">{c.phone}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Clock size={10} /> {c.daysOverdue} días
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        {c.pendingCount} pedido{c.pendingCount !== 1 ? 's' : ''} pendiente{c.pendingCount !== 1 ? 's' : ''}
+                        <Clock size={10} />
+                        {c.daysSincePayment >= 999
+                          ? 'Sin abonos registrados'
+                          : `Último abono hace ${c.daysSincePayment} días`}
                       </span>
                       {c.status === 'mora' && (
                         <span className="flex items-center gap-0.5 text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
@@ -129,21 +219,32 @@ export function RecordatoriosPage() {
                         </span>
                       )}
                     </div>
+                    {alreadySent && (
+                      <p className="text-[10px] text-emerald-600 font-medium mt-1">
+                        Recordatorio enviado hace {c.daysReminder} día{c.daysReminder !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                    {c.needsReminder && !alreadySent && (
+                      <p className="text-[10px] text-red-500 font-semibold mt-1">
+                        Necesita recordatorio
+                      </p>
+                    )}
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-base font-bold text-red-600">{formatCurrency(c.debt)}</p>
+                    <p className="text-[10px] text-gray-400">{c.pendingCount} pedido{c.pendingCount !== 1 ? 's' : ''}</p>
                   </div>
                 </div>
 
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
                   <button
-                    onClick={() => openWhatsApp(c.phone, waReminder)}
+                    onClick={() => handleSend(c.id, c.phone, waReminder)}
                     className="flex-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
                   >
                     <MessageCircle size={12} /> Recordatorio
                   </button>
                   <button
-                    onClick={() => openWhatsApp(c.phone, waInfo)}
+                    onClick={() => handleSend(c.id, c.phone, waInfo)}
                     className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
                   >
                     <MessageCircle size={12} /> Detalle deuda
@@ -159,13 +260,13 @@ export function RecordatoriosPage() {
             );
           })}
 
-          {/* Totals footer */}
-          <div className="card !p-3 bg-red-50 border-red-100 flex items-center justify-between">
-            <span className="text-sm font-semibold text-gray-700">
-              Total cartera morosa ({debtors.length} clientes)
+          {/* Footer total */}
+          <div className="card !p-3 bg-gray-50 flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-600">
+              Deuda total ({list.length} clientes)
             </span>
             <span className="text-sm font-bold text-red-600">
-              {formatCurrency(debtors.reduce((s, c) => s + c.debt, 0))}
+              {formatCurrency(list.reduce((s, c) => s + c.debt, 0))}
             </span>
           </div>
         </div>
