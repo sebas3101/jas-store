@@ -95,7 +95,12 @@ export function deriveClientStatus(
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())[0]
     ?.orderDate;
 
-  const referenceDate = lastPaymentDate ?? (oldestUnpaidDate ? new Date(oldestUnpaidDate) : null);
+  // El reloj de mora corre desde la fecha del pedido más antiguo sin pagar.
+  // Un abono reciente NO reinicia el reloj — solo reduces la deuda.
+  // Si el último abono cubrió TODO lo de ese pedido, el siguiente pedido más antiguo toma el reloj.
+  const referenceDate = oldestUnpaidDate
+    ? new Date(oldestUnpaidDate)
+    : lastPaymentDate;
   if (referenceDate) {
     const diffMs   = Date.now() - referenceDate.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);

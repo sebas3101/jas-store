@@ -69,8 +69,10 @@ function WarrantyForm({
 
   const selectedOrder = orders.find(o => o.id === orderId);
   const clientId      = selectedOrder?.clientId ?? initial?.clientId ?? '';
-  const productName   = selectedOrder?.items[0]?.productName ?? initial?.productName ?? '';
-  const originalSize  = selectedOrder?.items[0]?.size ?? initial?.originalSize ?? '';
+  const orderItems    = selectedOrder?.items ?? [];
+  const [itemIndex, setItemIndex] = useState(0);
+  const productName   = orderItems[itemIndex]?.productName ?? initial?.productName ?? '';
+  const originalSize  = orderItems[itemIndex]?.size ?? initial?.originalSize ?? '';
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,11 +111,26 @@ function WarrantyForm({
               );
             })}
           </select>
-          {selectedOrder && (
-            <p className="text-xs text-gray-500 mt-1">
-              Producto: <strong>{productName}</strong>
-              {originalSize && ` · Talla: ${originalSize}`}
-            </p>
+          {selectedOrder && orderItems.length > 0 && (
+            <>
+              {orderItems.length > 1 && (
+                <div className="mt-2">
+                  <label className="label">Producto con garantía *</label>
+                  <select className="input-field" value={itemIndex}
+                    onChange={e => setItemIndex(Number(e.target.value))}>
+                    {orderItems.map((it, i) => (
+                      <option key={i} value={i}>
+                        {it.productName}{it.size ? ` (T.${it.size})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <p className="text-xs text-gray-500 mt-1">
+                Producto: <strong>{productName}</strong>
+                {originalSize && ` · Talla: ${originalSize}`}
+              </p>
+            </>
           )}
         </div>
 

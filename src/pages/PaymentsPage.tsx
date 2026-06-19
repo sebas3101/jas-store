@@ -36,9 +36,11 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
   const deudaTotal = pendingOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+  const [confirming, setConfirming] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirming) { setConfirming(true); return; }
 
     // Registrar el abono vinculado a todos los pedidos pendientes (auditoría)
     addPayment({
@@ -109,9 +111,29 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
             onChange={e => setNotes(e.target.value)} placeholder="Referencia, etc." />
         </div>
       </div>
-      <button type="submit" className="btn-primary w-full justify-center">
-        Registrar pago
-      </button>
+      {confirming ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-800">
+            ¿Confirmar pago de <span className="text-amber-900">{formatCurrency(amount)}</span>?
+          </p>
+          <p className="text-xs text-amber-700">
+            Se distribuirá FIFO en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''} de{' '}
+            <strong>{clients.find(c => c.id === clientId)?.name}</strong>.
+          </p>
+          <div className="flex gap-2">
+            <button type="submit" className="btn-primary flex-1 justify-center">
+              Sí, registrar
+            </button>
+            <button type="button" onClick={() => setConfirming(false)} className="btn-ghost flex-1 justify-center">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="submit" className="btn-primary w-full justify-center">
+          Registrar pago
+        </button>
+      )}
     </form>
   );
 }

@@ -1,8 +1,9 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAppStore } from './store';
+import { useAppStore, registerStoreErrorHandler } from './store';
 import { AppLayout } from './components/layout/AppLayout';
 import { usePermissions } from './hooks/usePermissions';
+import { useToast } from './components/ui/Toast';
 import type { PermModule } from './types';
 // LoginPage carga de forma estática — es la primera pantalla, debe estar disponible de inmediato
 import { LoginPage } from './pages/LoginPage';
@@ -77,10 +78,15 @@ function ErrorScreen({ message }: { message: string }) {
 
 export default function App() {
   const { initialize, initialized, isLoading, error } = useAppStore();
+  const { toast } = useToast();
 
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  useEffect(() => {
+    registerStoreErrorHandler(msg => toast(msg, 'error'));
+  }, [toast]);
 
   if (isLoading || !initialized) return <LoadingScreen />;
   if (error) return <ErrorScreen message={error} />;

@@ -212,7 +212,10 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
         </div>
         <div>
           <label className="label">Abono inicial ($)</label>
-          <CurrencyInput value={amountPaid} min={0} onChange={setAmountPaid} />
+          <CurrencyInput value={amountPaid} min={0} onChange={v => setAmountPaid(Math.min(v, totalAmount || v))} />
+          {amountPaid > 0 && totalAmount > 0 && amountPaid > totalAmount && (
+            <p className="text-xs text-red-500 mt-1">El abono no puede superar el total del pedido.</p>
+          )}
         </div>
         <div>
           <label className="label">Vendedor</label>

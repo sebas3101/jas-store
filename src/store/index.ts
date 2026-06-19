@@ -9,6 +9,14 @@ import { deriveClientStatus } from '../utils/businessLogic';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+let _onStoreError: ((msg: string) => void) | null = null;
+export function registerStoreErrorHandler(fn: (msg: string) => void) { _onStoreError = fn; }
+function notifyError(op: string) {
+  const msg = `Error al guardar (${op}). Intenta de nuevo.`;
+  _onStoreError?.(msg);
+  console.error(msg);
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cam = (rows: any[]) => rows.map(toCamel) as any[];
 
@@ -297,14 +305,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...c, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('clients').insert(row).select().single();
-    if (error) { console.error('addClient:', error); return; }
+    if (error) { notifyError('addClient'); return; }
     set(s => ({ clients: [...s.clients, toCamel(data) as Client] }));
   },
 
   updateClient: async (id, c) => {
     const row = toSnake({ ...c, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('clients').update(row).eq('id', id);
-    if (error) { console.error('updateClient:', error); return; }
+    if (error) { notifyError('updateClient'); return; }
     set(s => ({
       clients: s.clients.map(x =>
         x.id === id ? { ...x, ...c, updatedAt: new Date().toISOString() } : x
@@ -314,7 +322,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   deleteClient: async (id) => {
     const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) { console.error('deleteClient:', error); return; }
+    if (error) { notifyError('deleteClient'); return; }
     set(s => ({ clients: s.clients.filter(x => x.id !== id) }));
   },
 
@@ -354,7 +362,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const orderNumber = genOrderNumber(get().orders);
     const row = toSnake({ ...o, orderNumber, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('orders').insert(row).select().single();
-    if (error) { console.error('addOrder:', error); return; }
+    if (error) { notifyError('addOrder'); return; }
     const newOrder = toCamel(data) as Order;
     set(s => ({ orders: [...s.orders, newOrder] }));
     // Log history
@@ -377,7 +385,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const clientId = prev?.clientId;
     const row = toSnake({ ...o, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('orders').update(row).eq('id', id);
-    if (error) { console.error('updateOrder:', error); return; }
+    if (error) { notifyError('updateOrder'); return; }
     set(s => ({
       orders: s.orders.map(x =>
         x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
@@ -409,7 +417,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     // Obtener clientId antes de eliminar
     const clientId = get().orders.find(x => x.id === id)?.clientId;
     const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) { console.error('deleteOrder:', error); return; }
+    if (error) { notifyError('deleteOrder'); return; }
     set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
     // Resincronizar: eliminar un pedido puede reducir la deuda del cliente
     if (clientId) {
@@ -424,7 +432,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addPayment: async (p) => {
     const row = toSnake({ ...p, createdAt: new Date().toISOString() });
     const { data, error } = await supabase.from('payments').insert(row).select().single();
-    if (error) { console.error('addPayment:', error); return; }
+    if (error) { notifyError('addPayment'); return; }
     set(s => ({ payments: [...s.payments, toCamel(data) as Payment] }));
     // Re-sincronizar estado del cliente: un abono puede sacar de mora
     const { clients, orders, payments: updatedPayments } = get();
