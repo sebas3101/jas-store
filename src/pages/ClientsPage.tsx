@@ -36,6 +36,7 @@ function ClientForm({
   initial?: Partial<Client>;
   onSave: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }) {
+  const isEditing = !!initial?.id;
   const [form, setForm] = useState<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>({
     name:        initial?.name ?? '',
     phone:       initial?.phone ?? '',
@@ -61,20 +62,28 @@ function ClientForm({
           <input className="input-field" required value={form.name}
             onChange={e => set('name', e.target.value)} placeholder="Ej: María García" />
         </div>
-        <div>
+        <div className={isEditing ? '' : 'col-span-2'}>
           <label className="label">Celular *</label>
           <input type="tel" inputMode="numeric" className="input-field" required value={form.phone}
             onChange={e => set('phone', e.target.value)} placeholder="3101234567" />
         </div>
-        <div>
-          <label className="label">Estado</label>
-          <select className="input-field" value={form.status}
-            onChange={e => set('status', e.target.value)}>
-            {STATUSES.filter(s => s.value !== 'all').map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
+        {/* Estado solo visible al editar — al crear se calcula automáticamente */}
+        {isEditing && (
+          <div>
+            <label className="label">Estado</label>
+            <select className="input-field" value={form.status}
+              onChange={e => set('status', e.target.value)}>
+              {STATUSES.filter(s => s.value !== 'all').map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {!isEditing && (
+          <div className="col-span-2 bg-emerald-50 rounded-xl px-3 py-2 text-xs text-emerald-700 font-medium">
+            ✓ El estado se calculará automáticamente según los pedidos y abonos del cliente.
+          </div>
+        )}
         <div className="col-span-2">
           <label className="label">Dirección</label>
           <input className="input-field" value={form.address ?? ''}

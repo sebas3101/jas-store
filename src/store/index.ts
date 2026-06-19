@@ -3,6 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
+  Warranty, PaymentProof,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
@@ -21,11 +22,12 @@ async function syncOneClientStatus(
   clientId: string,
   clients: Client[],
   orders: Order[],
+  payments: Payment[],
   setStore: (fn: (s: { clients: Client[] }) => Partial<{ clients: Client[] }>) => void
 ) {
   const client = clients.find(c => c.id === clientId);
   if (!client) return;
-  const newStatus = deriveClientStatus(client, orders);
+  const newStatus = deriveClientStatus(client, orders, payments);
   if (newStatus === client.status) return;
   const now = new Date().toISOString();
   // Actualizar UI de inmediato (sin esperar a Supabase)
@@ -105,6 +107,20 @@ interface AppStore {
   updatePublication: (id: string, p: Partial<Publication>) => Promise<void>;
   deletePublication: (id: string) => Promise<void>;
 
+  // Warranties
+  warranties: Warranty[];
+  addWarranty:    (w: Omit<Warranty, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateWarranty: (id: string, w: Partial<Warranty>) => Promise<void>;
+  deleteWarranty: (id: string) => Promise<void>;
+
+  // Payment Proofs
+  paymentProofs: PaymentProof[];
+  addPaymentProof:       (p: Omit<PaymentProof, 'id' | 'createdAt'>) => Promise<void>;
+  updatePaymentProof:    (id: string, p: Partial<PaymentProof>) => Promise<void>;
+  deletePaymentProof:    (id: string) => Promise<void>;
+  confirmPaymentProof:   (id: string) => Promise<void>;
+  rejectPaymentProof:    (id: string, reason: string) => Promise<void>;
+
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
   getClientTotalPaid:(clientId: string) => number;
@@ -133,6 +149,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: suppliers },
         { data: purchases },
         { data: publications },
+        { data: warranties },
+        { data: paymentProofs },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -142,14 +160,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('suppliers').select('*').order('created_at'),
         supabase.from('supplier_purchases').select('*').order('created_at'),
         supabase.from('publications').select('*').order('created_at'),
+        supabase.from('warranties').select('*').order('created_at'),
+        supabase.from('payment_proofs').select('*').order('created_at'),
       ]);
 
-      const loadedClients = cam(clients ?? []) as Client[];
-      const loadedOrders  = cam(orders  ?? []) as Order[];
+      const loadedClients  = cam(clients  ?? []) as Client[];
+      const loadedOrders   = cam(orders   ?? []) as Order[];
+      const loadedPayments = cam(payments ?? []) as Payment[];
 
-      // Corregir estados de clientes al arrancar, usando la deuda real
+      // Corregir estados de clientes al arrancar, usando la deuda real y los pagos
       const syncedClients = loadedClients.map(c => {
-        const correct = deriveClientStatus(c, loadedOrders);
+        const correct = deriveClientStatus(c, loadedOrders, loadedPayments);
         return correct !== c.status ? { ...c, status: correct } : c;
       });
       const changedClients = syncedClients.filter(
@@ -157,14 +178,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       );
 
       set({
-        users:        cam(users        ?? []) as User[],
-        clients:      syncedClients,
-        products:     cam(products     ?? []) as Product[],
-        orders:       loadedOrders,
-        payments:     cam(payments     ?? []) as Payment[],
-        suppliers:    cam(suppliers    ?? []) as Supplier[],
-        purchases:    cam(purchases    ?? []) as SupplierPurchase[],
-        publications: cam(publications ?? []) as Publication[],
+        users:         cam(users         ?? []) as User[],
+        clients:       syncedClients,
+        products:      cam(products      ?? []) as Product[],
+        orders:        loadedOrders,
+        payments:      loadedPayments,
+        suppliers:     cam(suppliers     ?? []) as Supplier[],
+        purchases:     cam(purchases     ?? []) as SupplierPurchase[],
+        publications:  cam(publications  ?? []) as Publication[],
+        warranties:    cam(warranties    ?? []) as Warranty[],
+        paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
         initialized: true,
         isLoading: false,
       });
@@ -311,8 +334,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { console.error('addOrder:', error); return; }
     set(s => ({ orders: [...s.orders, toCamel(data) as Order] }));
     // Resincronizar status del cliente tras agregar un pedido (genera deuda)
-    const { clients, orders } = get();
-    await syncOneClientStatus(o.clientId, clients, orders, set);
+    const { clients, orders, payments } = get();
+    await syncOneClientStatus(o.clientId, clients, orders, payments, set);
   },
 
   updateOrder: async (id, o) => {
@@ -328,8 +351,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     }));
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
-      const { clients, orders } = get();
-      await syncOneClientStatus(clientId, clients, orders, set);
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(clientId, clients, orders, payments, set);
     }
   },
 
@@ -341,8 +364,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
     // Resincronizar: eliminar un pedido puede reducir la deuda del cliente
     if (clientId) {
-      const { clients, orders } = get();
-      await syncOneClientStatus(clientId, clients, orders, set);
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(clientId, clients, orders, payments, set);
     }
   },
 
@@ -354,6 +377,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { data, error } = await supabase.from('payments').insert(row).select().single();
     if (error) { console.error('addPayment:', error); return; }
     set(s => ({ payments: [...s.payments, toCamel(data) as Payment] }));
+    // Re-sincronizar estado del cliente: un abono puede sacar de mora
+    const { clients, orders, payments: updatedPayments } = get();
+    await syncOneClientStatus(p.clientId, clients, orders, updatedPayments, set);
   },
 
   updatePayment: async (id, p) => {
@@ -440,11 +466,147 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     set(s => ({ publications: s.publications.filter(x => x.id !== id) }));
   },
 
+  // ── Warranties ────────────────────────────────────────────────────────────
+  warranties: [],
+
+  addWarranty: async (w) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...w, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase.from('warranties').insert(row).select().single();
+    if (error) { console.error('addWarranty:', error); return; }
+    set(s => ({ warranties: [...s.warranties, toCamel(data) as Warranty] }));
+  },
+
+  updateWarranty: async (id, w) => {
+    const row = toSnake({ ...w, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('warranties').update(row).eq('id', id);
+    if (error) { console.error('updateWarranty:', error); return; }
+    set(s => ({ warranties: s.warranties.map(x => x.id === id ? { ...x, ...w, updatedAt: new Date().toISOString() } : x) }));
+  },
+
+  deleteWarranty: async (id) => {
+    const { error } = await supabase.from('warranties').delete().eq('id', id);
+    if (error) { console.error('deleteWarranty:', error); return; }
+    set(s => ({ warranties: s.warranties.filter(x => x.id !== id) }));
+  },
+
+  // ── Payment Proofs ────────────────────────────────────────────────────────
+  paymentProofs: [],
+
+  addPaymentProof: async (p) => {
+    const row = toSnake({ ...p, createdAt: new Date().toISOString() });
+    const { data, error } = await supabase.from('payment_proofs').insert(row).select().single();
+    if (error) { console.error('addPaymentProof:', error); return; }
+    set(s => ({ paymentProofs: [...s.paymentProofs, toCamel(data) as PaymentProof] }));
+  },
+
+  updatePaymentProof: async (id, p) => {
+    const { error } = await supabase.from('payment_proofs').update(toSnake(p)).eq('id', id);
+    if (error) { console.error('updatePaymentProof:', error); return; }
+    set(s => ({ paymentProofs: s.paymentProofs.map(x => x.id === id ? { ...x, ...p } : x) }));
+  },
+
+  deletePaymentProof: async (id) => {
+    const { error } = await supabase.from('payment_proofs').delete().eq('id', id);
+    if (error) { console.error('deletePaymentProof:', error); return; }
+    set(s => ({ paymentProofs: s.paymentProofs.filter(x => x.id !== id) }));
+  },
+
+  confirmPaymentProof: async (id) => {
+    const { paymentProofs, orders, currentUser } = get();
+    const proof = paymentProofs.find(p => p.id === id);
+    if (!proof || !proof.clientId || !proof.amount) return;
+
+    // Pedidos pendientes del cliente, ordenados FIFO
+    const pendingOrders = orders
+      .filter(o =>
+        o.clientId === proof.clientId &&
+        o.status !== 'pagado' &&
+        o.status !== 'cancelado'
+      )
+      .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
+
+    // 1. Registrar pago real (el addPayment ya sincroniza estado del cliente)
+    await get().addPayment({
+      clientId:       proof.clientId,
+      orderIds:       pendingOrders.map(o => o.id),
+      amount:         proof.amount,
+      method:         'transferencia',
+      date:           proof.date ?? new Date().toISOString(),
+      notes:          proof.notes,
+      registeredById: currentUser?.id ?? '',
+    });
+
+    // 2. Distribuir FIFO entre pedidos pendientes
+    let remaining = proof.amount;
+    for (const order of pendingOrders) {
+      if (remaining <= 0) break;
+      const pendiente = order.totalAmount - order.amountPaid;
+      if (pendiente <= 0) continue;
+      const toApply = Math.min(remaining, pendiente);
+      await get().updateOrder(order.id, {
+        amountPaid: order.amountPaid + toApply,
+        status: order.amountPaid + toApply >= order.totalAmount ? 'pagado' : order.status,
+      });
+      remaining -= toApply;
+    }
+
+    // 3. Marcar comprobante como confirmado — solo columnas garantizadas en DB
+    const confirmedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('payment_proofs')
+      .update(toSnake({ status: 'confirmado', reviewedById: currentUser?.id ?? null, updatedAt: confirmedAt }))
+      .eq('id', id);
+    if (!error) {
+      // Intentar guardar confirmed_at si la migración v1.7 ya se ejecutó
+      supabase.from('payment_proofs').update({ confirmed_at: confirmedAt }).eq('id', id).then(() => {});
+    }
+    // Siempre actualizar estado local (funciona aunque falle la columna en DB)
+    set(s => ({
+      paymentProofs: s.paymentProofs.map(p =>
+        p.id === id
+          ? { ...p, status: 'confirmado', reviewedById: currentUser?.id, confirmedAt }
+          : p
+      ),
+    }));
+  },
+
+  rejectPaymentProof: async (id, reason) => {
+    const { currentUser, paymentProofs } = get();
+    const proof = paymentProofs.find(p => p.id === id);
+    const now   = new Date().toISOString();
+
+    // Guardar motivo en notes como fallback hasta que exista la columna rejection_reason
+    const existingNotes  = proof?.notes ?? '';
+    const notesWithReason = reason
+      ? (existingNotes ? `${existingNotes} | Rechazado: ${reason}` : `Rechazado: ${reason}`)
+      : existingNotes;
+
+    const { error } = await supabase
+      .from('payment_proofs')
+      .update(toSnake({ status: 'rechazado', reviewedById: currentUser?.id ?? null, notes: notesWithReason, updatedAt: now }))
+      .eq('id', id);
+    if (!error) {
+      // Intentar guardar rejection_reason si la migración v1.7 ya se ejecutó
+      supabase.from('payment_proofs').update({ rejection_reason: reason || null }).eq('id', id).then(() => {});
+    }
+    set(s => ({
+      paymentProofs: s.paymentProofs.map(p =>
+        p.id === id
+          ? { ...p, status: 'rechazado', reviewedById: currentUser?.id, rejectionReason: reason, notes: notesWithReason }
+          : p
+      ),
+    }));
+  },
+
   // ── Computed helpers ──────────────────────────────────────────────────────
   getClientDebt: (clientId) =>
     get().orders
-      .filter(o => o.clientId === clientId && o.status !== 'cancelado' && o.status !== 'pagado')
-      .reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0),
+      .filter(o =>
+        o.clientId === clientId &&
+        (o.status === 'entregado' || o.status === 'pendiente_pago')
+      )
+      .reduce((sum, o) => sum + Math.max(0, o.totalAmount - o.amountPaid), 0),
 
   getClientTotalPaid: (clientId) =>
     get().payments

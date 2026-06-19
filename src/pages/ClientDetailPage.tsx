@@ -166,8 +166,8 @@ export function ClientDetailPage() {
   const totalPaid    = clientPayments.reduce((s, p) => s + p.amount, 0);
   const totalOrdered = clientOrders.reduce((s, o) => s + o.totalAmount, 0);
 
-  const waMessage     = buildDebtReminderMessage(client, debt, orders);
-  const waInfoMessage = buildDebtInfoMessage(client, debt, clientOrders);
+  const waMessage     = buildDebtReminderMessage(client, debt, orders, payments);
+  const waInfoMessage = buildDebtInfoMessage(client, debt, clientOrders, clientPayments);
 
   const handleCopyMessage = () => {
     navigator.clipboard.writeText(waMessage);

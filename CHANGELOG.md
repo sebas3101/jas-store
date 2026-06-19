@@ -7,6 +7,68 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.6.0] — 2026-06-18 — rama: feature/mejoras-clientes-pedidos-logistica
+
+Mejoras estructurales de negocio: corrección de datos, reglas de deuda, mensajes WhatsApp enriquecidos, logística por proveedor, y dos nuevos módulos (Garantías y Comprobantes).
+
+### Corregido
+
+#### Bloque 1 — Guardado de productos
+- UUID vacío enviado a Supabase (ProductsPage.tsx): responsibleId: '' causaba rechazo silencioso en la columna UUID. handleSave ahora limpia campos opcionales antes de persistir.
+
+#### Bloque 5 — Deuda solo al entregar
+- calculateClientDebt (businessLogic.ts): la deuda solo se suma cuando el pedido está en entregado o pendiente_pago. Los estados tomado, por_recoger y recogido ya no inflan el saldo pendiente.
+- getClientDebt en store/index.ts: actualizado con el mismo filtro.
+
+### Agregado
+
+#### Bloque 2 — Estado de clientes automático + regla de mora 30 días
+- deriveClientStatus: acepta payments: Payment[] opcionales e implementa la regla de mora de 30 días (deuda > 0 sin pago en 30 días = mora).
+- syncOneClientStatus: actualizado para recibir payments; addPayment re-sincroniza estado tras abono.
+- ClientForm: al crear un cliente, status se oculta; se muestra aviso verde explicando el cálculo automático.
+
+#### Bloque 3 — Mensajes WhatsApp enriquecidos
+- buildDebtReminderMessage: muestra fecha y monto del último abono registrado.
+- buildDebtInfoMessage: resumen completo con lista de pedidos pendientes y todos los abonos.
+- buildOrderConfirmationMessage: diferencia crédito (saldo anterior + pedido = nuevo total) vs pago directo (Pagado).
+- buildAvailabilityMessage (nueva): notifica al cliente que su pedido está listo para recoger.
+
+#### Bloque 4 — Talla, color y proveedor en pedidos
+- OrderForm: cada ítem incluye talla y color, pre-llenados desde el producto seleccionado.
+- Sección de proveedor condicional: selector + estado de pago, método y monto al proveedor.
+- Nuevos tipos: SupplierPaymentStatus, SupplierPaymentMethod; campos en Order: supplierId, supplierPaymentStatus, supplierPaymentAmount, supplierPaymentMethod.
+
+#### Bloque 6 y 7 — WhatsApp disponibilidad + info proveedor en detalle de pedido
+- OrderDetailPage.tsx: tarjeta de info del proveedor, banner azul cuando el pedido no cuenta como deuda, modal WhatsApp al cambiar a por_recoger.
+
+#### Bloque 8 y 9 — Rediseño de Recogidas y Entregas
+- Recogidas (DeliveriesPage.tsx): tarjeta ámbar con info del proveedor, pago pendiente destacado en rojo, ítems con talla y color.
+- Entregas: info del cliente, botón Ver en Maps, alerta si sin dirección, ítems con talla y color.
+- Búsqueda filtra también por nombre de proveedor.
+
+#### Bloque 10 — Módulo Garantías
+- src/pages/WarrantiesPage.tsx (nuevo): CRUD de garantías post-entrega. Tipos: devolucion, cambio_talla, cambio_producto, defecto_fabrica, otro. Estados: abierta, en_proceso, resuelta, cerrada.
+- Tipos Warranty, WarrantyType, WarrantyStatus en types/index.ts.
+- Store: warranties con addWarranty, updateWarranty, deleteWarranty (tabla warranties en Supabase).
+
+#### Bloque 11 — Módulo Comprobantes de pago
+- src/pages/PaymentProofPage.tsx (nuevo): registro semi-manual de comprobantes de WhatsApp. Todo comprobante inicia como pendiente_revision.
+- Tipos PaymentProof, PaymentProofStatus en types/index.ts.
+- Store: paymentProofs con addPaymentProof, updatePaymentProof, deletePaymentProof (tabla payment_proofs en Supabase).
+
+#### Bloque 12 — Permisos actualizados
+- PermModule extendido con garantias y comprobantes.
+- usePermissions.ts: ROUTE_MODULE, MODULE_ACTIONS, MODULE_LABELS, ALL_MODULES actualizados.
+- Plantillas jennifer (garantias ver/crear/editar, comprobantes ver/crear), alexis (garantias ver, comprobantes ver), vendedor (garantias ver).
+- Sidebar y MobileNav: íconos ShieldCheck y FileImage añadidos. App.tsx: rutas lazy.
+
+### Pendientes recomendados
+- Migración SQL en Supabase: columnas supplier_id y supplier_payment_* en tabla orders; tablas warranties y payment_proofs.
+- Actualizar tests para nueva firma de deriveClientStatus con payments.
+- Validar visual en dispositivos reales (320-430 px) para Garantías y Comprobantes.
+
+---
+
 ## [1.5.2] — 2026-06-17 — Corrección responsive en clientes y filtros de fecha
 
 ### Corregido

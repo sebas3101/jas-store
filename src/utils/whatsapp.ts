@@ -1,72 +1,161 @@
-import type { Client, Order } from '../types';
+import type { Client, Order, Payment } from '../types';
 import { formatCurrency, formatDate } from './formatters';
+
+// ─── Mensaje de cobro (recordatorio) con último abono ────────────────────────
 
 export const buildDebtReminderMessage = (
   client: Client,
   debt: number,
-  orders: Order[]
+  orders: Order[],
+  payments: Payment[] = [],
 ) => {
   const pendingOrders = orders
-    .filter(
-      (o) =>
-        o.clientId === client.id &&
-        o.status !== 'pagado' &&
-        o.status !== 'cancelado'
+    .filter(o =>
+      o.clientId === client.id &&
+      o.status !== 'pagado' &&
+      o.status !== 'cancelado',
     )
-    .map((o) => o.orderNumber)
+    .map(o => o.orderNumber)
     .join(', ');
 
+  const clientPayments = payments
+    .filter(p => p.clientId === client.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const lastPayment = clientPayments[0];
+
+  const lastPaymentLine = lastPayment
+    ? `Tu último abono fue:\n📅 Fecha: ${formatDate(lastPayment.date)}\n💵 Valor: *${formatCurrency(lastPayment.amount)}*`
+    : 'Aún no registramos abonos para este pedido.';
+
   return (
-    `Hola ${client.name} 😊, te saluda el equipo de *JAS Store*.\n\n` +
-    `Te recordamos que tienes un saldo pendiente de *${formatCurrency(debt)}*` +
+    `Hola ${client.name} 😊, esperamos que estés muy bien.\n\n` +
+    `Te recordamos que tienes un *saldo pendiente de ${formatCurrency(debt)}*` +
     (pendingOrders ? ` correspondiente a tu(s) pedido(s): ${pendingOrders}` : '') +
-    `.\n\nPuedes realizar tu abono por transferencia o efectivo. ` +
-    `Recuerda que manejamos pagos quincenales. 🙏\n\n` +
+    `.\n\n${lastPaymentLine}\n\n` +
+    `Agradecemos que puedas ponerte al día con tu pago o realizar un nuevo abono.\n` +
+    `Puedes hacerlo por transferencia o efectivo. 🙏\n\n` +
     `¡Muchas gracias y que tengas un excelente día!`
   );
 };
 
-// Mensaje con detalle de pedidos pendientes (diferente al recordatorio de cobro)
+// ─── Mensaje de información de deuda con abonos y fechas ─────────────────────
+
 export const buildDebtInfoMessage = (
   client: Client,
   debt: number,
-  orders: Order[]
+  orders: Order[],
+  payments: Payment[] = [],
 ) => {
   const pending = orders
-    .filter(o => o.clientId === client.id && o.status !== 'pagado' && o.status !== 'cancelado')
+    .filter(o =>
+      o.clientId === client.id &&
+      o.status !== 'pagado' &&
+      o.status !== 'cancelado',
+    )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
-  const lines = pending
+  const pedidosLines = pending
     .map(o => {
       const pendiente = o.totalAmount - o.amountPaid;
-      return `• ${o.orderNumber} (${formatDate(o.orderDate)}): *${formatCurrency(pendiente)}* pendiente`;
+      const prods = o.items.map(it => it.productName).join(', ');
+      return `• Pedido ${o.orderNumber} — ${prods}\n  Pendiente: *${formatCurrency(pendiente)}* | Fecha: ${formatDate(o.orderDate)}`;
     })
     .join('\n');
 
+  const clientPayments = payments
+    .filter(p => p.clientId === client.id)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const abonosLines = clientPayments.length > 0
+    ? clientPayments
+        .map(p => `• ${formatDate(p.date)} — *${formatCurrency(p.amount)}*`)
+        .join('\n')
+    : 'Sin abonos registrados.';
+
+  const lastPayment = clientPayments[0];
+
   return (
     `Hola ${client.name} 😊, aquí tienes el resumen de tu cuenta en *JAS Store*:\n\n` +
-    (lines ? `${lines}\n\n` : '') +
-    `*Total deuda: ${formatCurrency(debt)}*\n\n` +
+    `💰 *Saldo pendiente total: ${formatCurrency(debt)}*\n\n` +
+    (pedidosLines
+      ? `📦 *Pedidos pendientes:*\n${pedidosLines}\n\n`
+      : '') +
+    `💵 *Abonos registrados:*\n${abonosLines}\n\n` +
+    (lastPayment
+      ? `Último abono:\n📅 ${formatDate(lastPayment.date)}\n💵 *${formatCurrency(lastPayment.amount)}*\n\n`
+      : '') +
+    `Este mensaje es solo informativo para que tengas claridad sobre tu cuenta.\n` +
     `Cualquier duda estamos a tu disposición. ¡Gracias! 🙏`
   );
 };
 
-// Mensaje de confirmación de nuevo pedido
-export const buildOrderConfirmationMessage = (client: Client, order: Order) => {
+// ─── Confirmación de pedido: diferencia fiado/crédito vs pago directo ────────
+
+export const buildOrderConfirmationMessage = (
+  client: Client,
+  order: Order,
+  previousDebt = 0,
+) => {
   const items = order.items
-    .map(it => `• ${it.quantity}x ${it.productName} — ${formatCurrency(it.salePrice * it.quantity)}`)
+    .map(it => {
+      const size = it.size ? ` (talla ${it.size})` : '';
+      return `• ${it.quantity}x ${it.productName}${size} — ${formatCurrency(it.salePrice * it.quantity)}`;
+    })
     .join('\n');
 
-  const pending = order.totalAmount - order.amountPaid;
+  const isCredit = order.paymentMethod === 'credito' ||
+                   order.paymentMethod === 'fiado'   ||
+                   order.paymentMethod === 'abono';
+  const orderBalance = order.totalAmount - order.amountPaid;
 
+  if (isCredit) {
+    const totalDebt = previousDebt + orderBalance;
+    return (
+      `Hola ${client.name} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
+      `📦 *Pedido ${order.orderNumber}*\n` +
+      (items ? `${items}\n\n` : '') +
+      `💰 Valor del pedido: *${formatCurrency(order.totalAmount)}*\n` +
+      (order.amountPaid > 0 ? `✅ Abono inicial: ${formatCurrency(order.amountPaid)}\n` : '') +
+      `\n📊 *Resumen de saldo:*\n` +
+      (previousDebt > 0 ? `   Saldo anterior: ${formatCurrency(previousDebt)}\n` : '') +
+      `   Nuevo pedido: ${formatCurrency(orderBalance)}\n` +
+      `   *Saldo pendiente total: ${formatCurrency(totalDebt)}*\n\n` +
+      `¡Gracias por tu compra! Nos ponemos en contacto cuando tu pedido esté listo. 🛍️`
+    );
+  }
+
+  // Pago directo
   return (
-    `Hola ${client.name} 😊, tu pedido en *JAS Store* ha sido registrado exitosamente.\n\n` +
+    `Hola ${client.name} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
     `📦 *Pedido ${order.orderNumber}*\n` +
     (items ? `${items}\n\n` : '') +
-    `💰 Total: *${formatCurrency(order.totalAmount)}*\n` +
-    (order.amountPaid > 0 ? `✅ Abono: ${formatCurrency(order.amountPaid)}\n` : '') +
-    (pending > 0 ? `⏳ Saldo pendiente: *${formatCurrency(pending)}*\n` : '✅ Pagado en su totalidad\n') +
-    `\n¡Gracias por tu compra! Nos ponemos en contacto cuando tu pedido esté listo. 🛍️`
+    `💰 Valor del pedido: *${formatCurrency(order.totalAmount)}*\n` +
+    `✅ Estado de pago: *Pagado*\n` +
+    (previousDebt > 0
+      ? `\n⚠️ Saldo pendiente anterior: *${formatCurrency(previousDebt)}*\n`
+      : '') +
+    `\n¡Gracias por tu compra! 🛍️`
+  );
+};
+
+// ─── Mensaje de disponibilidad al pasar de tomado → por recoger ──────────────
+
+export const buildAvailabilityMessage = (client: Client, order: Order) => {
+  const items = order.items
+    .map(it => {
+      const size = it.size ? `\n  📏 Talla: ${it.size}` : '';
+      const color = it.color ? `\n  🎨 Color: ${it.color}` : '';
+      return `• ${it.quantity}x ${it.productName}${size}${color}`;
+    })
+    .join('\n');
+
+  return (
+    `Hola ${client.name} 😊, te confirmamos que tu pedido *#${order.orderNumber}* ya se encuentra disponible.\n\n` +
+    `📦 *Productos:*\n${items || `• ${order.items[0]?.productName ?? 'Pedido'}`}\n\n` +
+    `💰 Valor: *${formatCurrency(order.totalAmount)}*\n\n` +
+    `Vamos a proceder con la recogida de la mercancía. Te estaremos informando cuando esté lista para entrega.\n\n` +
+    `¡Muchas gracias! 🙏`
   );
 };
 
