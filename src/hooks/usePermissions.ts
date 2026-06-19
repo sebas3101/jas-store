@@ -4,20 +4,21 @@ import type { PermModule, PermAction, UserPermissions, ModulePerms } from '../ty
 // ─── Mapeo ruta → módulo ──────────────────────────────────────────────────────
 
 const ROUTE_MODULE: Record<string, PermModule> = {
-  '/':              'dashboard',
-  '/clientes':      'clientes',
-  '/pedidos':       'pedidos',
-  '/pagos':         'pagos',
-  '/productos':     'productos',
-  '/proveedores':   'proveedores',
-  '/entregas':      'entregas',
-  '/publicaciones': 'publicaciones',
-  '/reportes':      'reportes',
-  '/configuracion': 'configuracion',
-  '/finanzas':      'finanzas',
-  '/metas':         'metas',
-  '/garantias':     'garantias',
-  '/comprobantes':  'comprobantes',
+  '/':               'dashboard',
+  '/clientes':       'clientes',
+  '/pedidos':        'pedidos',
+  '/pagos':          'pagos',
+  '/recordatorios':  'clientes',
+  '/productos':      'productos',
+  '/proveedores':    'proveedores',
+  '/entregas':       'entregas',
+  '/publicaciones':  'publicaciones',
+  '/reportes':       'reportes',
+  '/configuracion':  'configuracion',
+  '/finanzas':       'finanzas',
+  '/metas':          'metas',
+  '/garantias':      'garantias',
+  '/comprobantes':   'comprobantes',
 };
 
 // ─── Plantillas de permisos ───────────────────────────────────────────────────
