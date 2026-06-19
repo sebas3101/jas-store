@@ -355,9 +355,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     supabase.from('order_history').insert(toSnake({
       orderId: newOrder.id, userName, action: 'creado',
       changes: { orderNumber: newOrder.orderNumber, total: newOrder.totalAmount },
-    })).then(({ data: hd, error: he }) => {
+    })).select().single().then(({ data: hd, error: he }) => {
       if (he) { console.error('orderHistory insert:', he); return; }
-      if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd[0]) as OrderHistory] }));
+      if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
     });
     // Resincronizar status del cliente tras agregar un pedido (genera deuda)
     const { clients, orders, payments } = get();
@@ -387,9 +387,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (o.status !== undefined && o.status !== prev?.status)   changes.estado = { antes: prev?.status, despues: o.status };
     if (o.amountPaid !== undefined && o.amountPaid !== prev?.amountPaid) changes.abono = o.amountPaid - (prev?.amountPaid ?? 0);
     supabase.from('order_history').insert(toSnake({ orderId: id, userName, action, changes }))
-      .then(({ data: hd, error: he }) => {
+      .select().single().then(({ data: hd, error: he }) => {
         if (he) { console.error('orderHistory insert:', he); return; }
-        if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd[0]) as OrderHistory] }));
+        if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
       });
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
