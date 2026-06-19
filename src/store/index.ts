@@ -149,6 +149,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: suppliers },
         { data: purchases },
         { data: publications },
+        { data: warranties },
+        { data: paymentProofs },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -158,6 +160,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('suppliers').select('*').order('created_at'),
         supabase.from('supplier_purchases').select('*').order('created_at'),
         supabase.from('publications').select('*').order('created_at'),
+        supabase.from('warranties').select('*').order('created_at'),
+        supabase.from('payment_proofs').select('*').order('created_at'),
       ]);
 
       const loadedClients  = cam(clients  ?? []) as Client[];
@@ -174,14 +178,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       );
 
       set({
-        users:        cam(users        ?? []) as User[],
-        clients:      syncedClients,
-        products:     cam(products     ?? []) as Product[],
-        orders:       loadedOrders,
-        payments:     loadedPayments,
-        suppliers:    cam(suppliers    ?? []) as Supplier[],
-        purchases:    cam(purchases    ?? []) as SupplierPurchase[],
-        publications: cam(publications ?? []) as Publication[],
+        users:         cam(users         ?? []) as User[],
+        clients:       syncedClients,
+        products:      cam(products      ?? []) as Product[],
+        orders:        loadedOrders,
+        payments:      loadedPayments,
+        suppliers:     cam(suppliers     ?? []) as Supplier[],
+        purchases:     cam(purchases     ?? []) as SupplierPurchase[],
+        publications:  cam(publications  ?? []) as Publication[],
+        warranties:    cam(warranties    ?? []) as Warranty[],
+        paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
         initialized: true,
         isLoading: false,
       });
