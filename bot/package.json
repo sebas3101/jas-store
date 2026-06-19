@@ -13,7 +13,10 @@
     "axios": "^1.6.0",
     "dotenv": "^16.3.1",
     "node-telegram-bot-api": "^0.66.0",
-    "sharp": "^0.35.1"
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20.9.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

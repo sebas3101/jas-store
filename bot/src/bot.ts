@@ -1,6 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
 import axios from 'axios';
-import sharp from 'sharp';
 import 'dotenv/config';
 import { extractPaymentData, type ExtractedPayment } from './ocr';
 import { searchClients, savePaymentProof, type DbClient } from './db';
@@ -38,10 +37,11 @@ async function downloadBase64(fileId: string): Promise<{ base64: string; mimeTyp
   const file = await bot.getFile(fileId);
   const url  = `https://api.telegram.org/file/bot${TOKEN}/${file.file_path}`;
   const { data } = await axios.get<ArrayBuffer>(url, { responseType: 'arraybuffer' });
-  // Convertir siempre a JPEG: normaliza WebP (WhatsApp), PNG y otros formatos
-  const jpegBuffer = await sharp(Buffer.from(data)).jpeg({ quality: 85 }).toBuffer();
-  console.log(`[IMG] ${file.file_path} → JPEG ${Math.round(jpegBuffer.length / 1024)}KB`);
-  return { base64: jpegBuffer.toString('base64'), mimeType: 'image/jpeg' };
+  const buffer = Buffer.from(data);
+  const ext = file.file_path?.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+  console.log(`[IMG] ${file.file_path} → ${Math.round(buffer.length / 1024)}KB`);
+  return { base64: buffer.toString('base64'), mimeType };
 }
 
 function buildResumen(ocr: ExtractedPayment | null, nombre: string, vinculado: boolean): string {
