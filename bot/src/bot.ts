@@ -63,11 +63,11 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   sessions.delete(chatId);
   const ocr = await session.ocrPromise;
 
-  // No guardar si el OCR no extrajo ningún dato útil
-  if (!ocr || (!ocr.amount && !ocr.reference)) {
+  // No guardar si falta monto, fecha o referencia
+  if (!ocr?.amount || !ocr?.date || !ocr?.reference) {
     await bot.sendMessage(
       chatId,
-      '📷 No pude leer el comprobante con suficiente claridad.\n\nReenvía la imagen procurando que esté bien iluminada, enfocada y sin recortes.',
+      '📷 No pude leer toda la información del comprobante (monto, fecha o referencia).\n\nReenvía la imagen procurando que esté bien iluminada, enfocada y sin recortes.',
     );
     return;
   }
