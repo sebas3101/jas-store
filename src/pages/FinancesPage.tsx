@@ -58,7 +58,10 @@ export function FinancesPage() {
   const totalPurchases = rangePurchases.reduce((s, p) => s + p.cost, 0);
   const totalExpenses  = rangeExpenses.reduce((s, e) => s + e.amount, 0);
   const netBalance     = totalCollected - totalPurchases - totalExpenses;
-  const totalDebt      = rangeOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+  // Solo pedidos entregados/pendiente_pago generan deuda real
+  const totalDebt = rangeOrders
+    .filter(o => o.status === 'entregado' || o.status === 'pendiente_pago')
+    .reduce((s, o) => s + Math.max(0, o.totalAmount - o.amountPaid), 0);
 
   // Payment method breakdown
   const byMethod = rangePayments.reduce<Record<string, number>>((acc, p) => {

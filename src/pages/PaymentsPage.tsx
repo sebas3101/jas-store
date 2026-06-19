@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download } from 'lucide-react';
 import { exportPagos } from '../utils/exportExcel';
-
+import { distributeFifo } from '../utils/businessLogic';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -18,7 +18,7 @@ import type { PaymentMethod } from '../types';
 
 // ─── Formulario de pago — fuera del padre para evitar re-mount en cada render
 function PaymentForm({ onClose }: { onClose: () => void }) {
-  const { clients, orders, currentUser, addPayment, updateOrder, updateClient } = useAppStore();
+  const { clients, orders, currentUser, addPayment, updateOrder } = useAppStore();
 
   const [clientId, setClientId] = useState('');
   const [amount, setAmount]     = useState(0);
@@ -52,22 +52,9 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
     });
 
     // Distribuir automáticamente en FIFO entre todos los pedidos pendientes
-    let remaining = amount;
-    for (const order of pendingOrders) {
-      if (remaining <= 0) break;
-      const pendiente = order.totalAmount - order.amountPaid;
-      if (pendiente <= 0) continue;
-      const toApply = Math.min(remaining, pendiente);
-      const newPaid = order.amountPaid + toApply;
-      updateOrder(order.id, {
-        amountPaid: newPaid,
-        status: newPaid >= order.totalAmount ? 'pagado' : order.status,
-      });
-      remaining -= toApply;
-    }
-
-    if (clientId && deudaTotal - amount <= 0) {
-      updateClient(clientId, { status: 'al_dia' });
+    const aplicaciones = distributeFifo(amount, pendingOrders);
+    for (const { orderId, newAmountPaid, newStatus } of aplicaciones) {
+      updateOrder(orderId, { amountPaid: newAmountPaid, status: newStatus });
     }
 
     onClose();

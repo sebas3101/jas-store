@@ -2,6 +2,8 @@ import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppStore } from './store';
 import { AppLayout } from './components/layout/AppLayout';
+import { usePermissions } from './hooks/usePermissions';
+import type { PermModule } from './types';
 // LoginPage carga de forma estática — es la primera pantalla, debe estar disponible de inmediato
 import { LoginPage } from './pages/LoginPage';
 
@@ -36,6 +38,13 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (currentUser.requirePasswordChange && pathname !== '/cambiar-contrasena') {
     return <Navigate to="/cambiar-contrasena" replace />;
   }
+  return <>{children}</>;
+}
+
+// Protege rutas por módulo: redirige al inicio si el usuario no tiene permiso 'ver'
+function PermissionRoute({ children, module }: { children: React.ReactNode; module: PermModule }) {
+  const { can } = usePermissions();
+  if (!can(module, 'ver')) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -88,25 +97,25 @@ export default function App() {
               </PrivateRoute>
             }
           >
-            <Route index                  element={<DashboardPage />} />
-            <Route path="clientes"          element={<ClientsPage />} />
-            <Route path="clientes/importar" element={<ContactImportPage />} />
-            <Route path="clientes/:id"      element={<ClientDetailPage />} />
-            <Route path="pedidos"         element={<OrdersPage />} />
-            <Route path="pedidos/:id"     element={<OrderDetailPage />} />
-            <Route path="pagos"           element={<PaymentsPage />} />
-            <Route path="productos"       element={<ProductsPage />} />
-            <Route path="proveedores"     element={<SuppliersPage />} />
-            <Route path="entregas"        element={<DeliveriesPage />} />
-            <Route path="publicaciones"   element={<PublicationsPage />} />
-            <Route path="reportes"        element={<ReportsPage />} />
-            <Route path="finanzas"        element={<FinancesPage />} />
-            <Route path="metas"           element={<GoalsPage />} />
-            <Route path="configuracion"   element={<SettingsPage />} />
-            <Route path="garantias"       element={<WarrantiesPage />} />
-            <Route path="comprobantes"    element={<PaymentProofPage />} />
-            <Route path="recordatorios"      element={<RecordatoriosPage />} />
-            <Route path="gastos"             element={<ExpensesPage />} />
+            <Route index element={<DashboardPage />} />
+            <Route path="clientes"          element={<PermissionRoute module="clientes"><ClientsPage /></PermissionRoute>} />
+            <Route path="clientes/importar" element={<PermissionRoute module="clientes"><ContactImportPage /></PermissionRoute>} />
+            <Route path="clientes/:id"      element={<PermissionRoute module="clientes"><ClientDetailPage /></PermissionRoute>} />
+            <Route path="pedidos"           element={<PermissionRoute module="pedidos"><OrdersPage /></PermissionRoute>} />
+            <Route path="pedidos/:id"       element={<PermissionRoute module="pedidos"><OrderDetailPage /></PermissionRoute>} />
+            <Route path="pagos"             element={<PermissionRoute module="pagos"><PaymentsPage /></PermissionRoute>} />
+            <Route path="productos"         element={<PermissionRoute module="productos"><ProductsPage /></PermissionRoute>} />
+            <Route path="proveedores"       element={<PermissionRoute module="proveedores"><SuppliersPage /></PermissionRoute>} />
+            <Route path="entregas"          element={<PermissionRoute module="entregas"><DeliveriesPage /></PermissionRoute>} />
+            <Route path="publicaciones"     element={<PermissionRoute module="publicaciones"><PublicationsPage /></PermissionRoute>} />
+            <Route path="reportes"          element={<PermissionRoute module="reportes"><ReportsPage /></PermissionRoute>} />
+            <Route path="finanzas"          element={<PermissionRoute module="finanzas"><FinancesPage /></PermissionRoute>} />
+            <Route path="metas"             element={<PermissionRoute module="metas"><GoalsPage /></PermissionRoute>} />
+            <Route path="configuracion"     element={<PermissionRoute module="configuracion"><SettingsPage /></PermissionRoute>} />
+            <Route path="garantias"         element={<PermissionRoute module="garantias"><WarrantiesPage /></PermissionRoute>} />
+            <Route path="comprobantes"      element={<PermissionRoute module="comprobantes"><PaymentProofPage /></PermissionRoute>} />
+            <Route path="recordatorios"     element={<PermissionRoute module="clientes"><RecordatoriosPage /></PermissionRoute>} />
+            <Route path="gastos"            element={<PermissionRoute module="gastos"><ExpensesPage /></PermissionRoute>} />
             <Route path="cambiar-contrasena" element={<ChangePasswordPage />} />
             <Route path="*"                  element={<Navigate to="/" replace />} />
           </Route>

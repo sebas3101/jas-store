@@ -9,6 +9,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useAppStore } from '../store';
+import { calculateClientDebt } from '../utils/businessLogic';
 import { useGoalsStore } from '../store/goals';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
@@ -91,12 +92,7 @@ export function DashboardPage() {
 
   // ── Top deudores ─────────────────────────────────────────────────────────────
   const topDeudores = clients
-    .map(c => {
-      const debt = orders
-        .filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status))
-        .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-      return { ...c, debt };
-    })
+    .map(c => ({ ...c, debt: calculateClientDebt(c.id, orders) }))
     .filter(c => c.debt > 0)
     .sort((a, b) => b.debt - a.debt)
     .slice(0, 5);

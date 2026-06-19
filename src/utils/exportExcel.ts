@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import type { Client, Order, Payment } from '../types';
 import { formatDate } from './formatters';
+import { calculateClientDebt } from './businessLogic';
 
 function download(wb: XLSX.WorkBook, filename: string) {
   XLSX.writeFile(wb, `${filename}_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -47,9 +48,7 @@ export function exportPedidos(orders: Order[], clients: Client[]) {
 
 export function exportClientes(clients: Client[], orders: Order[], _payments: Payment[]) {
   const rows = clients.map(c => {
-    const deuda = orders
-      .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
-      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+    const deuda = calculateClientDebt(c.id, orders);
     const totalCompras = orders
       .filter(o => o.clientId === c.id && o.status !== 'cancelado')
       .reduce((s, o) => s + o.totalAmount, 0);

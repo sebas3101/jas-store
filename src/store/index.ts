@@ -12,8 +12,13 @@ import { deriveClientStatus } from '../utils/businessLogic';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const cam = (rows: any[]) => rows.map(toCamel) as any[];
 
-const genOrderNumber = (orders: Order[]) =>
-  `JAS-${String(orders.length + 1).padStart(3, '0')}`;
+const genOrderNumber = (orders: Order[]) => {
+  const maxNum = orders.reduce((max, o) => {
+    const n = parseInt(o.orderNumber?.replace('JAS-', '') ?? '0', 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+  return `JAS-${String(maxNum + 1).padStart(3, '0')}`;
+};
 
 
 // Sincroniza el status de UN cliente contra Supabase si cambió.
@@ -239,8 +244,10 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     });
     if (data) {
       const user = toCamel(data as Record<string, unknown>) as User;
-      localStorage.setItem('jas_user', JSON.stringify(user));
-      set({ currentUser: user });
+      // Nunca guardar la contraseña en el cliente
+      const { password: _pw, ...safeUser } = user as User & { password?: string };
+      localStorage.setItem('jas_user', JSON.stringify(safeUser));
+      set({ currentUser: safeUser as User });
       return true;
     }
     return false;
