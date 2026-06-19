@@ -26,7 +26,7 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
   ).join('');
   const balance = order.totalAmount - order.amountPaid;
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo ${order.orderNumber}</title>
-  <style>body{font-family:sans-serif;font-size:13px;color:#111;margin:0;padding:24px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;color:#6b7280;padding:6px 8px;border-bottom:2px solid #e5e7eb}td{font-size:13px}.footer{margin-top:24px;font-size:11px;color:#9ca3af;text-align:center}@media print{body{padding:12px}}</style>
+  <style>body{font-family:sans-serif;font-size:13px;color:#111;margin:0;padding:24px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse}th{text-align:left;font-size:11px;color:#6b7280;padding:6px 8px;border-bottom:2px solid #e5e7eb}td{font-size:13px}.footer{margin-top:24px;font-size:11px;color:#9ca3af;text-align:center}.no-print{text-align:center;margin-top:20px}@media print{body{padding:12px}.no-print{display:none}}</style>
   </head><body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px">
     <div><h1 style="color:#7c3aed">JAS Store</h1><p style="color:#6b7280;margin:4px 0 0">Recibo de pedido</p></div>
@@ -45,12 +45,14 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
     <div style="display:flex;justify-content:space-between"><span style="font-weight:700">Saldo pendiente</span><span style="font-weight:700;color:${balance > 0 ? '#ef4444' : '#10b981'}">${formatCurrency(balance)}</span></div>
   </div>
   <p class="footer">Gracias por su compra — JAS Store</p>
+  <div class="no-print"><button onclick="window.close()" style="margin-top:8px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">✕ Cerrar ventana</button></div>
   </body></html>`;
   const win = window.open('', '_blank', 'width=600,height=700');
   if (!win) return;
   win.document.write(html);
   win.document.close();
   win.focus();
+  win.onafterprint = () => win.close();
   setTimeout(() => { win.print(); }, 400);
 }
 

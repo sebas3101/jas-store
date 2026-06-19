@@ -87,7 +87,8 @@ function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments
     .balance .label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.5px}
     .balance .amount{font-size:24px;font-weight:700;color:${deuda > 0 ? '#dc2626' : '#16a34a'};margin-top:4px}
     .footer{margin-top:20px;text-align:center;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px}
-    @media print{body{padding:10px}}
+    @media print{body{padding:10px}.no-print{display:none}}
+    .no-print{text-align:center;margin-top:16px}
   </style>
 </head>
 <body>
@@ -144,6 +145,7 @@ function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments
   <div class="footer">
     Documento generado por JAS Store · ${today} · Confidencial
   </div>
+  <div class="no-print"><button onclick="window.close()" style="margin-top:8px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">✕ Cerrar ventana</button></div>
 </body>
 </html>`;
 
@@ -151,6 +153,7 @@ function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments
   if (!w) { alert('Permite ventanas emergentes para imprimir el estado de cuenta.'); return; }
   w.document.write(html);
   w.document.close();
+  w.onafterprint = () => w.close();
   setTimeout(() => { w.focus(); w.print(); }, 400);
 }
 
