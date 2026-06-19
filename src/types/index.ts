@@ -96,6 +96,15 @@ export interface Expense {
   updatedAt: string;
 }
 
+export interface OrderHistory {
+  id:        string;
+  orderId:   string;
+  userName:  string;
+  action:    string;
+  changes:   Record<string, unknown> | null;
+  createdAt: string;
+}
+
 export interface Client {
   id: string;
   name: string;

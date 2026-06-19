@@ -3,7 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
-  Warranty, PaymentProof, Expense,
+  Warranty, PaymentProof, Expense, OrderHistory,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
@@ -127,6 +127,10 @@ interface AppStore {
   updateExpense: (id: string, e: Partial<Expense>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
 
+  // Order history
+  orderHistory: OrderHistory[];
+  getOrderHistory: (orderId: string) => OrderHistory[];
+
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
   getClientTotalPaid:(clientId: string) => number;
@@ -158,6 +162,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: warranties },
         { data: paymentProofs },
         { data: expenses },
+        { data: orderHistory },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -170,6 +175,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('warranties').select('*').order('created_at'),
         supabase.from('payment_proofs').select('*').order('created_at'),
         supabase.from('expenses').select('*').order('created_at'),
+        supabase.from('order_history').select('*').order('created_at'),
       ]);
 
       const loadedClients  = cam(clients  ?? []) as Client[];
@@ -197,6 +203,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         warranties:    cam(warranties    ?? []) as Warranty[],
         paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
         expenses:      cam(expenses      ?? []) as Expense[],
+        orderHistory:  cam(orderHistory  ?? []) as OrderHistory[],
         initialized: true,
         isLoading: false,
       });
@@ -341,7 +348,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const row = toSnake({ ...o, orderNumber, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('orders').insert(row).select().single();
     if (error) { console.error('addOrder:', error); return; }
-    set(s => ({ orders: [...s.orders, toCamel(data) as Order] }));
+    const newOrder = toCamel(data) as Order;
+    set(s => ({ orders: [...s.orders, newOrder] }));
+    // Log history
+    const userName = get().currentUser?.name ?? 'sistema';
+    supabase.from('order_history').insert(toSnake({
+      orderId: newOrder.id, userName, action: 'creado',
+      changes: { orderNumber: newOrder.orderNumber, total: newOrder.totalAmount },
+    })).then(({ data: hd, error: he }) => {
+      if (he) { console.error('orderHistory insert:', he); return; }
+      if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd[0]) as OrderHistory] }));
+    });
     // Resincronizar status del cliente tras agregar un pedido (genera deuda)
     const { clients, orders, payments } = get();
     await syncOneClientStatus(o.clientId, clients, orders, payments, set);
@@ -349,7 +366,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   updateOrder: async (id, o) => {
     // Obtener clientId antes de actualizar para la sincronización
-    const clientId = get().orders.find(x => x.id === id)?.clientId;
+    const prev = get().orders.find(x => x.id === id);
+    const clientId = prev?.clientId;
     const row = toSnake({ ...o, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('orders').update(row).eq('id', id);
     if (error) { console.error('updateOrder:', error); return; }
@@ -358,6 +376,21 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
       ),
     }));
+    // Log history
+    const userName = get().currentUser?.name ?? 'sistema';
+    const action = o.status !== undefined && o.status !== prev?.status
+      ? 'estado_cambiado'
+      : o.amountPaid !== undefined
+        ? 'abono_registrado'
+        : 'actualizado';
+    const changes: Record<string, unknown> = {};
+    if (o.status !== undefined && o.status !== prev?.status)   changes.estado = { antes: prev?.status, despues: o.status };
+    if (o.amountPaid !== undefined && o.amountPaid !== prev?.amountPaid) changes.abono = o.amountPaid - (prev?.amountPaid ?? 0);
+    supabase.from('order_history').insert(toSnake({ orderId: id, userName, action, changes }))
+      .then(({ data: hd, error: he }) => {
+        if (he) { console.error('orderHistory insert:', he); return; }
+        if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd[0]) as OrderHistory] }));
+      });
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
       const { clients, orders, payments } = get();
@@ -607,6 +640,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       ),
     }));
   },
+
+  // ── Order history ─────────────────────────────────────────────────────────
+  orderHistory: [],
+  getOrderHistory: (orderId) => get().orderHistory.filter(h => h.orderId === orderId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
 
   // ── Expenses ──────────────────────────────────────────────────────────────
   expenses: [],

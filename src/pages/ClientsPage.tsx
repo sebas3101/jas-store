@@ -33,9 +33,11 @@ const INDICATOR: Record<ClientStatus, string> = {
 function ClientForm({
   initial,
   onSave,
+  existingClients = [],
 }: {
   initial?: Partial<Client>;
   onSave: (c: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  existingClients?: Client[];
 }) {
   const isEditing = !!initial?.id;
   const [form, setForm] = useState<Omit<Client, 'id' | 'createdAt' | 'updatedAt'>>({
@@ -52,9 +54,14 @@ function ClientForm({
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
+  const normalizedPhone = form.phone.replace(/[\s\-\(\)]/g, '');
+  const phoneDuplicate = existingClients.find(
+    c => c.id !== initial?.id && c.phone?.replace(/[\s\-\(\)]/g, '') === normalizedPhone && normalizedPhone.length >= 7
+  );
+
   return (
     <form
-      onSubmit={e => { e.preventDefault(); onSave(form); }}
+      onSubmit={e => { e.preventDefault(); if (!phoneDuplicate) onSave(form); }}
       className="space-y-4"
     >
       <div className="grid grid-cols-2 gap-3">
@@ -65,8 +72,14 @@ function ClientForm({
         </div>
         <div className={isEditing ? '' : 'col-span-2'}>
           <label className="label">Celular *</label>
-          <input type="tel" inputMode="numeric" className="input-field" required value={form.phone}
-            onChange={e => set('phone', e.target.value)} placeholder="3101234567" />
+          <input type="tel" inputMode="numeric" required value={form.phone}
+            onChange={e => set('phone', e.target.value)} placeholder="3101234567"
+            className={`input-field ${phoneDuplicate ? 'border-red-400 focus:ring-red-300' : ''}`} />
+          {phoneDuplicate && (
+            <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+              <AlertTriangle size={11} /> Este número ya pertenece a <span className="font-semibold">{phoneDuplicate.name}</span>
+            </p>
+          )}
         </div>
         {/* Estado solo visible al editar — al crear se calcula automáticamente */}
         {isEditing && (
@@ -114,7 +127,7 @@ function ClientForm({
           </label>
         </div>
       </div>
-      <button type="submit" className="btn-primary w-full justify-center">
+      <button type="submit" disabled={!!phoneDuplicate} className="btn-primary w-full justify-center">
         Guardar cliente
       </button>
     </form>
@@ -411,6 +424,7 @@ export function ClientsPage() {
         <ClientForm
           initial={editing ?? undefined}
           onSave={handleSave}
+          existingClients={clients}
         />
       </Modal>
     </div>

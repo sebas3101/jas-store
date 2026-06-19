@@ -1,6 +1,8 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store, Printer } from 'lucide-react';
+import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store, Printer, History } from 'lucide-react';
 import { useState } from 'react';
+import { format, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -59,7 +61,7 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, clients, users, suppliers, updateOrder, deleteOrder } = useAppStore();
+  const { orders, clients, users, suppliers, updateOrder, deleteOrder, getOrderHistory } = useAppStore();
 
   const order = orders.find(o => o.id === id);
   const [statusModal, setStatusModal]     = useState(false);
@@ -349,6 +351,66 @@ export function OrderDetailPage() {
           </div>
         </Modal>
       )}
+
+      {/* Historial de cambios */}
+      {(() => {
+        const history = getOrderHistory(order.id);
+        if (history.length === 0) return null;
+        const actionLabel: Record<string, { label: string; color: string }> = {
+          creado:           { label: 'Pedido creado',       color: 'bg-primary-100 text-primary-700' },
+          estado_cambiado:  { label: 'Estado cambiado',     color: 'bg-amber-100 text-amber-700' },
+          abono_registrado: { label: 'Abono registrado',    color: 'bg-emerald-100 text-emerald-700' },
+          actualizado:      { label: 'Pedido actualizado',  color: 'bg-gray-100 text-gray-600' },
+        };
+        return (
+          <div className="card !p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <History size={15} className="text-gray-400" />
+              <h2 className="section-title">Historial de cambios</h2>
+            </div>
+            <div className="space-y-3">
+              {history.map((h, i) => {
+                const info = actionLabel[h.action] ?? { label: h.action, color: 'bg-gray-100 text-gray-600' };
+                return (
+                  <div key={h.id} className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-gray-300 mt-1.5 flex-shrink-0" />
+                      {i < history.length - 1 && <div className="w-px flex-1 bg-gray-100 mt-1" />}
+                    </div>
+                    <div className="pb-3 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${info.color}`}>
+                          {info.label}
+                        </span>
+                        <span className="text-[10px] text-gray-400">por <span className="font-medium">{h.userName}</span></span>
+                      </div>
+                      {h.changes && Object.keys(h.changes).length > 0 && (() => {
+                        const ch = h.changes as Record<string, unknown>;
+                        return (
+                          <div className="mt-1 text-xs text-gray-500">
+                            {!!ch.estado && (
+                              <p>Estado: <span className="line-through text-gray-400">{String((ch.estado as {antes:string}).antes)}</span> → <span className="font-medium text-gray-700">{String((ch.estado as {despues:string}).despues)}</span></p>
+                            )}
+                            {ch.abono != null && (
+                              <p>Abono: <span className="font-medium text-emerald-700">+{formatCurrency(Number(ch.abono))}</span></p>
+                            )}
+                            {!!ch.orderNumber && (
+                              <p>Pedido <span className="font-medium">{String(ch.orderNumber)}</span> — {formatCurrency(Number(ch.total))}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {format(parseISO(h.createdAt), "d MMM yyyy, h:mm a", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       <ConfirmDialog
         isOpen={deleteDialog}
