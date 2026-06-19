@@ -26,6 +26,7 @@ import {
   clientStatusLabel,
 } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, openWhatsApp } from '../utils/whatsapp';
+import { distributeFifo } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { Client, Order, Payment, PaymentMethod } from '../types';
 
@@ -165,22 +166,28 @@ function ClientPaymentForm({
   clientId: string;
   onClose: () => void;
 }) {
-  const { orders, currentUser, addPayment, updateOrder, updateClient } = useAppStore();
+  const { orders, clients, currentUser, addPayment, updateOrder } = useAppStore();
 
-  // Pedidos pendientes de este cliente, del más antiguo al más nuevo (FIFO)
   const pendingOrders = orders
     .filter(o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado')
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
   const debt = pendingOrders.reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
 
-  const [amount, setAmount] = useState<number>(debt > 0 ? Math.round(debt) : 0);
-  const [method, setMethod] = useState<PaymentMethod>('transferencia');
-  const [notes, setNotes]   = useState('');
-  const [date, setDate]     = useState(new Date().toISOString().slice(0, 10));
+  const [amount, setAmount]     = useState<number>(debt > 0 ? Math.round(debt) : 0);
+  const [method, setMethod]     = useState<PaymentMethod>('transferencia');
+  const [notes, setNotes]       = useState('');
+  const [date, setDate]         = useState(new Date().toISOString().slice(0, 10));
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  const clientName = clients.find(c => c.id === clientId)?.name ?? '';
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!confirming) { setConfirming(true); return; }
+    if (submitting) return;
+    setSubmitting(true);
     addPayment({
       clientId,
       orderIds: pendingOrders.map(o => o.id),
@@ -190,27 +197,10 @@ function ClientPaymentForm({
       notes,
       registeredById: currentUser?.id ?? 'u1',
     });
-
-    // Distribuir el abono entre pedidos pendientes (FIFO: más antiguo primero)
-    let remaining = amount;
-    for (const order of pendingOrders) {
-      if (remaining <= 0) break;
-      const pendiente = order.totalAmount - order.amountPaid;
-      if (pendiente <= 0) continue;
-      const toApply = Math.min(remaining, pendiente);
-      const newPaid = order.amountPaid + toApply;
-      updateOrder(order.id, {
-        amountPaid: newPaid,
-        status: newPaid >= order.totalAmount ? 'pagado' : order.status,
-      });
-      remaining -= toApply;
+    const aplicaciones = distributeFifo(amount, pendingOrders);
+    for (const { orderId, newAmountPaid, newStatus } of aplicaciones) {
+      updateOrder(orderId, { amountPaid: newAmountPaid, status: newStatus });
     }
-
-    // Actualizar estado del cliente si quedó al día
-    if (debt - amount <= 0) {
-      updateClient(clientId, { status: 'al_dia' });
-    }
-
     onClose();
   };
 
@@ -255,9 +245,28 @@ function ClientPaymentForm({
           ))}
         </div>
       )}
-      <button type="submit" className="btn-primary w-full justify-center">
-        Registrar abono
-      </button>
+      {confirming ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+          <p className="text-sm font-semibold text-amber-800">
+            ¿Confirmar abono de <span className="text-amber-900">{formatCurrency(amount)}</span>?
+          </p>
+          <p className="text-xs text-amber-700">
+            Se distribuirá FIFO en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''} de <strong>{clientName}</strong>.
+          </p>
+          <div className="flex gap-2">
+            <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center disabled:opacity-50">
+              {submitting ? 'Guardando...' : 'Sí, registrar'}
+            </button>
+            <button type="button" onClick={() => setConfirming(false)} className="btn-ghost flex-1 justify-center">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="submit" className="btn-primary w-full justify-center">
+          Registrar abono
+        </button>
+      )}
     </form>
   );
 }
@@ -364,6 +373,9 @@ export function ClientDetailPage() {
             >
               <FileText size={14} /> Estado de cuenta
             </button>
+            <Link to={`/pedidos?cliente=${client.id}`} className="btn-ghost text-xs">
+              <ShoppingBag size={14} /> Nuevo pedido
+            </Link>
             <button onClick={() => setPayModal(true)} className="btn-primary">
               <CreditCard size={16} /> Registrar abono
             </button>

@@ -20,11 +20,12 @@ import type { PaymentMethod } from '../types';
 function PaymentForm({ onClose }: { onClose: () => void }) {
   const { clients, orders, currentUser, addPayment, updateOrder } = useAppStore();
 
-  const [clientId, setClientId] = useState('');
-  const [amount, setAmount]     = useState(0);
-  const [method, setMethod]     = useState<PaymentMethod>('transferencia');
-  const [date, setDate]         = useState(new Date().toISOString().slice(0, 10));
-  const [notes, setNotes]       = useState('');
+  const [clientId, setClientId]     = useState('');
+  const [clientSearch, setClientSearch] = useState('');
+  const [amount, setAmount]         = useState(0);
+  const [method, setMethod]         = useState<PaymentMethod>('transferencia');
+  const [date, setDate]             = useState(new Date().toISOString().slice(0, 10));
+  const [notes, setNotes]           = useState('');
 
   // Pedidos pendientes del cliente seleccionado, ordenados FIFO
   const pendingOrders = orders
@@ -66,13 +67,38 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
     <form onSubmit={submit} className="space-y-4">
       <div>
         <label className="label">Cliente *</label>
-        <select className="input-field" required value={clientId}
-          onChange={e => setClientId(e.target.value)}>
-          <option value="">Seleccionar cliente...</option>
-          {clients.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+        <input
+          className="input-field mb-1"
+          placeholder="Buscar cliente..."
+          value={clientSearch}
+          onChange={e => { setClientSearch(e.target.value); setClientId(''); }}
+        />
+        {clientSearch && !clientId && (
+          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm max-h-48 overflow-y-auto">
+            {clients
+              .filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase()) || (c.phone ?? '').includes(clientSearch))
+              .slice(0, 8)
+              .map(c => (
+                <button key={c.id} type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                  onClick={() => { setClientId(c.id); setClientSearch(c.name); }}>
+                  {c.name}
+                  {c.phone && <span className="text-xs text-gray-400 ml-2">{c.phone}</span>}
+                </button>
+              ))
+            }
+            {clients.filter(c => c.name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
+              <p className="text-sm text-gray-400 px-3 py-2">Sin resultados</p>
+            )}
+          </div>
+        )}
+        {clientId && (
+          <button type="button" className="text-xs text-gray-400 hover:text-gray-600 mt-0.5"
+            onClick={() => { setClientId(''); setClientSearch(''); }}>
+            × Cambiar cliente
+          </button>
+        )}
+        <input type="hidden" required value={clientId} onChange={() => {}} />
       </div>
       {clientId && (
         <div className={`rounded-xl px-4 py-3 text-sm ${

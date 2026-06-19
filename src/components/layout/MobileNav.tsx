@@ -1,98 +1,136 @@
-import { NavLink } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Users,
-  ShoppingBag,
-  CreditCard,
-  Package,
-  Truck,
-  Megaphone,
-  BarChart3,
-  Settings,
-  Store,
-  TrendingUp,
-  Target,
-  ShieldCheck,
-  FileImage,
-  Bell,
-  Receipt,
+  LayoutDashboard, Users, ShoppingBag, CreditCard, Package,
+  Truck, Megaphone, BarChart3, Settings, Store, TrendingUp,
+  Target, ShieldCheck, FileImage, Bell, Receipt, MoreHorizontal, X,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAppStore } from '../../store';
+import { calculateClientDebt } from '../../utils/businessLogic';
 
-const ALL_NAV_ITEMS = [
-  { to: '/',               icon: LayoutDashboard, label: 'Inicio'    },
-  { to: '/clientes',       icon: Users,           label: 'Clientes'  },
-  { to: '/pedidos',        icon: ShoppingBag,     label: 'Pedidos'   },
-  { to: '/pagos',          icon: CreditCard,      label: 'Pagos'     },
-  { to: '/recordatorios',  icon: Bell,            label: 'Cobros'    },
-  { to: '/productos',      icon: Package,         label: 'Productos' },
-  { to: '/proveedores',    icon: Store,           label: 'Prov.'     },
-  { to: '/entregas',       icon: Truck,           label: 'Entregas'  },
-  { to: '/garantias',      icon: ShieldCheck,     label: 'Garantías' },
-  { to: '/comprobantes',   icon: FileImage,       label: 'Comprobant'},
-  { to: '/publicaciones',  icon: Megaphone,       label: 'Publi.'    },
-  { to: '/reportes',       icon: BarChart3,       label: 'Reportes'  },
-  { to: '/finanzas',       icon: TrendingUp,      label: 'Finanzas'  },
-  { to: '/gastos',         icon: Receipt,         label: 'Gastos'    },
-  { to: '/metas',          icon: Target,          label: 'Metas'     },
-  { to: '/configuracion',  icon: Settings,        label: 'Config.'   },
+const PINNED_ITEMS = [
+  { to: '/',              icon: LayoutDashboard, label: 'Inicio'   },
+  { to: '/clientes',     icon: Users,           label: 'Clientes' },
+  { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'  },
+  { to: '/pagos',        icon: CreditCard,      label: 'Pagos'    },
+  { to: '/recordatorios',icon: Bell,            label: 'Cobros'   },
+];
+
+const MORE_ITEMS = [
+  { to: '/productos',     icon: Package,    label: 'Productos'    },
+  { to: '/proveedores',   icon: Store,      label: 'Proveedores'  },
+  { to: '/entregas',      icon: Truck,      label: 'Entregas'     },
+  { to: '/garantias',     icon: ShieldCheck,label: 'Garantías'    },
+  { to: '/comprobantes',  icon: FileImage,  label: 'Comprobantes' },
+  { to: '/publicaciones', icon: Megaphone,  label: 'Publicaciones'},
+  { to: '/reportes',      icon: BarChart3,  label: 'Reportes'     },
+  { to: '/finanzas',      icon: TrendingUp, label: 'Finanzas'     },
+  { to: '/gastos',        icon: Receipt,    label: 'Gastos'       },
+  { to: '/metas',         icon: Target,     label: 'Metas'        },
+  { to: '/configuracion', icon: Settings,   label: 'Configuración'},
 ];
 
 export function MobileNav() {
   const { filterNavItems } = usePermissions();
   const { clients, orders } = useAppStore();
-  const navItems = filterNavItems(ALL_NAV_ITEMS);
+  const { pathname } = useLocation();
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  const debtorCount = clients.filter(c => {
-    const debt = orders
-      .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
-      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
-    return debt > 0;
-  }).length;
+  const debtorCount = clients.filter(c => calculateClientDebt(c.id, orders) > 0).length;
+
+  const allowedPinned = filterNavItems(PINNED_ITEMS);
+  const allowedMore   = filterNavItems(MORE_ITEMS);
+  const moreIsActive  = allowedMore.some(item => pathname.startsWith(item.to));
 
   return (
-    <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-    >
-      <div className="flex overflow-x-auto scrollbar-hide">
-        {navItems.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              `relative flex flex-col items-center justify-center min-w-[60px] flex-shrink-0 py-2 px-1 text-[11px] font-medium transition-colors ${
-                isActive
-                  ? 'text-primary-600'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <div
-                  className={`relative p-1.5 rounded-xl mb-0.5 transition-colors ${
-                    isActive ? 'bg-primary-50' : ''
-                  }`}
+    <>
+      <nav
+        className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <div className="flex">
+          {allowedPinned.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/'}
+              className={({ isActive }) =>
+                `relative flex flex-col items-center justify-center flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
+                  isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <div className={`relative p-1.5 rounded-xl mb-0.5 transition-colors ${isActive ? 'bg-primary-50' : ''}`}>
+                    <Icon size={19} strokeWidth={isActive ? 2.5 : 1.8} />
+                    {to === '/recordatorios' && debtorCount > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                        {debtorCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="truncate w-full text-center">{label}</span>
+                  {isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600" />}
+                </>
+              )}
+            </NavLink>
+          ))}
+
+          {allowedMore.length > 0 && (
+            <button
+              onClick={() => setMoreOpen(v => !v)}
+              className={`relative flex flex-col items-center justify-center flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
+                moreIsActive || moreOpen ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl mb-0.5 ${moreIsActive || moreOpen ? 'bg-primary-50' : ''}`}>
+                <MoreHorizontal size={19} strokeWidth={moreOpen ? 2.5 : 1.8} />
+              </div>
+              <span>Más</span>
+              {moreIsActive && !moreOpen && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600" />}
+            </button>
+          )}
+        </div>
+      </nav>
+
+      {/* Bottom sheet "Más" */}
+      {moreOpen && (
+        <>
+          <div className="lg:hidden fixed inset-0 z-50 bg-black/40" onClick={() => setMoreOpen(false)} />
+          <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-2xl shadow-2xl"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <h3 className="text-sm font-bold text-gray-800">Más secciones</h3>
+              <button onClick={() => setMoreOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="grid grid-cols-4 gap-2 px-4 pb-5 pt-2">
+              {allowedMore.map(({ to, icon: Icon, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    `flex flex-col items-center gap-1.5 p-3 rounded-2xl transition-colors ${
+                      isActive ? 'bg-primary-50 text-primary-700' : 'hover:bg-gray-50 text-gray-600'
+                    }`
+                  }
                 >
-                  <Icon size={19} strokeWidth={isActive ? 2.5 : 1.8} />
-                  {to === '/recordatorios' && debtorCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
-                      {debtorCount}
-                    </span>
+                  {({ isActive }) => (
+                    <>
+                      <Icon size={22} strokeWidth={isActive ? 2.5 : 1.8} />
+                      <span className="text-[10px] font-medium text-center leading-tight">{label}</span>
+                    </>
                   )}
-                </div>
-                <span className="truncate w-full text-center px-0.5 max-w-[56px]">{label}</span>
-                {isActive && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600" />
-                )}
-              </>
-            )}
-          </NavLink>
-        ))}
-      </div>
-    </nav>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 }

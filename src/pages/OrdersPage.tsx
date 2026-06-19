@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, ChevronRight } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -321,7 +321,7 @@ export function OrdersPage() {
   const location  = useLocation();
   const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
 
-  const { orders, clients, users } = useAppStore();
+  const { orders, clients, users, updateOrder } = useAppStore();
   const { can } = usePermissions();
 
   const prefilledName = clienteParam
@@ -333,6 +333,21 @@ export function OrdersPage() {
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [waOrder, setWaOrder]     = useState<Order | null>(null);
+  const [advancingId, setAdvancingId] = useState<string | null>(null);
+
+  const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
+    tomado:      { status: 'por_recoger', label: 'Por recoger' },
+    por_recoger: { status: 'recogido',    label: 'Recogido' },
+    recogido:    { status: 'entregado',   label: 'Entregado' },
+  };
+
+  const handleAdvanceStatus = async (order: Order) => {
+    const next = NEXT_STATUS[order.status];
+    if (!next || advancingId) return;
+    setAdvancingId(order.id);
+    await updateOrder(order.id, { status: next.status });
+    setAdvancingId(null);
+  };
 
   const clearClientFilter = () => { setFilterClient(''); setSearch(''); };
 
@@ -446,12 +461,25 @@ export function OrdersPage() {
                     <ArrowRight size={14} />
                   </Link>
                 </div>
-                <div className="flex gap-1 mt-3 flex-wrap">
-                  {order.items.map((it, i) => (
-                    <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                      {it.quantity}x {it.productName}
-                    </span>
-                  ))}
+                <div className="flex items-center gap-1 mt-3 flex-wrap">
+                  <div className="flex gap-1 flex-1 flex-wrap">
+                    {order.items.map((it, i) => (
+                      <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                        {it.quantity}x {it.productName}
+                      </span>
+                    ))}
+                  </div>
+                  {can('pedidos', 'editar') && NEXT_STATUS[order.status] && (
+                    <button
+                      onClick={() => handleAdvanceStatus(order)}
+                      disabled={advancingId === order.id}
+                      className="flex items-center gap-1 text-[10px] font-semibold px-2 py-1 bg-primary-50 text-primary-700 hover:bg-primary-100 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
+                    >
+                      {advancingId === order.id ? '...' : (
+                        <><ChevronRight size={10} /> {NEXT_STATUS[order.status]!.label}</>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload, MessageCircle } from 'lucide-react';
 import { exportClientes } from '../utils/exportExcel';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
@@ -395,6 +395,17 @@ export function ClientsPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {client.phone && (
+                      <a
+                        href={`https://wa.me/57${client.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-xl transition-colors"
+                        title="WhatsApp"
+                      >
+                        <MessageCircle size={15} />
+                      </a>
+                    )}
                     {can('clientes', 'editar') && (
                       <button
                         onClick={() => { setEditing(client); setModalOpen(true); }}

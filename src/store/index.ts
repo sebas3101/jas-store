@@ -272,13 +272,13 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addUser: async (u) => {
     const row = toSnake({ ...u, createdAt: new Date().toISOString() });
     const { data, error } = await supabase.from('app_users').insert(row).select().single();
-    if (error) { console.error('addUser:', error); return; }
+    if (error) { notifyError('addUser'); return; }
     set(s => ({ users: [...s.users, toCamel(data) as User] }));
   },
 
   updateUser: async (id, u) => {
     const { error } = await supabase.from('app_users').update(toSnake(u)).eq('id', id);
-    if (error) { console.error('updateUser:', error); return; }
+    if (error) { notifyError('updateUser'); return; }
     set(s => {
       const updatedUsers = s.users.map(x => x.id === id ? { ...x, ...u } : x);
       // Si se actualizan los permisos del usuario activo, sincronizar la sesión
@@ -294,7 +294,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   deleteUser: async (id) => {
     const { error } = await supabase.from('app_users').delete().eq('id', id);
-    if (error) { console.error('deleteUser:', error); return; }
+    if (error) { notifyError('deleteUser'); return; }
     set(s => ({ users: s.users.filter(x => x.id !== id) }));
   },
 
@@ -333,14 +333,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...p, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('products').insert(row).select().single();
-    if (error) { console.error('addProduct:', error); return; }
+    if (error) { notifyError('addProduct'); return; }
     set(s => ({ products: [...s.products, toCamel(data) as Product] }));
   },
 
   updateProduct: async (id, p) => {
     const row = toSnake({ ...p, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('products').update(row).eq('id', id);
-    if (error) { console.error('updateProduct:', error); return; }
+    if (error) { notifyError('updateProduct'); return; }
     set(s => ({
       products: s.products.map(x =>
         x.id === id ? { ...x, ...p, updatedAt: new Date().toISOString() } : x
@@ -350,7 +350,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   deleteProduct: async (id) => {
     const { error } = await supabase.from('products').delete().eq('id', id);
-    if (error) { console.error('deleteProduct:', error); return; }
+    if (error) { notifyError('deleteProduct'); return; }
     set(s => ({ products: s.products.filter(x => x.id !== id) }));
   },
 
@@ -441,13 +441,13 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   updatePayment: async (id, p) => {
     const { error } = await supabase.from('payments').update(toSnake(p)).eq('id', id);
-    if (error) { console.error('updatePayment:', error); return; }
+    if (error) { notifyError('updatePayment'); return; }
     set(s => ({ payments: s.payments.map(x => x.id === id ? { ...x, ...p } : x) }));
   },
 
   deletePayment: async (id) => {
     const { error } = await supabase.from('payments').delete().eq('id', id);
-    if (error) { console.error('deletePayment:', error); return; }
+    if (error) { notifyError('deletePayment'); return; }
     set(s => ({ payments: s.payments.filter(x => x.id !== id) }));
   },
 
@@ -458,14 +458,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...s, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('suppliers').insert(row).select().single();
-    if (error) { console.error('addSupplier:', error); return; }
+    if (error) { notifyError('addSupplier'); return; }
     set(st => ({ suppliers: [...st.suppliers, toCamel(data) as Supplier] }));
   },
 
   updateSupplier: async (id, s) => {
     const row = toSnake({ ...s, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('suppliers').update(row).eq('id', id);
-    if (error) { console.error('updateSupplier:', error); return; }
+    if (error) { notifyError('updateSupplier'); return; }
     set(st => ({
       suppliers: st.suppliers.map(x =>
         x.id === id ? { ...x, ...s, updatedAt: new Date().toISOString() } : x
@@ -475,7 +475,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   deleteSupplier: async (id) => {
     const { error } = await supabase.from('suppliers').delete().eq('id', id);
-    if (error) { console.error('deleteSupplier:', error); return; }
+    if (error) { notifyError('deleteSupplier'); return; }
     set(s => ({ suppliers: s.suppliers.filter(x => x.id !== id) }));
   },
 
@@ -485,19 +485,19 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addPurchase: async (p) => {
     const row = toSnake({ ...p, createdAt: new Date().toISOString() });
     const { data, error } = await supabase.from('supplier_purchases').insert(row).select().single();
-    if (error) { console.error('addPurchase:', error); return; }
+    if (error) { notifyError('addPurchase'); return; }
     set(s => ({ purchases: [...s.purchases, toCamel(data) as SupplierPurchase] }));
   },
 
   updatePurchase: async (id, p) => {
     const { error } = await supabase.from('supplier_purchases').update(toSnake(p)).eq('id', id);
-    if (error) { console.error('updatePurchase:', error); return; }
+    if (error) { notifyError('updatePurchase'); return; }
     set(s => ({ purchases: s.purchases.map(x => x.id === id ? { ...x, ...p } : x) }));
   },
 
   deletePurchase: async (id) => {
     const { error } = await supabase.from('supplier_purchases').delete().eq('id', id);
-    if (error) { console.error('deletePurchase:', error); return; }
+    if (error) { notifyError('deletePurchase'); return; }
     set(s => ({ purchases: s.purchases.filter(x => x.id !== id) }));
   },
 
@@ -507,19 +507,19 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addPublication: async (p) => {
     const row = toSnake({ ...p, createdAt: new Date().toISOString() });
     const { data, error } = await supabase.from('publications').insert(row).select().single();
-    if (error) { console.error('addPublication:', error); return; }
+    if (error) { notifyError('addPublication'); return; }
     set(s => ({ publications: [...s.publications, toCamel(data) as Publication] }));
   },
 
   updatePublication: async (id, p) => {
     const { error } = await supabase.from('publications').update(toSnake(p)).eq('id', id);
-    if (error) { console.error('updatePublication:', error); return; }
+    if (error) { notifyError('updatePublication'); return; }
     set(s => ({ publications: s.publications.map(x => x.id === id ? { ...x, ...p } : x) }));
   },
 
   deletePublication: async (id) => {
     const { error } = await supabase.from('publications').delete().eq('id', id);
-    if (error) { console.error('deletePublication:', error); return; }
+    if (error) { notifyError('deletePublication'); return; }
     set(s => ({ publications: s.publications.filter(x => x.id !== id) }));
   },
 
@@ -530,20 +530,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...w, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('warranties').insert(row).select().single();
-    if (error) { console.error('addWarranty:', error); return; }
+    if (error) { notifyError('addWarranty'); return; }
     set(s => ({ warranties: [...s.warranties, toCamel(data) as Warranty] }));
   },
 
   updateWarranty: async (id, w) => {
     const row = toSnake({ ...w, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('warranties').update(row).eq('id', id);
-    if (error) { console.error('updateWarranty:', error); return; }
+    if (error) { notifyError('updateWarranty'); return; }
     set(s => ({ warranties: s.warranties.map(x => x.id === id ? { ...x, ...w, updatedAt: new Date().toISOString() } : x) }));
   },
 
   deleteWarranty: async (id) => {
     const { error } = await supabase.from('warranties').delete().eq('id', id);
-    if (error) { console.error('deleteWarranty:', error); return; }
+    if (error) { notifyError('deleteWarranty'); return; }
     set(s => ({ warranties: s.warranties.filter(x => x.id !== id) }));
   },
 
@@ -553,19 +553,19 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addPaymentProof: async (p) => {
     const row = toSnake({ ...p, createdAt: new Date().toISOString() });
     const { data, error } = await supabase.from('payment_proofs').insert(row).select().single();
-    if (error) { console.error('addPaymentProof:', error); return; }
+    if (error) { notifyError('addPaymentProof'); return; }
     set(s => ({ paymentProofs: [...s.paymentProofs, toCamel(data) as PaymentProof] }));
   },
 
   updatePaymentProof: async (id, p) => {
     const { error } = await supabase.from('payment_proofs').update(toSnake(p)).eq('id', id);
-    if (error) { console.error('updatePaymentProof:', error); return; }
+    if (error) { notifyError('updatePaymentProof'); return; }
     set(s => ({ paymentProofs: s.paymentProofs.map(x => x.id === id ? { ...x, ...p } : x) }));
   },
 
   deletePaymentProof: async (id) => {
     const { error } = await supabase.from('payment_proofs').delete().eq('id', id);
-    if (error) { console.error('deletePaymentProof:', error); return; }
+    if (error) { notifyError('deletePaymentProof'); return; }
     set(s => ({ paymentProofs: s.paymentProofs.filter(x => x.id !== id) }));
   },
 
@@ -668,14 +668,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...e, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('expenses').insert(row).select().single();
-    if (error) { console.error('addExpense:', error); return; }
+    if (error) { notifyError('addExpense'); return; }
     set(s => ({ expenses: [...s.expenses, toCamel(data) as Expense] }));
   },
 
   updateExpense: async (id, e) => {
     const row = toSnake({ ...e, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('expenses').update(row).eq('id', id);
-    if (error) { console.error('updateExpense:', error); return; }
+    if (error) { notifyError('updateExpense'); return; }
     set(s => ({
       expenses: s.expenses.map(x => x.id === id ? { ...x, ...e, updatedAt: new Date().toISOString() } : x),
     }));
@@ -683,7 +683,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   deleteExpense: async (id) => {
     const { error } = await supabase.from('expenses').delete().eq('id', id);
-    if (error) { console.error('deleteExpense:', error); return; }
+    if (error) { notifyError('deleteExpense'); return; }
     set(s => ({ expenses: s.expenses.filter(x => x.id !== id) }));
   },
 

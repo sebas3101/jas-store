@@ -26,8 +26,9 @@ export function DashboardPage() {
   // ── KPIs ────────────────────────────────────────────────────────────────────
   const totalSales   = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
   const totalPaid    = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.amountPaid, 0);
-  const totalPending = totalSales - totalPaid;
-  const totalProfit  = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
+  // Deuda real: solo pedidos entregados/pendiente_pago, usando la misma lógica centralizada
+  const totalPending = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
+  const totalProfit  = orders.filter(o => o.status === 'entregado' || o.status === 'pagado' || o.status === 'pendiente_pago').reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
 
   const clientsWithDebt = clients.filter(c => c.status === 'mora' || c.status === 'pendiente').length;
   const clientsUpToDate = clients.filter(c => c.status === 'al_dia').length;
@@ -50,10 +51,7 @@ export function DashboardPage() {
   // ── Recordatorios urgentes (15+ días sin abonar, sin recordar en 7 días) ─────
   const reminderLog = getReminderLog();
   const urgentReminders = clients.filter(c => {
-    const pendingOrds = orders.filter(
-      o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status),
-    );
-    const debt = pendingOrds.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+    const debt = calculateClientDebt(c.id, orders);
     if (debt <= 0) return false;
     const lastPay = payments
       .filter(p => p.clientId === c.id)
@@ -211,6 +209,22 @@ export function DashboardPage() {
         <StatCard title="Con deuda"   value={clientsWithDebt} icon={AlertTriangle} color="red"    className="hidden lg:flex" />
         <StatCard title="Al día"      value={clientsUpToDate} icon={Users}         color="green"  className="hidden lg:flex" />
       </div>
+
+      {/* Alertas — visibles antes de las gráficas */}
+      {alerts.length > 0 && (
+        <div className="card !p-4 space-y-2">
+          <h2 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            <AlertTriangle size={15} className="text-amber-500" /> Alertas ({alerts.length})
+          </h2>
+          {alerts.map((a, i) => (
+            <Link key={i} to={a.link}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors hover:opacity-80 ${a.color}`}>
+              <span className="flex-1">{a.msg}</span>
+              <ArrowRight size={12} className="flex-shrink-0" />
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
