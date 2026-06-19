@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download } from 'lucide-react';
+import { exportClientes } from '../utils/exportExcel';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
@@ -182,14 +183,19 @@ export function ClientsPage() {
           <h1 className="page-title">Clientes</h1>
           <p className="text-sm text-gray-500 mt-0.5">{clients.length} clientes registrados</p>
         </div>
-        {can('clientes', 'crear') && (
-          <button
-            onClick={() => { setEditing(null); setModalOpen(true); }}
-            className="btn-primary"
-          >
-            <Plus size={16} /> Nuevo cliente
+        <div className="flex gap-2">
+          <button onClick={() => exportClientes(clients, orders, [])} className="btn-ghost">
+            <Download size={15} /> Excel
           </button>
-        )}
+          {can('clientes', 'crear') && (
+            <button
+              onClick={() => { setEditing(null); setModalOpen(true); }}
+              className="btn-primary"
+            >
+              <Plus size={16} /> Nuevo cliente
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Cartera vencida */}

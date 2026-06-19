@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download } from 'lucide-react';
+import { exportPagos } from '../utils/exportExcel';
 
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
@@ -179,11 +180,16 @@ export function PaymentsPage() {
           <h1 className="page-title">Pagos y abonos</h1>
           <p className="text-sm text-gray-500 mt-0.5">{payments.length} pagos registrados</p>
         </div>
-        {can('pagos', 'registrar_pago') && (
-          <button onClick={() => setModal(true)} className="btn-primary">
-            <Plus size={16} /> Registrar pago
+        <div className="flex gap-2">
+          <button onClick={() => exportPagos(payments, clients)} className="btn-ghost">
+            <Download size={15} /> Excel
           </button>
-        )}
+          {can('pagos', 'registrar_pago') && (
+            <button onClick={() => setModal(true)} className="btn-primary">
+              <Plus size={16} /> Registrar pago
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats */}

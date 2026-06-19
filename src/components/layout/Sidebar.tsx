@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
+import { GlobalSearch } from '../ui/GlobalSearch';
 import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
 
@@ -52,6 +53,11 @@ export function Sidebar() {
           <p className="font-bold text-gray-900 text-sm">JAS Store</p>
           <p className="text-xs text-gray-400">Sistema de Gestión</p>
         </div>
+      </div>
+
+      {/* Search */}
+      <div className="px-3 py-3 border-b border-gray-100">
+        <GlobalSearch />
       </div>
 
       {/* Nav */}
