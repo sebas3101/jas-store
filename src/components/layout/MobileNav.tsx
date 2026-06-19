@@ -46,8 +46,8 @@ export function MobileNav() {
   return (
     <>
       <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 shadow-lg"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-md border-t border-gray-100"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', boxShadow: '0 -1px 0 0 rgb(0 0 0 / 0.06)' }}
       >
         <div className="flex">
           {allowedPinned.map(({ to, icon: Icon, label }) => (
@@ -57,12 +57,15 @@ export function MobileNav() {
               end={to === '/'}
               className={({ isActive }) =>
                 `relative flex flex-col items-center justify-center flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
-                  isActive ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                  isActive ? 'text-primary-600' : 'text-gray-400'
                 }`
               }
             >
               {({ isActive }) => (
                 <>
+                  {isActive && (
+                    <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary-600" />
+                  )}
                   <div className={`relative p-1.5 rounded-xl mb-0.5 transition-colors ${isActive ? 'bg-primary-50' : ''}`}>
                     <Icon size={19} strokeWidth={isActive ? 2.5 : 1.8} />
                     {to === '/recordatorios' && debtorCount > 0 && (
@@ -72,7 +75,6 @@ export function MobileNav() {
                     )}
                   </div>
                   <span className="truncate w-full text-center">{label}</span>
-                  {isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600" />}
                 </>
               )}
             </NavLink>
@@ -82,14 +84,16 @@ export function MobileNav() {
             <button
               onClick={() => setMoreOpen(v => !v)}
               className={`relative flex flex-col items-center justify-center flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
-                moreIsActive || moreOpen ? 'text-primary-600' : 'text-gray-400 hover:text-gray-600'
+                moreIsActive || moreOpen ? 'text-primary-600' : 'text-gray-400'
               }`}
             >
+              {(moreIsActive || moreOpen) && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary-600" />
+              )}
               <div className={`p-1.5 rounded-xl mb-0.5 ${moreIsActive || moreOpen ? 'bg-primary-50' : ''}`}>
                 <MoreHorizontal size={19} strokeWidth={moreOpen ? 2.5 : 1.8} />
               </div>
               <span>Más</span>
-              {moreIsActive && !moreOpen && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary-600" />}
             </button>
           )}
         </div>
