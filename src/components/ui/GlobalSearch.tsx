@@ -13,7 +13,7 @@ interface Result {
   href:     string;
 }
 
-export function GlobalSearch() {
+export function GlobalSearch({ dark = false }: { dark?: boolean }) {
   const { clients, orders, products } = useAppStore();
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState('');
@@ -87,12 +87,16 @@ export function GlobalSearch() {
       {/* Trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-400 text-sm transition-colors w-full"
+        className={
+          dark
+            ? 'flex items-center gap-2 px-3 py-2 rounded-xl bg-white/8 hover:bg-white/12 text-white/50 text-sm transition-colors w-full'
+            : 'flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-400 text-sm transition-colors w-full'
+        }
         aria-label="Buscar"
       >
         <Search size={15} />
         <span className="flex-1 text-left">Buscar...</span>
-        <kbd className="hidden sm:inline text-[10px] bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-400">⌘K</kbd>
+        <kbd className={`hidden sm:inline text-[10px] rounded px-1.5 py-0.5 ${dark ? 'bg-white/10 border border-white/15 text-white/40' : 'bg-white border border-gray-200 text-gray-400'}`}>⌘K</kbd>
       </button>
 
       {/* Modal */}

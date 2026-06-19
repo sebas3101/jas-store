@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -11,15 +11,25 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  // Animate in on mount
+  useEffect(() => {
+    if (!isOpen || !panelRef.current) return;
+    const el = panelRef.current;
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    el.style.transform = window.innerWidth < 640 ? 'translateY(24px)' : 'translateY(10px) scale(0.97)';
+    requestAnimationFrame(() => {
+      el.style.transition = 'opacity 200ms ease, transform 200ms ease';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0) scale(1)';
+    });
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -34,10 +44,12 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px]"
         onClick={onClose}
+        style={{ animation: 'fadeIn 150ms ease' }}
       />
       <div
+        ref={panelRef}
         className={cn(
           'relative bg-white w-full flex flex-col max-h-[92vh] sm:max-h-[90vh]',
           'rounded-t-2xl sm:rounded-2xl shadow-2xl',

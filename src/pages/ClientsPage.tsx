@@ -23,11 +23,11 @@ const STATUSES: { value: ClientStatus | 'all'; label: string }[] = [
   { value: 'credito_cerrado', label: 'Crédito cerrado' },
 ];
 
-const INDICATOR: Record<ClientStatus, string> = {
-  al_dia:         'bg-emerald-400',
-  pendiente:      'bg-amber-400',
-  mora:           'bg-red-500',
-  credito_cerrado: 'bg-gray-400',
+const STATUS_AVATAR: Record<ClientStatus, { bg: string; text: string; dot: string }> = {
+  al_dia:          { bg: 'bg-emerald-50',  text: 'text-emerald-700', dot: 'bg-emerald-400' },
+  pendiente:       { bg: 'bg-amber-50',    text: 'text-amber-700',   dot: 'bg-amber-400'   },
+  mora:            { bg: 'bg-red-50',      text: 'text-red-700',     dot: 'bg-red-500'     },
+  credito_cerrado: { bg: 'bg-gray-100',    text: 'text-gray-600',    dot: 'bg-gray-400'    },
 };
 
 function ClientForm({
@@ -224,7 +224,7 @@ export function ClientsPage() {
         const masAntigua   = [...carteraVencida].sort((a, b) => b.days - a.days)[0];
         const visible      = showAllCartera ? carteraVencida : carteraVencida.slice(0, 5);
         return (
-          <div className="card border-l-4 border-red-400 !p-4 space-y-3">
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-4 space-y-3">
             {/* Encabezado */}
             <div className="flex items-center gap-2">
               <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
@@ -359,14 +359,14 @@ export function ClientsPage() {
             return (
               <div key={client.id} className="card !p-3 sm:!p-4 hover:shadow-md transition-shadow">
                 <div className="flex items-center gap-3">
-                  {/* Indicator + Avatar */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <div className={`w-1.5 h-10 rounded-full ${INDICATOR[client.status]}`} />
-                    <div className="w-9 h-9 bg-primary-50 rounded-xl flex items-center justify-center">
-                      <span className="text-primary-700 font-bold text-sm">
+                  {/* Avatar con color por estado */}
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${STATUS_AVATAR[client.status].bg}`}>
+                      <span className={`font-bold text-sm ${STATUS_AVATAR[client.status].text}`}>
                         {client.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${STATUS_AVATAR[client.status].dot}`} />
                   </div>
 
                   {/* Info */}
@@ -400,7 +400,7 @@ export function ClientsPage() {
                         href={`https://wa.me/57${client.phone.replace(/\D/g, '')}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="p-2 hover:bg-green-50 text-gray-400 hover:text-green-600 rounded-xl transition-colors"
+                        className="p-2 hover:bg-green-50 text-green-400 hover:text-green-600 rounded-xl transition-colors"
                         title="WhatsApp"
                       >
                         <MessageCircle size={15} />

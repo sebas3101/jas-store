@@ -37,19 +37,28 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-700 to-primary-500 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      style={{ background: 'linear-gradient(135deg, #2e1065 0%, #4c1d95 40%, #6d28d9 100%)' }}>
+      {/* Radial accents */}
+      <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #a78bfa 0%, transparent 70%)', transform: 'translate(30%, -30%)' }} />
+      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-15 pointer-events-none"
+        style={{ background: 'radial-gradient(circle, #7c3aed 0%, transparent 70%)', transform: 'translate(-30%, 30%)' }} />
+
+      <div className="w-full max-w-md relative">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-2xl mb-4 overflow-hidden">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl mb-4 overflow-hidden"
+            style={{ boxShadow: '0 0 0 4px rgb(167 139 250 / 0.3), 0 20px 40px rgb(0 0 0 / 0.3)' }}>
             <img src={logoUrl} alt="JAS Store" className="w-full h-full object-cover" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white">JAS Store</h1>
-          <p className="text-primary-200 mt-1 text-sm">Sistema de Gestión Comercial</p>
+          <p className="text-purple-300 mt-1 text-sm">Sistema de Gestión Comercial</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-5 sm:p-8">
+        <div className="bg-white rounded-3xl p-5 sm:p-8"
+          style={{ boxShadow: '0 8px 40px rgb(0 0 0 / 0.25), 0 0 0 1px rgb(255 255 255 / 0.1)' }}>
           <h2 className="text-xl font-bold text-gray-900 mb-6">Iniciar sesión</h2>
 
           {inactivityLogout && !error && (
