@@ -28,8 +28,7 @@ Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
 // Modelos Groq con visión, en orden de preferencia
 const MODELS = [
   'meta-llama/llama-4-scout-17b-16e-instruct',
-  'llama-3.2-90b-vision-preview',
-  'llama-3.2-11b-vision-preview',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
 ];
 
 function parse(text: string): ExtractedPayment | null {
