@@ -339,18 +339,18 @@ export function DashboardPage() {
             Proyección de cobranza — {format(now, "MMMM yyyy", { locale: es })}
           </h2>
         </div>
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center p-3 bg-emerald-50 rounded-xl">
-            <p className="text-xs text-emerald-600 font-medium mb-1">Cobrado este mes</p>
-            <p className="text-lg font-bold text-emerald-700">{formatCurrency(cobradoMes)}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div className="flex sm:flex-col items-center sm:justify-center justify-between p-3 bg-emerald-50 rounded-xl gap-2">
+            <p className="text-xs text-emerald-600 font-medium">Cobrado este mes</p>
+            <p className="text-sm sm:text-base font-bold text-emerald-700 text-right sm:text-center">{formatCurrency(cobradoMes)}</p>
           </div>
-          <div className="text-center p-3 bg-amber-50 rounded-xl">
-            <p className="text-xs text-amber-600 font-medium mb-1">Pendiente total</p>
-            <p className="text-lg font-bold text-amber-700">{formatCurrency(totalPending)}</p>
+          <div className="flex sm:flex-col items-center sm:justify-center justify-between p-3 bg-amber-50 rounded-xl gap-2">
+            <p className="text-xs text-amber-600 font-medium">Pendiente total</p>
+            <p className="text-sm sm:text-base font-bold text-amber-700 text-right sm:text-center">{formatCurrency(totalPending)}</p>
           </div>
-          <div className="text-center p-3 bg-gray-50 rounded-xl">
-            <p className="text-xs text-gray-500 font-medium mb-1">Clientes a cobrar</p>
-            <p className="text-lg font-bold text-gray-700">{clientsWithDebt}</p>
+          <div className="flex sm:flex-col items-center sm:justify-center justify-between p-3 bg-gray-50 rounded-xl gap-2">
+            <p className="text-xs text-gray-500 font-medium">Clientes a cobrar</p>
+            <p className="text-sm sm:text-base font-bold text-gray-700 text-right sm:text-center">{clientsWithDebt}</p>
           </div>
         </div>
         <div>

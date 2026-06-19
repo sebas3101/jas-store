@@ -137,6 +137,7 @@ export function ClientsPage() {
   const [filterType, setFilterType]   = useState<'all' | 'internal' | 'external'>('all');
   const [modalOpen, setModalOpen]     = useState(false);
   const [editing, setEditing]         = useState<Client | null>(null);
+  const [showAllCartera, setShowAllCartera] = useState(false);
 
   // Cartera vencida: clientes con deuda > 0 y al menos un pedido con más de 15 días sin pagar
   const today = new Date();
@@ -199,47 +200,81 @@ export function ClientsPage() {
       </div>
 
       {/* Cartera vencida */}
-      {carteraVencida.length > 0 && (
-        <div className="card border-l-4 border-red-400 !p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
-            <h2 className="text-sm font-bold text-gray-900">
-              Cartera vencida — {carteraVencida.length} cliente{carteraVencida.length > 1 ? 's' : ''} con deuda activa
-            </h2>
-          </div>
-          <div className="space-y-2">
-            {carteraVencida.map(({ client, debt, days }) => {
-              const sev = debtSeverity(days);
-              return (
-                <Link
-                  key={client.id}
-                  to={`/clientes/${client.id}`}
-                  className={`flex items-center justify-between rounded-xl px-3 py-2.5 hover:brightness-95 transition-all ${sev.bg}`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 bg-white bg-opacity-60 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <span className={`text-xs font-bold ${sev.text}`}>
-                        {client.name.charAt(0).toUpperCase()}
-                      </span>
+      {carteraVencida.length > 0 && (() => {
+        const totalCartera = carteraVencida.reduce((s, x) => s + x.debt, 0);
+        const mayorDeuda   = carteraVencida[0];
+        const masAntigua   = [...carteraVencida].sort((a, b) => b.days - a.days)[0];
+        const visible      = showAllCartera ? carteraVencida : carteraVencida.slice(0, 5);
+        return (
+          <div className="card border-l-4 border-red-400 !p-4 space-y-3">
+            {/* Encabezado */}
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+              <h2 className="text-sm font-bold text-gray-900 flex-1 min-w-0">Cartera vencida</h2>
+            </div>
+
+            {/* Resumen en 2 columnas */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-red-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-red-400 font-medium">Total vencido</p>
+                <p className="text-sm font-bold text-red-700 mt-0.5">{formatCurrency(totalCartera)}</p>
+              </div>
+              <div className="bg-red-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-red-400 font-medium">Clientes en mora</p>
+                <p className="text-sm font-bold text-red-700 mt-0.5">{carteraVencida.length} cliente{carteraVencida.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="bg-orange-50 rounded-xl px-3 py-2 col-span-2 sm:col-span-1">
+                <p className="text-[10px] text-orange-400 font-medium">Mayor deuda</p>
+                <p className="text-xs font-bold text-orange-700 truncate mt-0.5">{mayorDeuda.client.name}</p>
+                <p className="text-[10px] text-orange-500">{formatCurrency(mayorDeuda.debt)}</p>
+              </div>
+              <div className="bg-orange-50 rounded-xl px-3 py-2 col-span-2 sm:col-span-1">
+                <p className="text-[10px] text-orange-400 font-medium">Más antigua</p>
+                <p className="text-xs font-bold text-orange-700 truncate mt-0.5">{masAntigua.client.name}</p>
+                <p className="text-[10px] text-orange-500">{masAntigua.days} días sin pagar</p>
+              </div>
+            </div>
+
+            {/* Lista top 5 */}
+            <div className="space-y-1.5">
+              {visible.map(({ client, debt, days }) => {
+                const sev = debtSeverity(days);
+                return (
+                  <Link
+                    key={client.id}
+                    to={`/clientes/${client.id}`}
+                    className={`flex items-center justify-between rounded-xl px-3 py-2 hover:brightness-95 transition-all ${sev.bg}`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-6 h-6 bg-white bg-opacity-60 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <span className={`text-[10px] font-bold ${sev.text}`}>{client.name.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-xs font-bold truncate ${sev.text}`}>{client.name}</p>
+                        <p className={`text-[10px] ${sev.text} opacity-75`}>{sev.label}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className={`text-xs font-bold truncate ${sev.text}`}>{client.name}</p>
-                      <p className={`text-[10px] ${sev.text} opacity-75`}>{sev.label}</p>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className={`text-xs font-bold ${sev.text}`}>{formatCurrency(debt)}</span>
+                      <ArrowRight size={11} className={sev.text} />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className={`text-xs font-bold ${sev.text}`}>{formatCurrency(debt)}</span>
-                    <ArrowRight size={12} className={sev.text} />
-                  </div>
-                </Link>
-              );
-            })}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Ver todos / Ver menos */}
+            {carteraVencida.length > 5 && (
+              <button
+                onClick={() => setShowAllCartera(v => !v)}
+                className="w-full text-xs text-red-600 font-semibold py-1.5 rounded-xl hover:bg-red-50 transition-colors"
+              >
+                {showAllCartera ? 'Ver menos ↑' : `Ver todos (${carteraVencida.length}) ↓`}
+              </button>
+            )}
           </div>
-          <p className={`text-[10px] text-gray-500 text-right`}>
-            Total cartera: {formatCurrency(carteraVencida.reduce((s, x) => s + x.debt, 0))}
-          </p>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Filters */}
       <div className="card !p-4 space-y-3">
