@@ -7,6 +7,42 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.8.0] — 2026-06-19 — Major upgrades, Error Boundary, bundle y xlsx completo
+
+### Nuevas funcionalidades
+
+#### Error Boundary (`ErrorBoundary.tsx`, `AppLayout.tsx`)
+- Nuevo componente de clase `ErrorBoundary` que captura errores JS en runtime dentro de cualquier página.
+- Si una sección lanza una excepción, el sidebar y el header permanecen visibles; el usuario ve un mensaje claro con botón "Recargar" en lugar de pantalla en blanco.
+- En modo desarrollo también muestra el stack trace completo del error.
+
+### Mejoras
+
+#### Eliminación completa de xlsx del bundle (`csvExport.ts`, 5 archivos)
+- Removida la librería `xlsx`/SheetJS de todas las exportaciones (no solo de la importación de contactos).
+- Nueva utilidad compartida `csvExport.ts` con funciones `toCSV`, `aoaToCSV`, `downloadCSV` y `downloadJSON` (UTF-8 BOM para compatibilidad con Excel).
+- `exportExcel.ts`, `ExpensesPage`, `FinancesPage` → exportan `.csv` (abre en Excel sin problemas).
+- `SettingsPage` backup → exporta `.json` (preserva tipos de datos, importable).
+- Chunk de 429 KB completamente eliminado del bundle.
+
+#### Optimización de bundle (`vite.config.ts`)
+- `manualChunks` separa vendors en chunks con caché larga: `react-vendor` (164 KB), `supabase` (212 KB), `date-utils` (31 KB).
+- Chunk principal `index.js` baja de 485 KB a **80 KB** (solo código de la app).
+- Precache del service worker: 1622 KB → **1203 KB** (−419 KB).
+
+#### Actualización masiva de dependencias
+| Paquete | Antes | Después |
+|---|---|---|
+| Tailwind CSS | 3.4.19 | **4.3.1** — config migrada a `@theme` en CSS, plugin nativo de Vite |
+| React | 18.3.1 | **19.2.7** |
+| Vite | 5.4.21 | **8.0.16** — Rolldown: build 11s → **1.7s** |
+| react-router-dom | 6.30.4 | **7.18.0** |
+| lucide-react | 0.330.0 | **1.21.0** |
+| date-fns | 3.6.0 | **4.4.0** |
+| zustand | 4.5.7 | **5.0.14** |
+
+---
+
 ## [1.7.4] — 2026-06-19 — Seguridad, UX móvil y corrección de botones
 
 ### Corregido
