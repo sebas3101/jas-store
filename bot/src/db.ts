@@ -34,6 +34,18 @@ export async function searchClients(query: string): Promise<DbClient[]> {
   }));
 }
 
+/** Verifica si ya existe un comprobante con la misma referencia (no rechazado). */
+export async function checkDuplicate(reference: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('payment_proofs')
+    .select('id')
+    .eq('reference', reference)
+    .neq('status', 'rechazado')
+    .limit(1);
+  if (error) { console.error('checkDuplicate:', error); return false; }
+  return (data?.length ?? 0) > 0;
+}
+
 /** Inserta un comprobante en payment_proofs con estado pendiente_revision. */
 export async function savePaymentProof(p: {
   clientId?:   string;
@@ -55,7 +67,6 @@ export async function savePaymentProof(p: {
       sender_name: p.senderName ?? null,
       status:      'pendiente_revision',
       notes:       p.notes      ?? null,
-      created_at:  new Date().toISOString(),
     })
     .select('id')
     .single();
