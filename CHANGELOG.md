@@ -7,6 +7,50 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.7.2] — 2026-06-19 — Correcciones post-auditoría: hooks, lint, diseño y tests
+
+Segunda ronda de correcciones derivadas de la auditoría completa. Se eliminaron violaciones de React Rules of Hooks, errores de ESLint, inconsistencias de diseño y se dejaron los 30 tests en verde.
+
+### Corregido
+
+#### React Rules of Hooks — `ContactImportPage.tsx`
+- `useCallback` estaba declarado después de un `return` condicional (`!isAdmin`), violando el orden de hooks entre renders.
+- Movido antes del guard de acceso; el early return queda al final de todos los hooks.
+
+#### Mensajes WhatsApp con deuda incorrecta — `whatsapp.ts`
+- `buildDebtReminderMessage` y `buildDebtInfoMessage` filtraban pedidos con `status !== 'pagado' && status !== 'cancelado'`, incluyendo pedidos en tránsito (`tomado`, `por_recoger`, `recogido`).
+- Ambas funciones ahora usan el mismo filtro que `calculateClientDebt`: solo `entregado | pendiente_pago`.
+- `openWhatsApp` ahora valida que el teléfono no esté vacío antes de abrir WhatsApp (antes abría `wa.me/57`).
+
+#### `deletePayment` no sincronizaba estado del cliente — `store/index.ts`
+- Todas las mutaciones de pedidos y pagos llaman a `syncOneClientStatus`, excepto `deletePayment`, que quedó sin el sync.
+- Al borrar un pago, el estado del cliente ahora se recalcula correctamente.
+
+#### Diseño — `DeliveriesPage.tsx`
+- `statusBg` usaba el patrón `border-l-4` (franja lateral de color), prohibido en el sistema de diseño.
+- Reemplazado por tints de fondo (`bg-amber-50/60`, `bg-blue-50/60`, `bg-emerald-50/60`, `bg-gray-50`).
+
+#### Diseño — `ExpensesPage.tsx`
+- Campo "Valor" del formulario de gastos usaba `<input type="number">` en lugar del componente `CurrencyInput` usado en el resto de la app.
+- Botones de acción (editar/eliminar) usaban `text-gray-400` sobre `bg-gray-50` (contraste 2.5:1, falla WCAG AA para iconos). Actualizados a `text-gray-500` (3.78:1).
+
+#### Lint — escapes innecesarios — `ClientsPage.tsx`, `contactMatcher.ts`
+- `\(` y `\)` dentro de clases de caracteres `[...]` no necesitan escape en regex JavaScript.
+- `contactMatcher.ts` además tenía un non-breaking space (`U+00A0`) dentro del `[...]`, reemplazado y la clase simplificada a `[-\s()+.]`.
+
+#### Lint — setState síncrono en efecto — `GlobalSearch.tsx`, `useInactivityLogout.ts`
+- `GlobalSearch`: `setQuery('')` se llamaba directamente en el cuerpo del efecto al cerrar el modal. Movido a `setTimeout` para cumplir `react-hooks/set-state-in-effect`.
+- `useInactivityLogout`: `setShowWarning(false)` se llamaba síncronamente en el guard del efecto. Removido; el estado se gestiona solo desde callbacks de timers y eventos.
+
+### Tests
+
+#### 7 fixtures actualizados — `businessLogic.test.ts`
+- `calculateClientDebt` solo cuenta pedidos `entregado | pendiente_pago`. Los fixtures usaban `status: 'tomado'` (por defecto del factory `makeOrder`), por lo que siempre daban deuda 0.
+- Tests de `deriveClientStatus` también requerían `orderDate` reciente (la función tiene una regla de mora a >30 días).
+- Resultado: **30/30 tests passing**.
+
+---
+
 ## [1.7.1] — 2026-06-19 — Corrección de 5 bugs de cálculo financiero
 
 Auditoría completa de toda la lógica de dinero: pagos, deudas, distribución FIFO, reportes y ganancias. Se identificaron y corrigieron 5 bugs con impacto real en los datos mostrados al usuario.
