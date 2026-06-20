@@ -7,6 +7,22 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.7.3] — 2026-06-19 — Pantalla en blanco en navegación + íconos PWA
+
+### Corregido
+
+#### Pantalla en blanco al navegar entre páginas (`AppLayout.tsx`)
+- Al cambiar de sección (ej. Pedidos → Clientes), el `<Suspense>` que envolvía todo el árbol de rutas en `App.tsx` suspendía y reemplazaba el `AppLayout` completo (sidebar, header, nav) con el spinner de pantalla completa.
+- Solución: el `<Suspense>` se movió adentro de `AppLayout`, alrededor del `<Outlet />`. Ahora solo el área de contenido muestra un spinner pequeño durante la transición; el sidebar y el header permanecen visibles.
+- El bug se reproducía en celular, tablet y PC por igual.
+
+#### Íconos PWA incorrectos (`vite.config.ts`, `public/`)
+- Los íconos del manifiesto eran JPEG (`logo.jpeg`) declarados con `type: image/jpeg`. Algunos dispositivos (especialmente Android e iOS) ignoran o muestran mal íconos no-PNG al instalar la PWA.
+- Se generaron `logo-192.png` y `logo-512.png` redimensionados desde el logo original.
+- El manifiesto ahora usa `type: image/png`; el ícono de 512px incluye `purpose: any maskable` para soporte de íconos adaptativos en Android.
+
+---
+
 ## [1.7.2] — 2026-06-19 — Correcciones post-auditoría: hooks, lint, diseño y tests
 
 Segunda ronda de correcciones derivadas de la auditoría completa. Se eliminaron violaciones de React Rules of Hooks, errores de ESLint, inconsistencias de diseño y se dejaron los 30 tests en verde.
