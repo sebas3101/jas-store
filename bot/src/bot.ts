@@ -1,7 +1,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import 'dotenv/config';
 import { extractPaymentData, type ExtractedPayment } from './ocr';
-import { searchClients, savePaymentProof, checkDuplicate, type DbClient } from './db';
+import { searchClients, savePaymentProof, checkDuplicateByRef, checkDuplicateByAmount, type DbClient } from './db';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) throw new Error('TELEGRAM_BOT_TOKEN no configurado en .env');
@@ -100,21 +100,27 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   if (!ocr.reference) advertencias.push('referencia no detectada — revisa en el dashboard');
   if (ocr.confidence === 'baja') advertencias.push('imagen difícil de leer');
 
-  // Detección de duplicado por referencia — BLOQUEA el guardado
-  if (ocr.reference) {
-    const esDuplicado = await checkDuplicate(ocr.reference);
+  // Detección de duplicado — BLOQUEA el guardado
+  {
+    const esDuplicado = ocr.reference
+      ? await checkDuplicateByRef(ocr.reference)
+      : await checkDuplicateByAmount(ocr.amount, ocr.date);
+
     if (esDuplicado) {
       session.phase          = 'waiting_dup_confirm';
       session.resolvedClient = client;
       session.resolvedOcr    = ocr;
       session.ts             = Date.now();
+      const razon = ocr.reference
+        ? `Ya existe un comprobante con la referencia \`${ocr.reference}\`.`
+        : `Ya existe un comprobante por *${ocr.amount.toLocaleString('es-CO')} COP* en esa misma fecha.`;
       await bot.sendMessage(
         chatId,
-        `⚠️ *Posible duplicado*\n\nYa existe un comprobante con la referencia \`${ocr.reference}\`.\n\n` +
+        `⚠️ *Posible duplicado*\n\n${razon}\n\n` +
         `💰 Monto: *${ocr.amount.toLocaleString('es-CO')} COP*\n` +
         (ocr.date ? `📅 Fecha: ${ocr.date}\n` : '') +
         (ocr.bank ? `🏦 Banco: ${ocr.bank}\n` : '') +
-        `\n¿Es un pago diferente? Responde *sí* para registrarlo igual, o /cancelar para descartarlo.`,
+        `\n¿Es un pago diferente? Responde *sí* para registrar o *no* para descartar.`,
         { parse_mode: 'Markdown' },
       );
       return;
@@ -283,7 +289,7 @@ bot.on('message', async msg => {
       await bot.sendMessage(chatId, buildResumen(ocr, client?.name ?? nombre, !!client, advertencias), { parse_mode: 'Markdown' });
     } else {
       sessions.delete(chatId);
-      await bot.sendMessage(chatId, '❌ Registro cancelado. Si el pago es legítimo, envía el comprobante de nuevo.');
+      await bot.sendMessage(chatId, '❌ Comprobante descartado. Si el pago es diferente, envíalo de nuevo.');
     }
     return;
   }

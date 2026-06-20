@@ -34,15 +34,37 @@ export async function searchClients(query: string): Promise<DbClient[]> {
   }));
 }
 
-/** Verifica si ya existe un comprobante con la misma referencia (no rechazado). */
-export async function checkDuplicate(reference: string): Promise<boolean> {
+/** Verifica duplicado por referencia exacta (no rechazado). */
+export async function checkDuplicateByRef(reference: string): Promise<boolean> {
   const { data, error } = await supabase
     .from('payment_proofs')
     .select('id')
     .eq('reference', reference)
     .neq('status', 'rechazado')
     .limit(1);
-  if (error) { console.error('checkDuplicate:', error); return false; }
+  if (error) { console.error('checkDuplicateByRef:', error); return false; }
+  return (data?.length ?? 0) > 0;
+}
+
+/**
+ * Detecta duplicado por monto + fecha cuando no hay referencia disponible.
+ * Busca comprobantes del mismo monto en las últimas 24 h.
+ */
+export async function checkDuplicateByAmount(amount: number, date?: string): Promise<boolean> {
+  // Ventana de ±24 h alrededor de la fecha del comprobante (o las últimas 24 h si no hay fecha)
+  const base = date ? new Date(date) : new Date();
+  const from = new Date(base); from.setHours(0, 0, 0, 0);
+  const to   = new Date(base); to.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('payment_proofs')
+    .select('id')
+    .eq('amount', amount)
+    .gte('date', from.toISOString().slice(0, 10))
+    .lte('date', to.toISOString().slice(0, 10))
+    .neq('status', 'rechazado')
+    .limit(1);
+  if (error) { console.error('checkDuplicateByAmount:', error); return false; }
   return (data?.length ?? 0) > 0;
 }
 

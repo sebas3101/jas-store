@@ -29,14 +29,32 @@ function parse(text: string): ExtractedPayment | null {
   try {
     const cleaned = text.trim().replace(/^```json?\n?/, '').replace(/\n?```$/, '').trim();
     const p = JSON.parse(cleaned);
+
+    // amount: acepta número o string con puntos/comas ("150.000" → 150000)
+    let amount: number | undefined;
+    if (typeof p.amount === 'number' && p.amount > 0) {
+      amount = Math.round(p.amount);
+    } else if (typeof p.amount === 'string') {
+      const n = parseInt(p.amount.replace(/[.,\s]/g, ''), 10);
+      if (!isNaN(n) && n > 0) amount = n;
+    }
+
+    // reference: acepta string o número (los devuelve como string)
+    let reference: string | undefined;
+    if (typeof p.reference === 'string' && p.reference.trim()) {
+      reference = p.reference.trim();
+    } else if (typeof p.reference === 'number') {
+      reference = String(p.reference);
+    }
+
     return {
-      amount:     typeof p.amount     === 'number' ? p.amount     : undefined,
-      date:       typeof p.date       === 'string' ? p.date       : undefined,
-      bank:       typeof p.bank       === 'string' ? p.bank       : undefined,
-      reference:  typeof p.reference  === 'string' ? p.reference  : undefined,
-      senderName: typeof p.senderName === 'string' ? p.senderName : undefined,
+      amount,
+      date:       typeof p.date       === 'string' ? p.date.trim()       : undefined,
+      bank:       typeof p.bank       === 'string' ? p.bank.trim()       : undefined,
+      reference,
+      senderName: typeof p.senderName === 'string' ? p.senderName.trim() : undefined,
       confidence: (['alta', 'media', 'baja'] as const).includes(p.confidence) ? p.confidence : 'baja',
-      notes:      typeof p.notes      === 'string' ? p.notes      : undefined,
+      notes:      typeof p.notes      === 'string' ? p.notes             : undefined,
     };
   } catch { return null; }
 }
