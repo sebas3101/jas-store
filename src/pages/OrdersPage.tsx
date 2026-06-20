@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -9,6 +9,9 @@ import { exportPedidos } from '../utils/exportExcel';
 import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Pagination } from '../components/ui/Pagination';
+
+const PER_PAGE = 20;
 import {
   formatCurrency,
   formatDate,
@@ -341,6 +344,9 @@ export function OrdersPage() {
   const [filterClient, setFilterClient] = useState(clienteParam);
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
   const [modalOpen, setModalOpen]     = useState(false);
+  const [page, setPage]               = useState(1);
+
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterClient]);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [waOrder, setWaOrder]         = useState<Order | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
@@ -431,7 +437,7 @@ export function OrdersPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map(order => {
+          {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(order => {
             const client = clients.find(c => c.id === order.clientId);
             const seller = users.find(u => u.id === order.sellerId);
             const balance = order.totalAmount - order.amountPaid;
@@ -497,6 +503,8 @@ export function OrdersPage() {
           })}
         </div>
       )}
+
+      <Pagination total={filtered.length} page={page} perPage={PER_PAGE} onChange={setPage} />
 
       <Modal isOpen={!!editingOrder} onClose={() => setEditingOrder(null)} title="Editar pedido" size="lg">
         {editingOrder && (

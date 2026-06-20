@@ -199,62 +199,83 @@ export function GoalsPage() {
         </div>
       )}
 
-      {/* Historial */}
-      {sorted.filter(g => g.month !== currentMonth).length > 0 && (
-        <div className="space-y-3">
-          <h2 className="section-title">Historial de metas</h2>
-          {sorted.filter(g => g.month !== currentMonth).map(goal => {
-            const { sales, collected } = monthActuals(goal.month);
-            const salesPct  = goal.salesTarget > 0 ? Math.round((sales / goal.salesTarget) * 100) : 0;
-            const collPct   = goal.collectionTarget > 0 ? Math.round((collected / goal.collectionTarget) * 100) : 0;
-            const salesOk   = salesPct >= 100;
-            const collOk    = collPct  >= 100;
-            return (
-              <div key={goal.id} className="card !p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {salesOk && collOk
-                      ? <CheckCircle2 size={15} className="text-emerald-500" />
-                      : <Target size={15} className="text-gray-400" />
-                    }
-                    <span className="text-sm font-bold text-gray-800">
-                      {format(parseISO(`${goal.month}-01`), 'MMMM yyyy', { locale: es })}
-                    </span>
-                  </div>
-                  {(can('metas', 'editar') || can('metas', 'eliminar')) && (
-                    <div className="flex gap-1">
-                      {can('metas', 'editar') && (
-                        <button onClick={() => { setEditing(goal); setModalOpen(true); }}
-                          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors" type="button">
-                          <Edit2 size={13} />
-                        </button>
-                      )}
-                      {can('metas', 'eliminar') && (
-                        <button onClick={() => setDeleting(goal)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors" type="button">
-                          <Trash2 size={13} />
-                        </button>
+      {/* Historial últimos 6 meses */}
+      {(() => {
+        const months = Array.from({ length: 6 }, (_, i) => {
+          const d = new Date(today.getFullYear(), today.getMonth() - 1 - i, 1);
+          return format(d, 'yyyy-MM');
+        });
+        return (
+          <div className="space-y-3">
+            <h2 className="section-title">Historial últimos 6 meses</h2>
+            <div className="card !p-0 overflow-hidden divide-y divide-gray-100">
+              {months.map(month => {
+                const { sales, collected } = monthActuals(month);
+                const goal = goals.find(g => g.month === month);
+                const salesPct = goal && goal.salesTarget > 0 ? Math.round((sales / goal.salesTarget) * 100) : null;
+                const collPct  = goal && goal.collectionTarget > 0 ? Math.round((collected / goal.collectionTarget) * 100) : null;
+                const salesOk  = salesPct !== null && salesPct >= 100;
+                const collOk   = collPct  !== null && collPct  >= 100;
+                const allOk    = salesOk && collOk;
+                return (
+                  <div key={month} className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex-shrink-0">
+                      {goal
+                        ? allOk
+                          ? <CheckCircle2 size={16} className="text-emerald-500" />
+                          : <Target size={16} className="text-amber-400" />
+                        : <Clock size={16} className="text-gray-300" />
+                      }
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-700 capitalize">
+                        {format(parseISO(`${month}-01`), 'MMMM yyyy', { locale: es })}
+                      </p>
+                      {!goal && <p className="text-[10px] text-gray-400">Sin meta definida</p>}
+                    </div>
+                    <div className="flex gap-4 text-right flex-shrink-0">
+                      <div>
+                        <p className="text-[10px] text-gray-400">Ventas</p>
+                        <p className="text-xs font-bold text-gray-800 tabular-nums">{formatCurrency(sales)}</p>
+                        {salesPct !== null && (
+                          <p className={`text-[10px] font-semibold ${salesOk ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {salesOk ? '✅' : `${salesPct}%`}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400">Recaudo</p>
+                        <p className="text-xs font-bold text-gray-800 tabular-nums">{formatCurrency(collected)}</p>
+                        {collPct !== null && (
+                          <p className={`text-[10px] font-semibold ${collOk ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {collOk ? '✅' : `${collPct}%`}
+                          </p>
+                        )}
+                      </div>
+                      {goal && (can('metas', 'editar') || can('metas', 'eliminar')) && (
+                        <div className="flex flex-col gap-1 justify-center">
+                          {can('metas', 'editar') && (
+                            <button onClick={() => { setEditing(goal); setModalOpen(true); }}
+                              className="p-1 hover:bg-gray-100 rounded text-gray-300 hover:text-gray-600 transition-colors" type="button">
+                              <Edit2 size={11} />
+                            </button>
+                          )}
+                          {can('metas', 'eliminar') && (
+                            <button onClick={() => setDeleting(goal)}
+                              className="p-1 hover:bg-red-50 rounded text-gray-300 hover:text-red-500 transition-colors" type="button">
+                              <Trash2 size={11} />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <p className="text-gray-500 mb-0.5">Ventas {salesOk ? '✅' : `${salesPct}%`}</p>
-                    <p className="font-bold text-gray-800 tabular-nums">{formatCurrency(sales)}</p>
-                    <p className="text-gray-400 text-[10px]">Meta: {formatCurrency(goal.salesTarget)}</p>
                   </div>
-                  <div>
-                    <p className="text-gray-500 mb-0.5">Recaudo {collOk ? '✅' : `${collPct}%`}</p>
-                    <p className="font-bold text-gray-800 tabular-nums">{formatCurrency(collected)}</p>
-                    <p className="text-gray-400 text-[10px]">Meta: {formatCurrency(goal.collectionTarget)}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {sorted.length === 0 && (
         <div className="text-center py-12 text-gray-400">

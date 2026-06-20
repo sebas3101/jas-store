@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Plus, Trash2, Edit2, Receipt, Download,
   Utensils, Fuel, Package, Truck, Box, MoreHorizontal,
@@ -9,6 +9,9 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { Pagination } from '../components/ui/Pagination';
+
+const PER_PAGE = 25;
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { aoaToCSV, downloadCSV } from '../utils/csvExport';
@@ -129,6 +132,9 @@ export function ExpensesPage() {
   const [dateFrom,   setDateFrom]= useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [dateTo,     setDateTo]  = useState(format(new Date(), 'yyyy-MM-dd'));
   const [filterType, setFilterType] = useState<ExpenseType | 'all'>('all');
+  const [page, setPage]             = useState(1);
+
+  useEffect(() => { setPage(1); }, [viewMode, selMonth, dateFrom, dateTo, filterType]);
 
   const { from, to } = useMemo(() => {
     if (viewMode === 'month') {
@@ -300,7 +306,7 @@ export function ExpensesPage() {
           </div>
         ) : (
           <div className="space-y-2">
-            {rangeExpenses.map(expense => {
+            {rangeExpenses.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(expense => {
               const TypeIcon = EXPENSE_TYPES.find(t => t.value === expense.type)?.icon ?? Receipt;
               return (
                 <div key={expense.id}
@@ -351,6 +357,8 @@ export function ExpensesPage() {
           </div>
         )}
       </div>
+
+      <Pagination total={rangeExpenses.length} page={page} perPage={PER_PAGE} onChange={setPage} />
 
       {/* Modal crear/editar */}
       <Modal

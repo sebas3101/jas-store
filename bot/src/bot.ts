@@ -125,6 +125,19 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
     return;
   }
 
+  // Notificar al admin si el comprobante lo registró otra persona
+  const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
+  if (adminId && adminId !== chatId) {
+    const adminMsg = [
+      `🧾 *Nuevo comprobante registrado*`,
+      `👤 ${client?.name ?? nombre}`,
+      `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
+      ocr.bank ? `🏦 ${ocr.bank}` : null,
+      `\nRevisa el dashboard para confirmar.`,
+    ].filter(Boolean).join('\n');
+    bot.sendMessage(adminId, adminMsg, { parse_mode: 'Markdown' }).catch(() => {});
+  }
+
   await bot.sendMessage(chatId, buildResumen(ocr, client?.name ?? nombre, !!client, advertencias), { parse_mode: 'Markdown' });
 }
 

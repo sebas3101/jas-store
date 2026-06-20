@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload, MessageCircle } from 'lucide-react';
 import { exportClientes } from '../utils/exportExcel';
@@ -7,13 +7,17 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Pagination } from '../components/ui/Pagination';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import {
   clientStatusLabel,
   clientStatusColor,
   formatCurrency,
 } from '../utils/formatters';
+import { buildDebtReminderMessage, openWhatsApp } from '../utils/whatsapp';
 import type { Client, ClientStatus } from '../types';
+
+const PER_PAGE = 20;
 
 const STATUSES: { value: ClientStatus | 'all'; label: string }[] = [
   { value: 'all',           label: 'Todos'       },
@@ -143,7 +147,7 @@ function debtSeverity(daysOverdue: number): { label: string; bg: string; text: s
 }
 
 export function ClientsPage() {
-  const { clients, addClient, updateClient, orders, getClientDebt } = useAppStore();
+  const { clients, addClient, updateClient, orders, payments, getClientDebt } = useAppStore();
   const { can, isAdmin } = usePermissions();
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all');
@@ -151,6 +155,9 @@ export function ClientsPage() {
   const [modalOpen, setModalOpen]     = useState(false);
   const [editing, setEditing]         = useState<Client | null>(null);
   const [showAllCartera, setShowAllCartera] = useState(false);
+  const [page, setPage]               = useState(1);
+
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterType]);
 
   // Cartera vencida: clientes con deuda > 0 y al menos un pedido con más de 15 días sin pagar
   const today = new Date();
@@ -353,7 +360,7 @@ export function ClientsPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map(client => {
+          {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(client => {
             const debt = getClientDebt(client.id);
             const clientOrders = orders.filter(o => o.clientId === client.id);
             return (
@@ -396,15 +403,19 @@ export function ClientsPage() {
                   {/* Actions */}
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {client.phone && (
-                      <a
-                        href={`https://wa.me/57${client.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        onClick={() => {
+                          const msg = debt > 0
+                            ? buildDebtReminderMessage(client, debt, orders, payments.filter(p => p.clientId === client.id))
+                            : '';
+                          openWhatsApp(client.phone, msg);
+                        }}
                         className="p-2 hover:bg-green-50 text-green-400 hover:text-green-600 rounded-xl transition-colors"
-                        title="WhatsApp"
+                        title={debt > 0 ? 'Enviar recordatorio de deuda' : 'WhatsApp'}
+                        type="button"
                       >
                         <MessageCircle size={15} />
-                      </a>
+                      </button>
                     )}
                     {can('clientes', 'editar') && (
                       <button
@@ -425,6 +436,7 @@ export function ClientsPage() {
           })}
         </div>
       )}
+      <Pagination total={filtered.length} page={page} perPage={PER_PAGE} onChange={setPage} />
 
       {/* Modal */}
       <Modal

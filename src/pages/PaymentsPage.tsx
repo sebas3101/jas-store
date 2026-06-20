@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download, Trash2 } from 'lucide-react';
 import { exportPagos } from '../utils/exportExcel';
 import { distributeFifo } from '../utils/businessLogic';
@@ -8,6 +8,9 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
+import { Pagination } from '../components/ui/Pagination';
+
+const PER_PAGE = 25;
 import { StatCard } from '../components/ui/StatCard';
 import {
   formatCurrency,
@@ -172,6 +175,9 @@ export function PaymentsPage() {
   const [modalOpen, setModal]   = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
+  const [page, setPage]         = useState(1);
+
+  useEffect(() => { setPage(1); }, [search, dateFrom, dateTo]);
   const [deleting, setDeleting] = useState<(typeof payments)[0] | null>(null);
 
   const now      = new Date();
@@ -277,7 +283,7 @@ export function PaymentsPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map(payment => {
+          {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(payment => {
             const client = clients.find(c => c.id === payment.clientId);
             const registeredBy = users.find(u => u.id === payment.registeredById);
             return (
@@ -322,6 +328,8 @@ export function PaymentsPage() {
           })}
         </div>
       )}
+
+      <Pagination total={filtered.length} page={page} perPage={PER_PAGE} onChange={setPage} />
 
       <Modal isOpen={modalOpen} onClose={() => setModal(false)} title="Registrar pago / abono">
         <PaymentForm onClose={() => setModal(false)} />

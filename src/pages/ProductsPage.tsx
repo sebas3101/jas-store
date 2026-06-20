@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Search, Package, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Package, Edit2, Trash2, ImagePlus } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
+import { supabase } from '../lib/supabase';
 import {
   formatCurrency,
   productStatusLabel,
@@ -14,6 +15,22 @@ import {
   profitMargin,
 } from '../utils/formatters';
 import type { Product, ProductStatus, ProductCategory } from '../types';
+
+const BUCKET = 'productos';
+
+async function uploadProductImage(file: File): Promise<string | null> {
+  try {
+    await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => {});
+    const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+    if (error) return null;
+    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return publicUrl;
+  } catch {
+    return null;
+  }
+}
 
 const CATEGORIES: ProductCategory[] = [
   'ropa_dama','ropa_caballero','deportivo','casual','locion','cosmetico','otro',
@@ -39,14 +56,58 @@ function ProductForm({
     status:        initial?.status ?? 'disponible',
     responsibleId: initial?.responsibleId ?? '',
     notes:         initial?.notes ?? '',
+    imageUrl:      initial?.imageUrl ?? '',
   });
+  const [imageFile,    setImageFile]    = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>(initial?.imageUrl ?? '');
+  const [uploading,    setUploading]    = useState(false);
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
   const margin = profitMargin(form.salePrice, form.costPrice);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = ev => setImagePreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let imageUrl = form.imageUrl;
+    if (imageFile) {
+      setUploading(true);
+      const url = await uploadProductImage(imageFile);
+      setUploading(false);
+      if (url) imageUrl = url;
+    }
+    onSave({ ...form, imageUrl: imageUrl || undefined });
+  };
+
   return (
-    <form onSubmit={e => { e.preventDefault(); onSave(form); }} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
+        {/* Foto del producto */}
+        <div className="col-span-2">
+          <label className="label">Foto del producto</label>
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-dashed border-gray-200 group-hover:border-primary-400 transition-colors flex-shrink-0 flex items-center justify-center bg-gray-50">
+              {imagePreview
+                ? <img src={imagePreview} alt="" className="w-full h-full object-cover" />
+                : <ImagePlus size={20} className="text-gray-400" />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-gray-600">
+                {imagePreview ? 'Cambiar foto' : 'Subir foto'}
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">JPG, PNG o WebP · máx. 5 MB</p>
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+          </label>
+        </div>
         <div className="col-span-2">
           <label className="label">Nombre del producto *</label>
           <input className="input-field" required value={form.name}
@@ -117,8 +178,8 @@ function ProductForm({
             onChange={e => set('notes', e.target.value)} />
         </div>
       </div>
-      <button type="submit" className="btn-primary w-full justify-center">
-        Guardar producto
+      <button type="submit" disabled={uploading} className="btn-primary w-full justify-center disabled:opacity-60">
+        {uploading ? 'Subiendo foto...' : 'Guardar producto'}
       </button>
     </form>
   );
@@ -151,6 +212,7 @@ export function ProductsPage() {
       color:     data.color?.trim()     || undefined,
       reference: data.reference?.trim() || undefined,
       notes:     data.notes?.trim()     || undefined,
+      imageUrl:  data.imageUrl?.trim()  || undefined,
     };
     if (editing) {
       updateProduct(editing.id, clean);
@@ -254,8 +316,11 @@ export function ProductsPage() {
             return (
               <div key={product.id} className="card hover:shadow-md transition-shadow">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center">
-                    <Package size={16} className="text-primary-600" />
+                  <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0 bg-primary-50 flex items-center justify-center">
+                    {product.imageUrl
+                      ? <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                      : <Package size={16} className="text-primary-600" />
+                    }
                   </div>
                   <div className="flex items-center gap-1">
                     {can('productos', 'editar') && (
