@@ -7,6 +7,26 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.7.4] — 2026-06-19 — Seguridad, UX móvil y corrección de botones
+
+### Corregido
+
+#### Eliminación de importación xlsx — 2 CVEs HIGH (`ContactImportPage.tsx`)
+- Removida la opción de importar contactos desde `.xlsx`/`.xls` que usaba la librería `xlsx` (SheetJS).
+- Vulnerabilidades mitigadas: Prototype Pollution (GHSA-4r6h-8v6p-xvw6) y ReDoS (GHSA-5pgg-2g8v-p4x9). Sin parche oficial disponible en upstream.
+- La exportación a Excel (SettingsPage, ExpensesPage, FinancesPage) sigue funcionando; solo se elimina la *lectura* de archivos externos.
+- Formatos soportados ahora: `.vcf`, `.csv`, `.json`.
+
+#### Input de cantidad en pedidos — teclado numérico móvil (`OrdersPage.tsx`)
+- El input de cantidad usaba `type="number"`, que en móvil muestra el teclado numérico pero permite scroll accidental sobre el campo, cambiando el valor sin querer.
+- Cambiado a `type="text" inputMode="numeric" pattern="[0-9]*"`: abre el teclado numérico en móvil sin el comportamiento de scroll.
+
+#### 135 botones sin `type` explícito (27 archivos)
+- Botones dentro de `<form>` sin `type` explícito actúan como `type="submit"` por defecto en HTML, lo que puede disparar envíos de formulario involuntarios.
+- Se agregó `type="button"` a todos los botones de acción no-submit en todo el proyecto.
+
+---
+
 ## [1.7.3] — 2026-06-19 — Pantalla en blanco en navegación + íconos PWA
 
 ### Corregido
