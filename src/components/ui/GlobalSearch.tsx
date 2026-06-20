@@ -34,8 +34,12 @@ export function GlobalSearch({ dark = false }: { dark?: boolean }) {
   }, []);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50);
-    else setQuery('');
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+      return;
+    }
+    const id = setTimeout(() => setQuery(''), 0);
+    return () => clearTimeout(id);
   }, [open]);
 
   const q = query.trim().toLowerCase();

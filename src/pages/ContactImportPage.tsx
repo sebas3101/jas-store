@@ -47,18 +47,8 @@ export function ContactImportPage() {
   const [error,     setError]     = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Si no es admin, bloquear acceso
-  if (!isAdmin) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <AlertTriangle size={32} className="text-amber-400" />
-        <p className="text-gray-500 text-sm">Solo el administrador puede importar contactos.</p>
-        <Link to="/clientes" className="btn-primary">Volver a clientes</Link>
-      </div>
-    );
-  }
-
   // ── Procesamiento de archivo ─────────────────────────────────────────────
+  // useCallback declarado antes de cualquier return condicional (Rules of Hooks)
 
   const processFile = useCallback(async (file: File) => {
     setError('');
@@ -182,6 +172,17 @@ export function ContactImportPage() {
   };
 
   const confirmable = matches.filter(m => m.confidence === 'alta' && m.contact?.phone && !skipped.has(m.clientId)).length;
+
+  // Guard de acceso — después de todos los hooks
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <AlertTriangle size={32} className="text-amber-400" />
+        <p className="text-gray-500 text-sm">Solo el administrador puede importar contactos.</p>
+        <Link to="/clientes" className="btn-primary">Volver a clientes</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 pb-10">

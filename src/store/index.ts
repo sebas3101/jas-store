@@ -446,9 +446,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   deletePayment: async (id) => {
+    const clientId = get().payments.find(x => x.id === id)?.clientId;
     const { error } = await supabase.from('payments').delete().eq('id', id);
     if (error) { notifyError('deletePayment'); return; }
     set(s => ({ payments: s.payments.filter(x => x.id !== id) }));
+    if (clientId) {
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(clientId, clients, orders, payments, set);
+    }
   },
 
   // ── Suppliers ─────────────────────────────────────────────────────────────

@@ -54,9 +54,9 @@ function ClientForm({
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
-  const normalizedPhone = form.phone.replace(/[\s\-\(\)]/g, '');
+  const normalizedPhone = form.phone.replace(/[\s\-()]/g, '');
   const phoneDuplicate = existingClients.find(
-    c => c.id !== initial?.id && c.phone?.replace(/[\s\-\(\)]/g, '') === normalizedPhone && normalizedPhone.length >= 7
+    c => c.id !== initial?.id && c.phone?.replace(/[\s\-()]/g, '') === normalizedPhone && normalizedPhone.length >= 7
   );
 
   return (

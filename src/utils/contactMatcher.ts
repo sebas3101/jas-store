@@ -19,7 +19,7 @@ export interface MatchResult {
 // ── Normalización de teléfono ────────────────────────────────────────────────
 
 export function normalizePhone(raw: string): string {
-  let cleaned = raw.replace(/[\s\-\(\)\+\. ]/g, '');
+  let cleaned = raw.replace(/[-\s()+.]/g, '');
   if (cleaned.startsWith('0057')) cleaned = cleaned.slice(4);
   if (cleaned.startsWith('57') && cleaned.length === 12) cleaned = cleaned.slice(2);
   return cleaned;

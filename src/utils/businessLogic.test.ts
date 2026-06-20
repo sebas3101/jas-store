@@ -42,12 +42,12 @@ describe('calculateClientDebt', () => {
   });
 
   it('devuelve el total de un pedido sin abonos', () => {
-    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 0 })];
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 0, status: 'entregado' })];
     expect(calculateClientDebt('c1', orders)).toBe(150_000);
   });
 
   it('descuenta el monto ya pagado', () => {
-    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 50_000 })];
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 50_000, status: 'entregado' })];
     expect(calculateClientDebt('c1', orders)).toBe(100_000);
   });
 
@@ -63,15 +63,15 @@ describe('calculateClientDebt', () => {
 
   it('suma la deuda de múltiples pedidos activos', () => {
     const orders = [
-      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 30_000 }),
-      makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 80_000,  amountPaid: 0 }),
+      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 30_000, status: 'entregado' }),
+      makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 80_000,  amountPaid: 0,       status: 'entregado' }),
     ];
     expect(calculateClientDebt('c1', orders)).toBe(150_000);
   });
 
   it('ignora pedidos de otros clientes', () => {
     const orders = [
-      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 0 }),
+      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 0, status: 'entregado' }),
       makeOrder({ id: 'o2', clientId: 'c2', totalAmount: 200_000, amountPaid: 0 }),
     ];
     expect(calculateClientDebt('c1', orders)).toBe(100_000);
@@ -162,13 +162,14 @@ describe('deriveClientStatus', () => {
 
   it('devuelve pendiente cuando la deuda está dentro del límite de crédito', () => {
     const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 300_000 });
-    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 0 })];
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 150_000, amountPaid: 0, status: 'entregado', orderDate: recentDate })];
     expect(deriveClientStatus(client, orders)).toBe('pendiente');
   });
 
   it('devuelve mora cuando la deuda supera el límite de crédito', () => {
     const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 100_000 });
-    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0 })];
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado' })];
     expect(deriveClientStatus(client, orders)).toBe('mora');
   });
 
@@ -183,8 +184,9 @@ describe('deriveClientStatus', () => {
 
   it('usa 200.000 como límite por defecto cuando creditLimit es null', () => {
     const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: undefined });
-    const ordersEnMora = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0 })];
-    const ordersEnPendiente = [makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 100_000, amountPaid: 0 })];
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const ordersEnMora = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado' })];
+    const ordersEnPendiente = [makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 100_000, amountPaid: 0, status: 'entregado', orderDate: recentDate })];
     expect(deriveClientStatus(client, ordersEnMora)).toBe('mora');
     expect(deriveClientStatus(client, ordersEnPendiente)).toBe('pendiente');
   });

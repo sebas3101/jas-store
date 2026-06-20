@@ -12,8 +12,7 @@ export const buildDebtReminderMessage = (
   const pendingOrders = orders
     .filter(o =>
       o.clientId === client.id &&
-      o.status !== 'pagado' &&
-      o.status !== 'cancelado',
+      (o.status === 'entregado' || o.status === 'pendiente_pago'),
     )
     .map(o => o.orderNumber)
     .join(', ');
@@ -50,8 +49,7 @@ export const buildDebtInfoMessage = (
   const pending = orders
     .filter(o =>
       o.clientId === client.id &&
-      o.status !== 'pagado' &&
-      o.status !== 'cancelado',
+      (o.status === 'entregado' || o.status === 'pendiente_pago'),
     )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
@@ -178,6 +176,7 @@ export const buildDataUpdateMessage = (client?: { name?: string }) => {
 };
 
 export const openWhatsApp = (phone: string, message: string) => {
+  if (!phone?.trim()) return;
   const cleaned = phone.replace(/\D/g, '');
   const full = cleaned.startsWith('57') ? cleaned : `57${cleaned}`;
   const encoded = encodeURIComponent(message);

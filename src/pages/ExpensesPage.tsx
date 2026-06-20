@@ -9,6 +9,7 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import type { Expense, ExpenseType } from '../types';
 
@@ -82,9 +83,7 @@ function ExpenseForm({
         </div>
         <div>
           <label className="label">Valor *</label>
-          <input type="number" className="input-field" required min="0" step="100"
-            value={form.amount}
-            onChange={e => set('amount', parseFloat(e.target.value) || 0)} />
+          <CurrencyInput required value={form.amount} onChange={v => set('amount', v)} />
         </div>
         <div>
           <label className="label">Método de pago</label>
@@ -335,7 +334,7 @@ export function ExpensesPage() {
                     {can('gastos', 'editar') && (
                       <button
                         onClick={() => { setEditing(expense); setModal(true); }}
-                        className="p-1.5 hover:bg-white rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
+                        className="p-1.5 hover:bg-white rounded-xl text-gray-500 hover:text-gray-700 transition-colors"
                       >
                         <Edit2 size={14} />
                       </button>
@@ -343,7 +342,7 @@ export function ExpensesPage() {
                     {can('gastos', 'eliminar') && (
                       <button
                         onClick={() => setDeleting(expense)}
-                        className="p-1.5 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
+                        className="p-1.5 hover:bg-red-50 rounded-xl text-gray-500 hover:text-red-500 transition-colors"
                       >
                         <Trash2 size={14} />
                       </button>

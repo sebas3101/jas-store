@@ -22,11 +22,11 @@ const STATUS_OPTIONS: { value: OrderStatus; label: string }[] = [
 ];
 
 const statusBg: Partial<Record<OrderStatus, string>> = {
-  por_recoger: 'border-l-4 border-amber-400',
-  recogido:    'border-l-4 border-blue-400',
-  entregado:   'border-l-4 border-emerald-400',
-  pagado:      'border-l-4 border-emerald-500',
-  cancelado:   'border-l-4 border-gray-300',
+  por_recoger: 'bg-amber-50/60',
+  recogido:    'bg-blue-50/60',
+  entregado:   'bg-emerald-50/60',
+  pagado:      'bg-emerald-50/60',
+  cancelado:   'bg-gray-50',
 };
 
 type Tab = 'recogidas' | 'entregas' | 'historial';

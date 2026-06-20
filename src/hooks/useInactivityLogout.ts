@@ -12,7 +12,7 @@ export function useInactivityLogout() {
   const [showWarning, setShowWarning] = useState(false);
 
   useEffect(() => {
-    if (!currentUser) { setShowWarning(false); return; }
+    if (!currentUser) return;
 
     const reset = () => {
       setShowWarning(false);
