@@ -28,7 +28,7 @@ export function DashboardPage() {
   const totalPaid    = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.amountPaid, 0);
   // Deuda real: solo pedidos entregados/pendiente_pago, usando la misma lógica centralizada
   const totalPending = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
-  const totalProfit  = orders.filter(o => o.status === 'entregado' || o.status === 'pagado' || o.status === 'pendiente_pago').reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
+  const totalProfit  = orders.filter(o => o.status === 'entregado' || o.status === 'pagado' || o.status === 'pendiente_pago').reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
 
   const clientsWithDebt = clients.filter(c => c.status === 'mora' || c.status === 'pendiente').length;
   const clientsUpToDate = clients.filter(c => c.status === 'al_dia').length;

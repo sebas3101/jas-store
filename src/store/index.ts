@@ -578,8 +578,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const pendingOrders = orders
       .filter(o =>
         o.clientId === proof.clientId &&
-        o.status !== 'pagado' &&
-        o.status !== 'cancelado'
+        (o.status === 'entregado' || o.status === 'pendiente_pago')
       )
       .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 

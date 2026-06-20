@@ -31,8 +31,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const pendingOrders = orders
     .filter(o =>
       o.clientId === clientId &&
-      o.status !== 'pagado' &&
-      o.status !== 'cancelado'
+      (o.status === 'entregado' || o.status === 'pendiente_pago')
     )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 

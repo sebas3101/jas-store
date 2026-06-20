@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { TrendingUp, DollarSign, Users, ShoppingBag, Package, Percent, ReceiptText, Wallet } from 'lucide-react';
 import { useAppStore } from '../store';
+import { calculateClientDebt } from '../utils/businessLogic';
 import { StatCard } from '../components/ui/StatCard';
 import {
   formatCurrency,
@@ -42,13 +43,18 @@ export function ReportsPage() {
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
     });
-    const cobrado = monthOrders.reduce((s, o) => s + o.amountPaid, 0);
+    const cobrado = payments.filter(p => {
+      try {
+        const d = parseISO(p.date);
+        return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+      } catch { return false; }
+    }).reduce((s, p) => s + p.amount, 0);
     const gastos  = monthExpenses.reduce((s, e) => s + e.amount, 0);
     return {
       mes:      format(month, 'MMM', { locale: es }),
       ventas:   monthOrders.reduce((s, o) => s + o.totalAmount, 0),
       cobrado,
-      ganancia: monthOrders.reduce((s, o) => s + (o.totalAmount - o.totalCost), 0),
+      ganancia: monthOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0),
       gastos,
       utilidad: cobrado - gastos,
     };
@@ -93,20 +99,15 @@ export function ReportsPage() {
     name: c.name,
     total: orders.filter(o => o.clientId === c.id && o.status !== 'cancelado')
       .reduce((s, o) => s + o.totalAmount, 0),
-    deuda: orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status))
-      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0),
+    deuda: calculateClientDebt(c.id, orders),
   })).sort((a, b) => b.total - a.total).slice(0, 5);
 
   // KPIs
   const activeOrders  = orders.filter(o => o.status !== 'cancelado');
   const totalSales    = activeOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalCollected = activeOrders.reduce((s, o) => s + o.amountPaid, 0);
-  const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - o.totalCost), 0);
-  const totalDebt     = clients.reduce((s, c) => {
-    const debt = orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status))
-      .reduce((ss, o) => ss + (o.totalAmount - o.amountPaid), 0);
-    return s + debt;
-  }, 0);
+  const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
+  const totalDebt     = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
   const totalInvestment = purchases.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.cost, 0);
 
   // Indicadores de rendimiento
@@ -225,8 +226,8 @@ export function ReportsPage() {
               <div key={p.name} className="flex items-center gap-3">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                   i === 0 ? 'bg-amber-100 text-amber-700' :
-                  i === 1 ? 'bg-gray-100 text-gray-600' :
-                  i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-gray-50 text-gray-500'
+                  i === 1 ? 'bg-gray-100 text-gray-700' :
+                  i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-primary-50 text-primary-600'
                 }`}>{i + 1}</div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
@@ -344,8 +345,8 @@ export function ReportsPage() {
               <div key={c.name} className="flex items-center gap-3">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 ${
                   i === 0 ? 'bg-amber-100 text-amber-700' :
-                  i === 1 ? 'bg-gray-100 text-gray-600' :
-                  i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-gray-50 text-gray-500'
+                  i === 1 ? 'bg-gray-100 text-gray-700' :
+                  i === 2 ? 'bg-orange-50 text-orange-600' : 'bg-primary-50 text-primary-600'
                 }`}>
                   {i + 1}
                 </div>

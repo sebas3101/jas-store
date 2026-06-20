@@ -8,6 +8,12 @@
         "value": "plus jakarta sans",
         "reason": "Replaced with Manrope",
         "createdAt": "2026-06-19T23:26:31.471Z"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "reason": "Arial inside printEstadoCuenta HTML template for cross-platform print compatibility, not UI font",
+        "createdAt": "2026-06-20T00:18:49.599Z"
       }
     ]
   }

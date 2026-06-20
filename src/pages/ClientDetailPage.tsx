@@ -35,7 +35,7 @@ function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments
   const totalOrdered = clientOrders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
   const totalAbonado = clientPayments.reduce((s, p) => s + p.amount, 0);
   const deuda = clientOrders
-    .filter(o => !['pagado', 'cancelado'].includes(o.status))
+    .filter(o => o.status === 'entregado' || o.status === 'pendiente_pago')
     .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
 
   const today = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -169,7 +169,10 @@ function ClientPaymentForm({
   const { orders, clients, currentUser, addPayment, updateOrder } = useAppStore();
 
   const pendingOrders = orders
-    .filter(o => o.clientId === clientId && o.status !== 'pagado' && o.status !== 'cancelado')
+    .filter(o =>
+      o.clientId === clientId &&
+      (o.status === 'entregado' || o.status === 'pendiente_pago')
+    )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
   const debt = pendingOrders.reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
