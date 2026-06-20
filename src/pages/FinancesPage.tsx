@@ -13,6 +13,7 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, paymentMethodLabel } from '../utils/formatters';
+import { aoaToCSV, downloadCSV } from '../utils/csvExport';
 
 type ViewMode = 'month' | 'range';
 
@@ -68,88 +69,59 @@ export function FinancesPage() {
     return acc;
   }, {});
 
-  const handleExportExcel = async () => {
-    const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
+  const handleExportExcel = () => {
+    const periodo = viewMode === 'month'
+      ? format(from, 'MMMM yyyy', { locale: es })
+      : `${format(from, 'dd/MM/yyyy')} — ${format(to, 'dd/MM/yyyy')}`;
+    const label = viewMode === 'month'
+      ? format(from, 'yyyy-MM')
+      : `${format(from, 'yyyyMMdd')}-${format(to, 'yyyyMMdd')}`;
 
-    // Sheet 1: Summary
-    const summaryData = [
-      ['RESUMEN FINANCIERO — JAS Store'],
-      ['Período', viewMode === 'month' ? format(from, 'MMMM yyyy', { locale: es }) : `${format(from, 'dd/MM/yyyy')} — ${format(to, 'dd/MM/yyyy')}`],
+    const sections: unknown[][] = [
+      ['=== RESUMEN FINANCIERO — JAS Store ==='],
+      ['Período', periodo],
       [],
       ['Indicador', 'Valor'],
-      ['Ventas brutas (pedidos)',  totalSales],
-      ['Costo de pedidos',        totalCost],
-      ['Ganancia bruta',          grossProfit],
+      ['Ventas brutas (pedidos)',    totalSales],
+      ['Costo de pedidos',          totalCost],
+      ['Ganancia bruta',            grossProfit],
       ['Recaudo (pagos recibidos)', totalCollected],
-      ['Compras a proveedores',   totalPurchases],
-      ['Gastos operativos',       totalExpenses],
-      ['Saldo neto',              netBalance],
-      ['Deuda pendiente clientes', totalDebt],
-    ];
-    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, ws1, 'Resumen');
-
-    // Sheet 2: Orders
-    const orderRows = [
+      ['Compras a proveedores',     totalPurchases],
+      ['Gastos operativos',         totalExpenses],
+      ['Saldo neto',                netBalance],
+      ['Deuda pendiente clientes',  totalDebt],
+      [],
+      ['=== PEDIDOS ==='],
       ['Pedido', 'Fecha', 'Total', 'Pagado', 'Pendiente', 'Estado'],
       ...rangeOrders.map(o => [
-        o.orderNumber,
-        formatDate(o.orderDate),
-        o.totalAmount,
-        o.amountPaid,
-        o.totalAmount - o.amountPaid,
-        o.status,
+        o.orderNumber, formatDate(o.orderDate),
+        o.totalAmount, o.amountPaid, o.totalAmount - o.amountPaid, o.status,
       ]),
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(orderRows), 'Pedidos');
-
-    // Sheet 3: Payments
-    const paymentRows = [
+      [],
+      ['=== PAGOS ==='],
       ['Fecha', 'Método', 'Monto', 'Notas'],
       ...rangePayments.map(p => [
-        formatDate(p.date),
-        paymentMethodLabel[p.method] ?? p.method,
-        p.amount,
-        p.notes ?? '',
+        formatDate(p.date), paymentMethodLabel[p.method] ?? p.method, p.amount, p.notes ?? '',
       ]),
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(paymentRows), 'Pagos');
-
-    // Sheet 4: Purchases
-    const purchaseRows = [
+      [],
+      ['=== COMPRAS ==='],
       ['Fecha', 'Descripción', 'Costo', 'Estado'],
       ...rangePurchases.map(p => [
-        formatDate(p.purchaseDate),
-        p.description,
-        p.cost,
-        p.status,
+        formatDate(p.purchaseDate), p.description, p.cost, p.status,
       ]),
-    ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(purchaseRows), 'Compras');
-
-    // Sheet 5: Expenses
-    if (rangeExpenses.length > 0) {
-      const expenseRows = [
+      ...(rangeExpenses.length > 0 ? [
+        [],
+        ['=== GASTOS ==='],
         ['Fecha', 'Tipo', 'Descripción', 'Responsable', 'Método', 'Valor'],
         ...rangeExpenses.map(e => [
-          formatDate(e.date),
-          e.type,
-          e.description ?? '',
-          e.responsible ?? '',
-          e.paymentMethod,
-          e.amount,
+          formatDate(e.date), e.type, e.description ?? '', e.responsible ?? '', e.paymentMethod, e.amount,
         ]),
         [],
         ['TOTAL', '', '', '', '', totalExpenses],
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(expenseRows), 'Gastos');
-    }
+      ] : []),
+    ];
 
-    const label = viewMode === 'month'
-      ? format(from, 'yyyy-MM', { locale: es })
-      : `${format(from, 'yyyyMMdd')}-${format(to, 'yyyyMMdd')}`;
-    XLSX.writeFile(wb, `JAS-Finanzas-${label}.xlsx`);
+    downloadCSV(aoaToCSV(sections), `JAS-Finanzas-${label}.csv`);
   };
 
   return (

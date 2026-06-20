@@ -29,6 +29,17 @@ export default defineConfig({
       '@': '/src',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor':   ['react', 'react-dom', 'react-router-dom'],
+          'supabase':       ['@supabase/supabase-js'],
+          'date-utils':     ['date-fns', 'date-fns/locale'],
+        },
+      },
+    },
+  },
   test: {
     globals:     true,
     environment: 'node',

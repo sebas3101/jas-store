@@ -4,7 +4,8 @@ import { format } from 'date-fns';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
-import { roleLabel, formatDate } from '../utils/formatters';
+import { roleLabel } from '../utils/formatters';
+import { downloadJSON } from '../utils/csvExport';
 import { usePermissions, PERMISSION_TEMPLATES, MODULE_ACTIONS, MODULE_LABELS, ALL_MODULES } from '../hooks/usePermissions';
 import type { User as UserType, UserRole, UserPermissions, PermModule, PermAction } from '../types';
 import logoUrl from '../assets/logo.jpeg';
@@ -309,60 +310,19 @@ export function SettingsPage() {
     setResetDone(true);
   };
 
-  const handleBackup = async () => {
-    const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
+  const handleBackup = () => {
     const label = format(new Date(), 'yyyy-MM-dd');
-
-    // Clientes
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['ID', 'Nombre', 'Teléfono', 'Dirección', 'Estado', 'Notas', 'Creado'],
-      ...clients.map(c => [c.id, c.name, c.phone ?? '', c.address ?? '', c.status, c.notes ?? '', formatDate(c.createdAt)]),
-    ]), 'Clientes');
-
-    // Pedidos
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Número', 'Fecha', 'Cliente ID', 'Total', 'Pagado', 'Pendiente', 'Estado', 'Método Pago', 'Notas'],
-      ...orders.map(o => [o.orderNumber, formatDate(o.orderDate), o.clientId, o.totalAmount, o.amountPaid, o.totalAmount - o.amountPaid, o.status, o.paymentMethod, o.notes ?? '']),
-    ]), 'Pedidos');
-
-    // Pagos
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Fecha', 'Cliente ID', 'Monto', 'Método', 'Notas'],
-      ...payments.map(p => [formatDate(p.date), p.clientId, p.amount, p.method, p.notes ?? '']),
-    ]), 'Pagos');
-
-    // Productos
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['ID', 'Nombre', 'Categoría', 'Precio venta', 'Precio costo', 'Estado', 'Color', 'Talla'],
-      ...products.map(p => [p.id, p.name, p.category, p.salePrice, p.costPrice, p.status, p.color ?? '', p.size ?? '']),
-    ]), 'Productos');
-
-    // Proveedores
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['ID', 'Nombre', 'Teléfono', 'Dirección', 'Notas'],
-      ...suppliers.map(s => [s.id, s.name, s.phone ?? '', s.address ?? '', s.notes ?? '']),
-    ]), 'Proveedores');
-
-    // Compras
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Fecha', 'Descripción', 'Costo', 'Estado'],
-      ...(purchases ?? []).map(p => [formatDate(p.purchaseDate), p.description, p.cost, p.status]),
-    ]), 'Compras');
-
-    // Gastos
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Fecha', 'Tipo', 'Descripción', 'Responsable', 'Método', 'Valor', 'Observaciones'],
-      ...(expenses ?? []).map(e => [formatDate(e.date), e.type, e.description ?? '', e.responsible ?? '', e.paymentMethod, e.amount, e.notes ?? '']),
-    ]), 'Gastos');
-
-    // Garantías
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
-      ['Fecha solicitud', 'Cliente ID', 'Producto', 'Descripción', 'Estado'],
-      ...(warranties ?? []).map(w => [formatDate(w.requestDate), w.clientId, w.productName, w.description ?? '', w.status]),
-    ]), 'Garantías');
-
-    XLSX.writeFile(wb, `JAS-Backup-${label}.xlsx`);
+    downloadJSON({
+      exportedAt: new Date().toISOString(),
+      clientes:   clients,
+      pedidos:    orders,
+      pagos:      payments,
+      productos:  products,
+      proveedores: suppliers,
+      compras:    purchases ?? [],
+      gastos:     expenses  ?? [],
+      garantias:  warranties ?? [],
+    }, `JAS-Backup-${label}.json`);
   };
 
   return (

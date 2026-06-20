@@ -11,6 +11,7 @@ import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { formatCurrency, formatDate } from '../utils/formatters';
+import { aoaToCSV, downloadCSV } from '../utils/csvExport';
 import type { Expense, ExpenseType } from '../types';
 
 const EXPENSE_TYPES: { value: ExpenseType; label: string; icon: typeof Receipt }[] = [
@@ -165,13 +166,10 @@ export function ExpensesPage() {
     setEditing(null);
   };
 
-  const handleExport = async () => {
-    const XLSX = await import('xlsx');
-    const wb = XLSX.utils.book_new();
+  const handleExport = () => {
     const label = viewMode === 'month'
       ? format(from, 'yyyy-MM')
       : `${format(from, 'yyyyMMdd')}-${format(to, 'yyyyMMdd')}`;
-
     const rows = [
       ['Fecha', 'Tipo', 'Descripción', 'Responsable', 'Método', 'Valor', 'Observaciones'],
       ...rangeExpenses.map(e => [
@@ -186,8 +184,7 @@ export function ExpensesPage() {
       [],
       ['TOTAL', '', '', '', '', totalAmount, ''],
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Gastos');
-    XLSX.writeFile(wb, `JAS-Gastos-${label}.xlsx`);
+    downloadCSV(aoaToCSV(rows), `JAS-Gastos-${label}.csv`);
   };
 
   return (

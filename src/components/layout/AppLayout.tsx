@@ -4,6 +4,7 @@ import { Shield, Clock } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Header } from './Header';
+import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
@@ -64,7 +65,7 @@ export function AppLayout() {
         <main className="flex-1 overflow-y-auto lg:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6 lg:!pb-6">
             {hasAccess
-              ? <Suspense fallback={<PageLoader />}><Outlet /></Suspense>
+              ? <ErrorBoundary><Suspense fallback={<PageLoader />}><Outlet /></Suspense></ErrorBoundary>
               : <AccessDenied />}
           </div>
         </main>
