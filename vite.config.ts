@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo.jpeg'],
+      includeAssets: ['logo.jpeg', 'logo-192.png', 'logo-512.png'],
       manifest: {
         name:             'JAS Store',
         short_name:       'JAS',
@@ -18,8 +18,8 @@ export default defineConfig({
         display:          'standalone',
         start_url:        '/',
         icons: [
-          { src: '/logo.jpeg', sizes: '192x192', type: 'image/jpeg' },
-          { src: '/logo.jpeg', sizes: '512x512', type: 'image/jpeg' },
+          { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/logo-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
     }),

@@ -1,10 +1,19 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { Suspense } from 'react';
 import { Shield, Clock } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Header } from './Header';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
+
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function AccessDenied() {
   return (
@@ -54,7 +63,9 @@ export function AppLayout() {
         <Header />
         <main className="flex-1 overflow-y-auto lg:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6 lg:!pb-6">
-            {hasAccess ? <Outlet /> : <AccessDenied />}
+            {hasAccess
+              ? <Suspense fallback={<PageLoader />}><Outlet /></Suspense>
+              : <AccessDenied />}
           </div>
         </main>
       </div>
