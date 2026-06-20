@@ -4,6 +4,7 @@ import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { OrderStatusButton, NEXT_STATUS } from '../components/ui/OrderStatusButton';
 import {
   formatCurrency,
@@ -62,6 +63,7 @@ export function DeliveriesPage() {
   const assignableUsers = users.filter(u => u.active);
 
   const [advancingId, setAdvancingId] = useState<string | null>(null);
+  const [confirmingOrder, setConfirmingOrder] = useState<Order | null>(null);
 
   const handleAssign = (orderId: string, userId: string) => {
     updateOrder(orderId, { deliveryPersonId: userId });
@@ -75,16 +77,24 @@ export function DeliveriesPage() {
     updateOrder(orderId, updates);
   };
 
-  const handleAdvanceStatus = async (order: Order) => {
+  const handleAdvanceStatus = (order: Order) => {
     if (advancingId) return;
     const next = NEXT_STATUS[order.status];
     if (!next) return;
-    setAdvancingId(order.id);
+    setConfirmingOrder(order);
+  };
+
+  const confirmAdvance = async () => {
+    if (!confirmingOrder) return;
+    const next = NEXT_STATUS[confirmingOrder.status];
+    if (!next) { setConfirmingOrder(null); return; }
+    setAdvancingId(confirmingOrder.id);
+    setConfirmingOrder(null);
     const updates: Parameters<typeof updateOrder>[1] = { status: next.status };
     if (next.status === 'entregado' || next.status === 'pagado') {
       updates.deliveredAt = new Date().toISOString();
     }
-    await updateOrder(order.id, updates);
+    await updateOrder(confirmingOrder.id, updates);
     setAdvancingId(null);
   };
 
@@ -366,6 +376,22 @@ export function DeliveriesPage() {
           })}
         </div>
       )}
+
+      {/* Confirmación de avance de estado */}
+      {confirmingOrder && (() => {
+        const next   = NEXT_STATUS[confirmingOrder.status];
+        const client = clients.find(c => c.id === confirmingOrder.clientId);
+        return (
+          <ConfirmDialog
+            isOpen={true}
+            onClose={() => setConfirmingOrder(null)}
+            onConfirm={confirmAdvance}
+            title="Confirmar cambio de estado"
+            message={`¿Marcar el pedido ${confirmingOrder.orderNumber}${client ? ` de ${client.name}` : ''} como "${next?.label}"?`}
+            confirmLabel={next?.label ?? 'Confirmar'}
+          />
+        );
+      })()}
     </div>
   );
 }

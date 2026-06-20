@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -29,25 +29,32 @@ const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'cancelado',     label: 'Cancelado'      },
 ];
 
-function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void }) {
+function OrderForm({ onSave, initial }: {
+  onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void;
+  initial?: Order;
+}) {
   const { clients, products, users, suppliers, currentUser } = useAppStore();
-  const [clientId, setClientId]   = useState('');
-  const [items, setItems]         = useState<Omit<OrderItem, 'id'>[]>([{
-    productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
-  }]);
-  const [status, setStatus]           = useState<OrderStatus>('tomado');
-  const [payMethod, setPayMethod]     = useState<PaymentMethod>('credito');
-  const [sellerId, setSellerId]       = useState(currentUser?.id ?? '');
-  const [deliveryId, setDeliveryId]   = useState('');
-  const [orderDate, setOrderDate]     = useState(new Date().toISOString().slice(0, 10));
-  const [estDelivery, setEstDelivery] = useState('');
-  const [amountPaid, setAmountPaid]   = useState(0);
-  const [notes, setNotes]             = useState('');
+  const [clientId, setClientId]   = useState(initial?.clientId ?? '');
+  const [items, setItems]         = useState<Omit<OrderItem, 'id'>[]>(
+    initial?.items.map(({ id: _id, ...rest }) => rest) ?? [{
+      productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
+    }]
+  );
+  const [status, setStatus]           = useState<OrderStatus>(initial?.status ?? 'tomado');
+  const [payMethod, setPayMethod]     = useState<PaymentMethod>(initial?.paymentMethod ?? 'credito');
+  const [sellerId, setSellerId]       = useState(initial?.sellerId ?? currentUser?.id ?? '');
+  const [deliveryId, setDeliveryId]   = useState(initial?.deliveryPersonId ?? '');
+  const [orderDate, setOrderDate]     = useState(
+    initial?.orderDate ? initial.orderDate.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  );
+  const [estDelivery, setEstDelivery] = useState(initial?.estimatedDeliveryDate?.slice(0, 10) ?? '');
+  const [amountPaid, setAmountPaid]   = useState(initial?.amountPaid ?? 0);
+  const [notes, setNotes]             = useState(initial?.notes ?? '');
   // Proveedor
-  const [supplierId, setSupplierId]                 = useState('');
-  const [supplierPayStatus, setSupplierPayStatus]   = useState<SupplierPaymentStatus>('pendiente');
-  const [supplierPayAmount, setSupplierPayAmount]   = useState(0);
-  const [supplierPayMethod, setSupplierPayMethod]   = useState<SupplierPaymentMethod>('efectivo');
+  const [supplierId, setSupplierId]                 = useState(initial?.supplierId ?? '');
+  const [supplierPayStatus, setSupplierPayStatus]   = useState<SupplierPaymentStatus>(initial?.supplierPaymentStatus ?? 'pendiente');
+  const [supplierPayAmount, setSupplierPayAmount]   = useState(initial?.supplierPaymentAmount ?? 0);
+  const [supplierPayMethod, setSupplierPayMethod]   = useState<SupplierPaymentMethod>(initial?.supplierPaymentMethod ?? 'efectivo');
 
   const addItem = () => setItems(prev => [...prev, {
     productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
@@ -293,7 +300,7 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
         </div>
       </div>
       <button type="submit" className="btn-primary w-full justify-center">
-        Guardar pedido
+        {initial ? 'Actualizar pedido' : 'Guardar pedido'}
       </button>
     </form>
   );
@@ -333,8 +340,9 @@ export function OrdersPage() {
   const [search, setSearch]       = useState(prefilledName);
   const [filterClient, setFilterClient] = useState(clienteParam);
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
-  const [modalOpen, setModalOpen] = useState(false);
-  const [waOrder, setWaOrder]     = useState<Order | null>(null);
+  const [modalOpen, setModalOpen]     = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [waOrder, setWaOrder]         = useState<Order | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
 
   const handleAdvanceStatus = async (order: Order) => {
@@ -453,6 +461,16 @@ export function OrdersPage() {
                       </p>
                     )}
                   </div>
+                  {can('pedidos', 'editar') && !['pagado', 'cancelado'].includes(order.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrder(order)}
+                      className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                      title="Editar pedido"
+                    >
+                      <Pen size={14} />
+                    </button>
+                  )}
                   <Link to={`/pedidos/${order.id}`} className="btn-primary !px-2.5 !py-1.5 flex-shrink-0">
                     <ArrowRight size={14} />
                   </Link>
@@ -479,6 +497,18 @@ export function OrdersPage() {
           })}
         </div>
       )}
+
+      <Modal isOpen={!!editingOrder} onClose={() => setEditingOrder(null)} title="Editar pedido" size="lg">
+        {editingOrder && (
+          <OrderForm
+            initial={editingOrder}
+            onSave={async data => {
+              await updateOrder(editingOrder.id, data);
+              setEditingOrder(null);
+            }}
+          />
+        )}
+      </Modal>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title="Nuevo pedido" size="lg">
         <OrderFormWithWa

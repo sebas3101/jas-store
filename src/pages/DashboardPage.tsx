@@ -18,7 +18,7 @@ import { es } from 'date-fns/locale';
 import { getReminderLog, daysSinceReminder } from '../utils/reminders';
 
 export function DashboardPage() {
-  const { orders, clients, payments, products, currentUser } = useAppStore();
+  const { orders, clients, payments, products, currentUser, paymentProofs } = useAppStore();
   const { goals } = useGoalsStore();
 
   const now = new Date();
@@ -136,7 +136,15 @@ export function DashboardPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
+  const pendingProofs = paymentProofs.filter(p => p.status === 'pendiente_revision').length;
+
   const alerts = [
+    ...(pendingProofs > 0 ? [{
+      type:  'comprobantes' as const,
+      msg:   `${pendingProofs} comprobante${pendingProofs !== 1 ? 's' : ''} pendiente${pendingProofs !== 1 ? 's' : ''} de revisión`,
+      link:  '/comprobantes',
+      color: 'text-blue-700 bg-blue-50',
+    }] : []),
     ...clients.filter(c => c.status === 'mora').map(c => ({
       type: 'mora' as const,
       msg:  `${c.name} está en mora`,

@@ -31,7 +31,7 @@ function buildClientData(
   return clients
     .map(c => {
       const pendingOrds = orders.filter(
-        o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status),
+        o => o.clientId === c.id && ['entregado', 'pendiente_pago'].includes(o.status),
       );
       const debt = pendingOrds.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
       if (debt <= 0) return null;

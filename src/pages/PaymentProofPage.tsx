@@ -11,7 +11,24 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { extractPaymentData, compressImageToBase64 } from '../utils/ocr';
+import { supabase } from '../lib/supabase';
 import type { PaymentProof, PaymentProofStatus } from '../types';
+
+const BUCKET = 'comprobantes';
+
+async function uploadProofImage(file: File): Promise<string | null> {
+  try {
+    await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => {});
+    const ext  = file.type === 'image/png' ? 'png' : 'jpg';
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
+    if (error) return null;
+    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return publicUrl;
+  } catch {
+    return null;
+  }
+}
 
 // El OCR usa el Edge Function de Supabase; disponible siempre que la URL esté configurada
 const HAS_AI = !!(import.meta.env.VITE_SUPABASE_URL as string | undefined);
@@ -61,6 +78,9 @@ function ProofForm({
   // Imagen
   const [imagePreview, setImagePreview] = useState<string>('');   // data URL completo
   const [imageBase64,  setImageBase64]  = useState<string>('');   // solo la parte base64
+  const [imageFile,    setImageFile]    = useState<File | null>(null);
+  const [uploading,    setUploading]    = useState(false);
+  const [uploadError,  setUploadError]  = useState('');
 
   // Estado IA
   const [extracting,   setExtracting]   = useState(false);
@@ -87,6 +107,8 @@ function ProofForm({
 
   const handleFile = async (file: File | null | undefined) => {
     if (!file) return;
+    setImageFile(file);
+    setUploadError('');
     // Preview inmediato
     const reader = new FileReader();
     reader.onload = e => setImagePreview(e.target?.result as string ?? '');
@@ -120,8 +142,19 @@ function ProofForm({
     setConfidence(result.confidence);
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    let imageUrl: string | undefined;
+    if (imageFile) {
+      setUploading(true);
+      const url = await uploadProofImage(imageFile);
+      setUploading(false);
+      if (url) {
+        imageUrl = url;
+      } else {
+        setUploadError('No se pudo subir la imagen — el comprobante se guardará sin foto.');
+      }
+    }
     onSave({
       clientId:    clientId   || undefined,
       orderIds:    undefined,
@@ -130,7 +163,7 @@ function ProofForm({
       bank:        bank.trim()       || undefined,
       reference:   reference.trim()  || undefined,
       senderName:  senderName.trim() || undefined,
-      imageUrl:    undefined,
+      imageUrl,
       rawText:     undefined,
       status:      'pendiente_revision',
       reviewedById: undefined,
@@ -165,7 +198,7 @@ function ProofForm({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => { setImagePreview(''); setImageBase64(''); setConfidence(''); setExtractError(''); }}
+                onClick={() => { setImagePreview(''); setImageBase64(''); setImageFile(null); setConfidence(''); setExtractError(''); setUploadError(''); }}
                 className="btn-ghost text-xs flex-1 justify-center text-red-500 hover:bg-red-50"
               >
                 Quitar imagen
@@ -200,6 +233,9 @@ function ProofForm({
             )}
             {extractError && (
               <div className="text-xs bg-red-50 text-red-600 px-3 py-2 rounded-lg">{extractError}</div>
+            )}
+            {uploadError && (
+              <div className="text-xs bg-amber-50 text-amber-700 px-3 py-2 rounded-lg">{uploadError}</div>
             )}
           </div>
         ) : (
@@ -288,8 +324,8 @@ function ProofForm({
         </div>
       </div>
 
-      <button type="submit" className="btn-primary w-full justify-center">
-        Guardar como pendiente de revisión
+      <button type="submit" disabled={uploading} className="btn-primary w-full justify-center disabled:opacity-60">
+        {uploading ? 'Subiendo imagen...' : 'Guardar como pendiente de revisión'}
       </button>
     </form>
   );

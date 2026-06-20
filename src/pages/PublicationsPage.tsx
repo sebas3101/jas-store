@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Megaphone, CheckCircle2, Clock, Trash2 } from 'lucide-react';
+import { Plus, Megaphone, CheckCircle2, Clock, Trash2, Search } from 'lucide-react';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -103,12 +103,19 @@ function PublicationForm({ onSave }: {
 
 export function PublicationsPage() {
   const { publications, users, addPublication, updatePublication, deletePublication } = useAppStore();
-  const [modalOpen, setModal]   = useState(false);
-  const [filter, setFilter]     = useState<'all' | 'pending' | 'published'>('all');
+  const [modalOpen, setModal]     = useState(false);
+  const [filter, setFilter]       = useState<'all' | 'pending' | 'published'>('all');
+  const [search, setSearch]       = useState('');
+  const [channelFilter, setChannel] = useState<PublicationChannel | 'all'>('all');
 
   const filtered = publications.filter(p => {
-    if (filter === 'pending')   return !p.isPublished;
-    if (filter === 'published') return p.isPublished;
+    if (filter === 'pending'   && p.isPublished)  return false;
+    if (filter === 'published' && !p.isPublished) return false;
+    if (channelFilter !== 'all' && p.channel !== channelFilter) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (!p.productName.toLowerCase().includes(q) && !(p.notes ?? '').toLowerCase().includes(q)) return false;
+    }
     return true;
   });
 
@@ -133,20 +140,41 @@ export function PublicationsPage() {
         <StatCard title="Total"       value={publications.length} icon={Megaphone} color="purple" />
       </div>
 
-      <div className="flex gap-2">
-        {[
-          { v: 'all',       l: 'Todas'       },
-          { v: 'pending',   l: 'Pendientes'  },
-          { v: 'published', l: 'Publicadas'  },
-        ].map(tab => (
-          <button key={tab.v}
-            onClick={() => setFilter(tab.v as typeof filter)}
-            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-              filter === tab.v ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`} type="button">
-            {tab.l}
-          </button>
-        ))}
+      <div className="card !p-4 space-y-3">
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
+          <input
+            className="input-field pl-9"
+            placeholder="Buscar por producto o notas..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          {[
+            { v: 'all',       l: 'Todas'       },
+            { v: 'pending',   l: 'Pendientes'  },
+            { v: 'published', l: 'Publicadas'  },
+          ].map(tab => (
+            <button key={tab.v}
+              onClick={() => setFilter(tab.v as typeof filter)}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                filter === tab.v ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`} type="button">
+              {tab.l}
+            </button>
+          ))}
+          <div className="w-px bg-gray-200 self-stretch mx-1" />
+          {(['all', ...CHANNELS] as const).map(ch => (
+            <button key={ch}
+              onClick={() => setChannel(ch)}
+              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
+                channelFilter === ch ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`} type="button">
+              {ch === 'all' ? 'Todos los canales' : `${CHANNEL_ICONS[ch]} ${channelLabel[ch]}`}
+            </button>
+          ))}
+        </div>
       </div>
 
       {filtered.length === 0 ? (

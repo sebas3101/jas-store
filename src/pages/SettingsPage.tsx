@@ -30,13 +30,14 @@ function UserForm({
   onSave: (u: Omit<UserType, 'id' | 'createdAt'>) => void;
 }) {
   const [form, setForm] = useState<Omit<UserType, 'id' | 'createdAt'>>({
-    name:        initial?.name ?? '',
-    email:       initial?.email ?? '',
-    password:    initial?.password ?? '',
-    role:        initial?.role ?? 'vendedor',
-    phone:       initial?.phone ?? '',
-    active:      initial?.active ?? true,
-    permissions: initial?.permissions ?? PERMISSION_TEMPLATES['vendedor'],
+    name:                  initial?.name ?? '',
+    email:                 initial?.email ?? '',
+    password:              initial?.password ?? '',
+    role:                  initial?.role ?? 'vendedor',
+    phone:                 initial?.phone ?? '',
+    active:                initial?.active ?? true,
+    permissions:           initial?.permissions ?? PERMISSION_TEMPLATES['vendedor'],
+    requirePasswordChange: initial?.requirePasswordChange ?? false,
   });
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));

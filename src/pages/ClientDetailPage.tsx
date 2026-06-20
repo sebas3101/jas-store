@@ -26,7 +26,7 @@ import {
   clientStatusLabel,
 } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, openWhatsApp } from '../utils/whatsapp';
-import { distributeFifo } from '../utils/businessLogic';
+import { distributeFifo, calculateClientDebt } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { Client, Order, Payment, PaymentMethod } from '../types';
 
@@ -34,9 +34,7 @@ import type { Client, Order, Payment, PaymentMethod } from '../types';
 function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments: Payment[]) {
   const totalOrdered = clientOrders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
   const totalAbonado = clientPayments.reduce((s, p) => s + p.amount, 0);
-  const deuda = clientOrders
-    .filter(o => o.status === 'entregado' || o.status === 'pendiente_pago')
-    .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+  const deuda = calculateClientDebt(client.id, clientOrders);
 
   const today = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
 

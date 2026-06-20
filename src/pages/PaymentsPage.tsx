@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download } from 'lucide-react';
+import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download, Trash2 } from 'lucide-react';
 import { exportPagos } from '../utils/exportExcel';
 import { distributeFifo } from '../utils/businessLogic';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { StatCard } from '../components/ui/StatCard';
 import {
@@ -165,12 +166,13 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
 
 // ─── Página principal
 export function PaymentsPage() {
-  const { payments, clients, users } = useAppStore();
+  const { payments, clients, users, deletePayment } = useAppStore();
   const { can } = usePermissions();
   const [search, setSearch]     = useState('');
   const [modalOpen, setModal]   = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo]     = useState('');
+  const [deleting, setDeleting] = useState<(typeof payments)[0] | null>(null);
 
   const now      = new Date();
   const wkStart  = startOfWeek(now, { weekStartsOn: 1 });
@@ -305,6 +307,16 @@ export function PaymentsPage() {
                     </p>
                   )}
                 </div>
+                {can('pagos', 'eliminar') && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleting(payment)}
+                    className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                    title="Eliminar pago"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
             );
           })}
@@ -314,6 +326,16 @@ export function PaymentsPage() {
       <Modal isOpen={modalOpen} onClose={() => setModal(false)} title="Registrar pago / abono">
         <PaymentForm onClose={() => setModal(false)} />
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => { if (deleting) deletePayment(deleting.id); setDeleting(null); }}
+        title="Eliminar pago"
+        message={`¿Eliminar el pago de ${deleting ? formatCurrency(deleting.amount) : ''}? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        danger
+      />
     </div>
   );
 }

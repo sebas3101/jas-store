@@ -3,10 +3,11 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { TrendingUp, DollarSign, Users, ShoppingBag, Package, Percent, ReceiptText, Wallet } from 'lucide-react';
+import { TrendingUp, DollarSign, Users, ShoppingBag, Package, Percent, ReceiptText, Wallet, Download } from 'lucide-react';
 import { useAppStore } from '../store';
 import { calculateClientDebt } from '../utils/businessLogic';
 import { StatCard } from '../components/ui/StatCard';
+import { aoaToCSV, downloadCSV } from '../utils/csvExport';
 import {
   formatCurrency,
   categoryLabel,
@@ -124,11 +125,24 @@ export function ReportsPage() {
   }));
   const topProducts = Object.values(productMap).sort((a, b) => b.units - a.units).slice(0, 10);
 
+  const handleExport = () => {
+    const rows: unknown[][] = [
+      ['Mes', 'Ventas ($)', 'Cobrado ($)', 'Ganancia ($)', 'Gastos ($)', 'Utilidad ($)'],
+      ...monthlySales.map(m => [m.mes, m.ventas, m.cobrado, m.ganancia, m.gastos, m.utilidad]),
+    ];
+    downloadCSV(aoaToCSV(rows), `JAS-Reportes-${format(now, 'yyyy-MM')}.csv`);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="page-title">Reportes</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Análisis completo del negocio</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="page-title">Reportes</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Análisis completo del negocio</p>
+        </div>
+        <button type="button" onClick={handleExport} className="btn-secondary">
+          <Download size={15} /> Exportar CSV
+        </button>
       </div>
 
       {/* KPIs */}
