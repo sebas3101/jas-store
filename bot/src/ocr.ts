@@ -19,17 +19,11 @@ Reglas:
 - amount: número entero en pesos colombianos, sin puntos ni comas
 - date: formato YYYY-MM-DD (fecha de la transacción, NO la fecha actual)
 - bank: nombre del banco o billetera (Nequi, Bancolombia, Daviplata, etc)
-- reference: número de referencia, aprobación o transacción
+- reference: número de referencia, aprobación o transacción. Si ves "código", "transacción", "aprobación", "autorización" o un número largo, es la referencia.
 - senderName: nombre completo del remitente (quien envió el dinero)
 - confidence: "alta" si todo está claro, "media" si hay dudas, "baja" si el comprobante es ilegible
 - notes: observación si algo es dudoso o ambiguo, sino null
 Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
-
-// Modelos Groq con visión, en orden de preferencia
-const MODELS = [
-  'meta-llama/llama-4-scout-17b-16e-instruct',
-  'meta-llama/llama-4-maverick-17b-128e-instruct',
-];
 
 function parse(text: string): ExtractedPayment | null {
   try {
@@ -47,12 +41,40 @@ function parse(text: string): ExtractedPayment | null {
   } catch { return null; }
 }
 
-async function tryGroqModel(
-  imageBase64: string,
-  mimeType: string,
-  model: string,
-  key: string,
-): Promise<ExtractedPayment | null> {
+// Usa el Edge Function de Supabase (Claude → Groq → Gemini, con API keys seguras)
+async function tryEdgeFunction(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
+  const url    = process.env.SUPABASE_URL;
+  const apiKey = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !apiKey) { console.log('[OCR] SUPABASE_URL/SERVICE_KEY no configurado'); return null; }
+  try {
+    const { data } = await axios.post(
+      `${url}/functions/v1/ocr-extract`,
+      { imageBase64, mimeType },
+      { headers: { 'Content-Type': 'application/json', apikey: apiKey } },
+    );
+    if (data?.error) {
+      console.error('[OCR] Edge Function error:', data.error, data.details);
+      return null;
+    }
+    console.log('[OCR] Edge Function →', JSON.stringify(data).slice(0, 120));
+    return parse(JSON.stringify(data));
+  } catch (err: unknown) {
+    if (axios.isAxiosError(err)) {
+      console.error('[OCR] Edge Function falló:', err.response?.status, JSON.stringify(err.response?.data));
+    } else {
+      console.error('[OCR] Edge Function falló:', err);
+    }
+    return null;
+  }
+}
+
+// Fallback directo a Groq (en caso de que el Edge Function no esté disponible)
+const GROQ_MODELS = [
+  'meta-llama/llama-4-scout-17b-16e-instruct',
+  'meta-llama/llama-4-maverick-17b-128e-instruct',
+];
+
+async function tryGroqModel(imageBase64: string, mimeType: string, model: string, key: string): Promise<ExtractedPayment | null> {
   try {
     const { data } = await axios.post(
       'https://api.groq.com/openai/v1/chat/completions',
@@ -87,19 +109,23 @@ export async function extractPaymentData(
   imageBase64: string,
   mimeType = 'image/jpeg',
 ): Promise<ExtractedPayment | null> {
-  const key = process.env.GROQ_KEY;
-  if (!key) { console.error('[OCR] GROQ_KEY no configurado'); return null; }
 
-  for (const model of MODELS) {
-    // Hasta 3 intentos por modelo antes de pasar al siguiente
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      const result = await tryGroqModel(imageBase64, mimeType, model, key);
-      if (result && (result.amount || result.reference)) return result;
-      if (attempt < 3) console.log(`[OCR] ${model} intento ${attempt} sin datos útiles, reintentando...`);
-    }
-    console.log(`[OCR] ${model} agotado, probando siguiente modelo...`);
+  // Primero: Edge Function (tiene Claude + Groq + Gemini con keys seguras)
+  const edgeResult = await tryEdgeFunction(imageBase64, mimeType);
+  if (edgeResult && (edgeResult.amount || edgeResult.reference)) {
+    return edgeResult;
   }
 
-  console.error('[OCR] Todos los modelos fallaron.');
+  // Fallback: Groq directo
+  const groqKey = process.env.GROQ_KEY;
+  if (groqKey) {
+    for (const model of GROQ_MODELS) {
+      const result = await tryGroqModel(imageBase64, mimeType, model, groqKey);
+      if (result && (result.amount || result.reference)) return result;
+      console.log(`[OCR] ${model} sin datos útiles, probando siguiente...`);
+    }
+  }
+
+  console.error('[OCR] Todos los proveedores fallaron.');
   return null;
 }
