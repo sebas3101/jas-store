@@ -7,6 +7,76 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.7.1] — 2026-06-19 — Corrección de 5 bugs de cálculo financiero
+
+Auditoría completa de toda la lógica de dinero: pagos, deudas, distribución FIFO, reportes y ganancias. Se identificaron y corrigieron 5 bugs con impacto real en los datos mostrados al usuario.
+
+### Corregido
+
+#### Bug #1 — Deuda en Reportes inflada (`ReportsPage.tsx`)
+- `clientSales.deuda` y `totalDebt` ahora usan `calculateClientDebt()` centralizado en lugar de cálculos manuales.
+- Antes: filtro manual incluía pedidos en estado `tomado` y `recogido`, sumando deuda de mercancía no entregada.
+
+#### Bug #2 — Estado de cuenta impreso inconsistente (`ClientDetailPage.tsx`)
+- `printEstadoCuenta` ahora filtra exclusivamente `entregado | pendiente_pago`, igual que la pantalla.
+- Antes: el documento impreso excluía `pagado | cancelado` pero seguía mostrando pedidos en tránsito, dando un saldo diferente al de pantalla.
+
+#### Bug #3 — FIFO aplicado a pedidos no entregados (3 archivos)
+- Archivos afectados: `ClientDetailPage.tsx`, `PaymentsPage.tsx`, `store/index.ts`.
+- La distribución FIFO ahora solo aplica a pedidos `entregado | pendiente_pago`.
+- Antes: la distribución incluía pedidos `tomado`, `recogido` y `pendiente`, lo que podía marcar como pagados pedidos que aún no habían sido entregados.
+
+#### Bug #4 — Ganancia NaN en Dashboard y Reportes (`DashboardPage.tsx`, `ReportsPage.tsx`)
+- `totalCost` ahora usa null-coalescing `?? 0` para pedidos creados sin costo definido.
+- Antes: `totalAmount - null` producía `NaN` que se propagaba a todos los KPIs de ganancia.
+
+#### Bug #5 — Cobrado mensual mal atribuido en Reportes (`ReportsPage.tsx`)
+- `cobrado` mensual ahora lee directamente de la tabla `payments` filtrada por fecha de pago.
+- Antes: sumaba `amountPaid` de los pedidos del mes, mezclando cobros realizados en meses distintos al del pedido.
+
+---
+
+## [1.7.0] — 2026-06-19 — Rediseño visual profesional
+
+Rediseño completo de la interfaz preservando toda la funcionalidad existente. Cuatro fases implementadas y mergeadas a master.
+
+### Agregado
+
+#### Sistema visual
+- Fuente **Manrope** en todos los pesos (reemplaza Inter).
+- Keyframe `fadeIn` global en `index.css`.
+- Soporte completo de `prefers-reduced-motion`.
+- Badges `badge-gray` con contraste corregido (`text-gray-900`).
+
+#### Sidebar oscuro (`Sidebar.tsx`)
+- Fondo con gradiente `#0f0f1a → #12121f`.
+- Ítem activo con gradiente púrpura `#7c3aed → #6d28d9` y glow `box-shadow`.
+- Overlay de hover con `bg-white/8` — **crítico:** `pointer-events-none` para no interceptar clics.
+- Botón de logout en zona de usuario con `hover:text-red-400`.
+- `GlobalSearch` con variante `dark` para sidebar (`bg-white/8`).
+
+#### Animaciones y microinteracciones
+- `Modal.tsx`: entrada animada con `requestAnimationFrame` (opacity + transform, 200ms ease).
+- `MobileNav.tsx`: efecto glass (`bg-white/90 backdrop-blur-md`) y pill indicador superior en el ítem activo.
+- `Header.tsx` móvil: fondo translúcido `bg-white/90 backdrop-blur-md`.
+
+#### Componentes rediseñados
+- `EmptyState.tsx`: ícono púrpura con glow radial `blur-xl`.
+- `StatCard`: acento de color por categoría.
+
+#### Páginas
+- `DashboardPage`: hero card con gradiente púrpura y `box-shadow` coloreada; barras de progreso con gradiente.
+- `ClientsPage`: avatar de estado (bg + dot coloreado) reemplaza la raya lateral `border-l-4`; cartera vencida con `bg-red-50 border border-red-100`.
+- `LoginPage`: acentos de profundidad radial, anillo púrpura en logo, sombra tintada en card.
+- `ReportsPage`: badges de ranking con contraste corregido (`text-primary-600`).
+
+### Corregido
+- `Sidebar.tsx`: `pointer-events-none` en overlay de hover — sin este fix la navegación desktop quedaba completamente bloqueada.
+- `ClientsPage`: botón WhatsApp `text-green-400` (estaba `text-gray-400` sobre `hover:bg-green-50`).
+- `ClientsPage`: doble padding `!p-4 p-4` en cartera vencida corregido a `p-4`.
+
+---
+
 ## [1.6.0] — 2026-06-18 — rama: feature/mejoras-clientes-pedidos-logistica
 
 Mejoras estructurales de negocio: corrección de datos, reglas de deuda, mensajes WhatsApp enriquecidos, logística por proveedor, y dos nuevos módulos (Garantías y Comprobantes).
