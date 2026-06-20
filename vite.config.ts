@@ -1,10 +1,12 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
+    tailwindcss(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -32,10 +34,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor':   ['react', 'react-dom', 'react-router-dom'],
-          'supabase':       ['@supabase/supabase-js'],
-          'date-utils':     ['date-fns', 'date-fns/locale'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/react-router')) return 'react-vendor';
+          if (id.includes('/@supabase/')) return 'supabase';
+          if (id.includes('/date-fns/')) return 'date-utils';
         },
       },
     },

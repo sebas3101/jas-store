@@ -1,8 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --font-sans: 'Manrope', system-ui, sans-serif;
+
+  --color-primary-50:  #f5f3ff;
+  --color-primary-100: #ede9fe;
+  --color-primary-200: #ddd6fe;
+  --color-primary-300: #c4b5fd;
+  --color-primary-400: #a78bfa;
+  --color-primary-500: #8b5cf6;
+  --color-primary-600: #7c3aed;
+  --color-primary-700: #6d28d9;
+  --color-primary-800: #5b21b6;
+  --color-primary-900: #4c1d95;
+  --color-primary-950: #2e1065;
+
+  --color-jas-purple: #7c3aed;
+  --color-jas-gray:   #6b7280;
+  --color-jas-dark:   #1e1b4b;
+}
 
 @layer base {
   html {
@@ -37,7 +54,8 @@
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   }
   .card-interactive {
-    @apply card transition-all duration-200 cursor-pointer;
+    @apply bg-white rounded-2xl border border-gray-100 p-5 transition-all duration-200 cursor-pointer;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
   }
   .card-interactive:hover {
     box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.08);
