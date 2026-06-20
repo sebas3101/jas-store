@@ -1,11 +1,12 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, Clock } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Header } from './Header';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 
 function PageLoader() {
   return (
@@ -27,9 +28,31 @@ function AccessDenied() {
   );
 }
 
+function InactivityWarning({ onStay }: { onStay: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center space-y-4">
+        <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto">
+          <Clock size={28} className="text-amber-500" />
+        </div>
+        <div>
+          <p className="font-bold text-gray-900 text-base">Tu sesión está por cerrarse</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Por inactividad, la sesión se cerrará en 1 minuto.
+          </p>
+        </div>
+        <button onClick={onStay} className="btn-primary w-full justify-center" type="button">
+          Seguir en la app
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function AppLayout() {
   const { canAccess } = usePermissions();
   const { pathname }  = useLocation();
+  const { showWarning, stayActive } = useInactivityLogout();
 
   const basePath  = '/' + (pathname.split('/')[1] ?? '');
   const hasAccess = canAccess(basePath);
@@ -48,6 +71,7 @@ export function AppLayout() {
         </main>
       </div>
       <MobileNav />
+      {showWarning && <InactivityWarning onStay={stayActive} />}
     </div>
   );
 }

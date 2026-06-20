@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../store';
 
-const INACTIVITY_MS  = 30 * 60 * 1000; // 30 minutos
-const WARNING_MS     = 2  * 60 * 1000; // aviso 2 min antes
+const INACTIVITY_MS  = 10 * 60 * 1000; // 10 minutos
+const WARNING_MS     =  1 * 60 * 1000; // aviso 1 min antes
 
 export function useInactivityLogout() {
   const logout      = useAppStore(s => s.logout);
@@ -16,7 +16,7 @@ export function useInactivityLogout() {
 
     const reset = () => {
       setShowWarning(false);
-      if (timer.current)    clearTimeout(timer.current);
+      if (timer.current)     clearTimeout(timer.current);
       if (warnTimer.current) clearTimeout(warnTimer.current);
 
       warnTimer.current = setTimeout(() => {
@@ -26,25 +26,23 @@ export function useInactivityLogout() {
       timer.current = setTimeout(() => {
         setShowWarning(false);
         logout();
-        // Mensaje para el login
         sessionStorage.setItem('jas_logout_reason', 'inactividad');
       }, INACTIVITY_MS);
     };
 
     const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
     events.forEach(ev => window.addEventListener(ev, reset, { passive: true }));
-    reset(); // arrancar
+    reset();
 
     return () => {
       events.forEach(ev => window.removeEventListener(ev, reset));
-      if (timer.current)    clearTimeout(timer.current);
+      if (timer.current)     clearTimeout(timer.current);
       if (warnTimer.current) clearTimeout(warnTimer.current);
     };
   }, [currentUser, logout]);
 
   const stayActive = () => {
     setShowWarning(false);
-    // Disparar mousemove sintético para resetear timers
     window.dispatchEvent(new Event('mousemove'));
   };
 
