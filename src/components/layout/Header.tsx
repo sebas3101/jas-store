@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Bell, LogOut, X, AlertTriangle, Package, CreditCard,
   BellOff, ShieldCheck, Target, ArrowRight,
@@ -154,7 +154,8 @@ export function Header() {
   });
 
   // Clientes urgentes para recordatorio
-  const reminderLog = getReminderLog();
+  const [reminderLog, setReminderLog] = useState<import('../../utils/reminders').ReminderLog>({});
+  useEffect(() => { getReminderLog().then(setReminderLog); }, []);
   const { payments: allPayments } = useAppStore.getState();
   const urgentCount = clients.filter(c => {
     const pendingOrds = orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status));

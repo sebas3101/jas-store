@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, MessageCircle, ArrowRight, Users, DollarSign,
@@ -72,8 +72,13 @@ function buildClientData(
 
 export function RecordatoriosPage() {
   const { clients, orders, payments } = useAppStore();
-  const [tab, setTab]         = useState<Tab>('urgente');
-  const [log, setLog]         = useState<ReminderLog>(getReminderLog);
+  const [tab, setTab] = useState<Tab>('urgente');
+  const [log, setLog] = useState<ReminderLog>({});
+
+  // Carga el log desde Supabase al montar
+  useEffect(() => {
+    getReminderLog().then(setLog);
+  }, []);
 
   const all     = buildClientData(clients, orders, payments, log);
   const urgente = all.filter(c => c.needsReminder);
@@ -82,21 +87,21 @@ export function RecordatoriosPage() {
   const totalDebt  = all.reduce((s, c) => s + c.debt, 0);
   const totalCount = all.length;
 
-  function handleSend(clientId: string, phone: string, message: string) {
+  const handleSend = useCallback(async (clientId: string, phone: string, message: string) => {
     openWhatsApp(phone, message);
-    markReminderSent(clientId);
-    setLog(getReminderLog());
-  }
+    await markReminderSent(clientId);
+    setLog(prev => ({ ...prev, [clientId]: new Date().toISOString() }));
+  }, []);
 
   function handleSendAll() {
     urgente.forEach((c, i) => {
       const msg = buildDebtReminderMessage(c, c.debt, orders, c.clientPayments);
-      setTimeout(() => {
+      setTimeout(async () => {
         openWhatsApp(c.phone, msg);
-        markReminderSent(c.id);
+        await markReminderSent(c.id);
+        setLog(prev => ({ ...prev, [c.id]: new Date().toISOString() }));
       }, i * 800);
     });
-    setTimeout(() => setLog(getReminderLog()), urgente.length * 800 + 200);
   }
 
   return (

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   DollarSign, TrendingUp, AlertTriangle, CheckCircle2,
   ShoppingBag, Clock, Package, Users, ArrowRight,
@@ -49,7 +50,8 @@ export function DashboardPage() {
     : 100;
 
   // ── Recordatorios urgentes (15+ días sin abonar, sin recordar en 7 días) ─────
-  const reminderLog = getReminderLog();
+  const [reminderLog, setReminderLog] = useState<import('../utils/reminders').ReminderLog>({});
+  useEffect(() => { getReminderLog().then(setReminderLog); }, []);
   const urgentReminders = clients.filter(c => {
     const debt = calculateClientDebt(c.id, orders);
     if (debt <= 0) return false;
