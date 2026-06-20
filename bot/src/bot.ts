@@ -25,16 +25,18 @@ function isAllowed(chatId: number): boolean {
 
 // ─── Estado de sesiones ────────────────────────────────────────────────────────
 
-type Phase = 'waiting_name' | 'waiting_selection';
+type Phase = 'waiting_name' | 'waiting_selection' | 'waiting_dup_confirm';
 
 interface Session {
-  phase:       Phase;
-  imageBase64: string;
-  mimeType:    string;
-  ocrPromise:  Promise<ExtractedPayment | null>;
-  typedName?:  string;
-  candidates?: DbClient[];
-  ts:          number;
+  phase:          Phase;
+  imageBase64:    string;
+  mimeType:       string;
+  ocrPromise:     Promise<ExtractedPayment | null>;
+  typedName?:     string;
+  candidates?:    DbClient[];
+  resolvedClient?: DbClient | null;
+  resolvedOcr?:   ExtractedPayment;
+  ts:             number;
 }
 
 const sessions = new Map<number, Session>();
@@ -98,11 +100,24 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   if (!ocr.reference) advertencias.push('referencia no detectada — revisa en el dashboard');
   if (ocr.confidence === 'baja') advertencias.push('imagen difícil de leer');
 
-  // Detección de duplicado por referencia
+  // Detección de duplicado por referencia — BLOQUEA el guardado
   if (ocr.reference) {
     const esDuplicado = await checkDuplicate(ocr.reference);
     if (esDuplicado) {
-      advertencias.push('⚠️ posible duplicado — ya existe un comprobante con esta referencia');
+      session.phase          = 'waiting_dup_confirm';
+      session.resolvedClient = client;
+      session.resolvedOcr    = ocr;
+      session.ts             = Date.now();
+      await bot.sendMessage(
+        chatId,
+        `⚠️ *Posible duplicado*\n\nYa existe un comprobante con la referencia \`${ocr.reference}\`.\n\n` +
+        `💰 Monto: *${ocr.amount.toLocaleString('es-CO')} COP*\n` +
+        (ocr.date ? `📅 Fecha: ${ocr.date}\n` : '') +
+        (ocr.bank ? `🏦 Banco: ${ocr.bank}\n` : '') +
+        `\n¿Es un pago diferente? Responde *sí* para registrarlo igual, o /cancelar para descartarlo.`,
+        { parse_mode: 'Markdown' },
+      );
+      return;
     }
   }
 
@@ -234,6 +249,44 @@ bot.on('message', async msg => {
   }
 
   session.ts = Date.now();
+
+  // ── Fase 0: esperando confirmación de duplicado ─────────────────────────────
+  if (session.phase === 'waiting_dup_confirm') {
+    if (/^s[ií]$/i.test(msg.text.trim())) {
+      const ocr    = session.resolvedOcr!;
+      const client = session.resolvedClient ?? null;
+      const nombre = session.typedName ?? client?.name ?? 'Sin nombre';
+      const advertencias: string[] = [];
+      if (!ocr.date)      advertencias.push('fecha no detectada — revisa en el dashboard');
+      if (!ocr.reference) advertencias.push('referencia no detectada — revisa en el dashboard');
+      if (ocr.confidence === 'baja') advertencias.push('imagen difícil de leer');
+      const notasCompletas = [ocr.notes, ...advertencias.filter(a => a.startsWith('fecha') || a.startsWith('referencia'))].filter(Boolean).join(' · ');
+      sessions.delete(chatId);
+      const id = await savePaymentProof({
+        clientId: client?.id, amount: ocr.amount, date: ocr.date,
+        bank: ocr.bank, reference: ocr.reference,
+        senderName: client?.name ?? nombre,
+        notes: (notasCompletas || undefined),
+      });
+      if (!id) {
+        await bot.sendMessage(chatId, '❌ Error al guardar. Intenta de nuevo o contacta al admin.');
+        return;
+      }
+      const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
+      if (adminId && adminId !== chatId) {
+        const adminMsg = [`🧾 *Comprobante registrado (duplicado confirmado)*`, `👤 ${client?.name ?? nombre}`,
+          `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
+          ocr.bank ? `🏦 ${ocr.bank}` : null, `\nRevisa el dashboard para confirmar.`]
+          .filter(Boolean).join('\n');
+        bot.sendMessage(adminId, adminMsg, { parse_mode: 'Markdown' }).catch(() => {});
+      }
+      await bot.sendMessage(chatId, buildResumen(ocr, client?.name ?? nombre, !!client, advertencias), { parse_mode: 'Markdown' });
+    } else {
+      sessions.delete(chatId);
+      await bot.sendMessage(chatId, '❌ Registro cancelado. Si el pago es legítimo, envía el comprobante de nuevo.');
+    }
+    return;
+  }
 
   // ── Fase 1: esperar nombre del cliente ──────────────────────────────────────
   if (session.phase === 'waiting_name') {
