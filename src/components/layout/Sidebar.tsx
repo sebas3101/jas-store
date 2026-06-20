@@ -83,7 +83,7 @@ export function Sidebar() {
             {({ isActive }) => (
               <>
                 {!isActive && (
-                  <span className="absolute inset-0 rounded-xl bg-white/0 group-hover:bg-white/8 transition-colors duration-150" />
+                  <span className="absolute inset-0 rounded-xl bg-white/0 group-hover:bg-white/8 transition-colors duration-150 pointer-events-none" />
                 )}
                 <Icon size={17} strokeWidth={isActive ? 2.2 : 1.8} className="flex-shrink-0 relative" />
                 <span className="flex-1 relative">{label}</span>
