@@ -100,23 +100,18 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   if (!ocr.reference) advertencias.push('referencia no detectada — revisa en el dashboard');
   if (ocr.confidence === 'baja') advertencias.push('imagen difícil de leer');
 
-  // Detección de duplicado — BLOQUEA el guardado
-  {
-    const esDuplicado = ocr.reference
-      ? await checkDuplicateByRef(ocr.reference)
-      : await checkDuplicateByAmount(ocr.amount, ocr.date);
-
+  // Detección de duplicado por referencia — BLOQUEA el guardado
+  // Sin referencia no se puede detectar duplicados de forma confiable
+  if (ocr.reference) {
+    const esDuplicado = await checkDuplicateByRef(ocr.reference);
     if (esDuplicado) {
       session.phase          = 'waiting_dup_confirm';
       session.resolvedClient = client;
       session.resolvedOcr    = ocr;
       session.ts             = Date.now();
-      const razon = ocr.reference
-        ? `Ya existe un comprobante con la referencia \`${ocr.reference}\`.`
-        : `Ya existe un comprobante por *${ocr.amount.toLocaleString('es-CO')} COP* en esa misma fecha.`;
       await bot.sendMessage(
         chatId,
-        `⚠️ *Posible duplicado*\n\n${razon}\n\n` +
+        `⚠️ *Posible duplicado*\n\nYa existe un comprobante con la referencia \`${ocr.reference}\`.\n\n` +
         `💰 Monto: *${ocr.amount.toLocaleString('es-CO')} COP*\n` +
         (ocr.date ? `📅 Fecha: ${ocr.date}\n` : '') +
         (ocr.bank ? `🏦 Banco: ${ocr.bank}\n` : '') +
