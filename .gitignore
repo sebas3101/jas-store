@@ -35,3 +35,17 @@ npm-debug.log*
 .vite/
 
 .vercel
+
+# Datos de clientes (sensibles — nunca subir a git)
+CLIENTES/
+CLIENTES_JPG/
+*.vcf
+
+# Herramientas de desarrollo local
+.agents/
+.claude/
+.codex/
+skills-lock.json
+
+# Supabase temp
+supabase/.temp/
