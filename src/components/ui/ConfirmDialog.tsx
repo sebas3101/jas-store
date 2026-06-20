@@ -31,13 +31,13 @@ export function ConfirmDialog({
         </div>
         <p className="text-sm text-gray-600">{message}</p>
         <div className="flex gap-3 w-full">
-          <button onClick={onClose} className="btn-secondary flex-1 justify-center">
+          <button onClick={onClose} className="btn-secondary flex-1 justify-center" type="button">
             Cancelar
           </button>
           <button
             onClick={() => { onConfirm(); onClose(); }}
             className={`flex-1 justify-center ${danger ? 'btn-danger' : 'btn-primary'}`}
-          >
+           type="button">
             {confirmLabel}
           </button>
         </div>

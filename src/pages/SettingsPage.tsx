@@ -247,8 +247,8 @@ function PermissionsModal({
       </div>
       <PermissionsMatrix perms={perms} onChange={setPerms} />
       <div className="flex gap-2 pt-2 border-t">
-        <button onClick={onClose} className="btn-ghost flex-1 justify-center">Cancelar</button>
-        <button onClick={() => { onSave(perms); onClose(); }} className="btn-primary flex-1 justify-center">
+        <button onClick={onClose} className="btn-ghost flex-1 justify-center" type="button">Cancelar</button>
+        <button onClick={() => { onSave(perms); onClose(); }} className="btn-primary flex-1 justify-center" type="button">
           Guardar accesos
         </button>
       </div>
@@ -374,7 +374,7 @@ export function SettingsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Usuarios y gestión de accesos</p>
         </div>
         {can('configuracion', 'crear') && (
-          <button onClick={() => { setEditing(null); setModal(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setModal(true); }} className="btn-primary" type="button">
             <Plus size={16} /> Nuevo usuario
           </button>
         )}
@@ -451,7 +451,7 @@ export function SettingsPage() {
                         ? 'hover:bg-amber-50 text-gray-400 hover:text-amber-500'
                         : 'hover:bg-emerald-50 text-gray-400 hover:text-emerald-500'
                     }`}
-                  >
+                   type="button">
                     {user.active ? <UserX size={15} /> : <UserCheck size={15} />}
                   </button>
                 )}
@@ -462,7 +462,7 @@ export function SettingsPage() {
                     onClick={() => { setResetUser(user); setTempPwd(''); setResetDone(false); }}
                     className="p-1.5 hover:bg-amber-50 rounded-xl text-gray-400 hover:text-amber-600 transition-colors"
                     title="Restablecer contraseña"
-                  >
+                   type="button">
                     <RotateCcw size={15} />
                   </button>
                 )}
@@ -472,7 +472,7 @@ export function SettingsPage() {
                     aria-label="Administrar accesos"
                     onClick={() => setPermUser(user)}
                     className="p-1.5 hover:bg-violet-50 rounded-xl text-gray-400 hover:text-violet-600 transition-colors"
-                  >
+                   type="button">
                     <Key size={15} />
                   </button>
                 )}
@@ -482,7 +482,7 @@ export function SettingsPage() {
                     aria-label="Editar usuario"
                     onClick={() => { setEditing(user); setModal(true); }}
                     className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors"
-                  >
+                   type="button">
                     <Edit2 size={15} />
                   </button>
                 )}
@@ -492,7 +492,7 @@ export function SettingsPage() {
                     aria-label="Eliminar usuario"
                     onClick={() => setDeleting(user)}
                     className="p-1.5 hover:bg-red-50 rounded-xl text-gray-400 hover:text-red-500 transition-colors"
-                  >
+                   type="button">
                     <Trash2 size={15} />
                   </button>
                 )}
@@ -521,7 +521,7 @@ export function SettingsPage() {
             <p className="text-sm font-semibold text-gray-800">Backup completo</p>
             <p className="text-xs text-gray-400 mt-0.5">Exporta todos los datos del sistema a Excel (clientes, pedidos, pagos, productos, compras, gastos, garantías)</p>
           </div>
-          <button onClick={handleBackup} className="btn-ghost flex-shrink-0">
+          <button onClick={handleBackup} className="btn-ghost flex-shrink-0" type="button">
             <Download size={15} /> Exportar backup
           </button>
         </div>
@@ -581,7 +581,7 @@ export function SettingsPage() {
             <button
               onClick={() => { setResetUser(null); setResetDone(false); setTempPwd(''); }}
               className="btn-primary w-full justify-center"
-            >
+             type="button">
               Listo
             </button>
           </div>
@@ -606,14 +606,14 @@ export function SettingsPage() {
               <button
                 onClick={() => { setResetUser(null); setTempPwd(''); }}
                 className="btn-ghost flex-1 justify-center"
-              >
+               type="button">
                 Cancelar
               </button>
               <button
                 onClick={handleResetPassword}
                 disabled={tempPwd.length < 6}
                 className="btn-primary flex-1 justify-center disabled:opacity-50"
-              >
+               type="button">
                 Restablecer
               </button>
             </div>

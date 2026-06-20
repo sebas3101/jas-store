@@ -168,9 +168,10 @@ function OrderForm({ onSave }: { onSave: (o: Omit<Order, 'id' | 'orderNumber' | 
                       onChange={v => setItem(i, 'costPrice', v)} />
                   </div>
                   <div>
-                    <input type="number" className="input-field text-xs" placeholder="Cantidad"
-                      value={item.quantity} min={1}
-                      onChange={e => setItem(i, 'quantity', Number(e.target.value))} />
+                    <input type="text" inputMode="numeric" pattern="[0-9]*"
+                      className="input-field text-xs" placeholder="Cantidad"
+                      value={item.quantity}
+                      onChange={e => setItem(i, 'quantity', Math.max(1, parseInt(e.target.value) || 1))} />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-gray-500">
@@ -363,11 +364,11 @@ export function OrdersPage() {
           <p className="text-sm text-gray-500 mt-0.5">{orders.length} pedidos en total</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => exportPedidos(filtered, clients)} className="btn-ghost">
+          <button onClick={() => exportPedidos(filtered, clients)} className="btn-ghost" type="button">
             <Download size={15} /> Excel
           </button>
           {can('pedidos', 'crear') && (
-            <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
               <Plus size={16} /> Nuevo pedido
             </button>
           )}
@@ -381,7 +382,7 @@ export function OrdersPage() {
             <span className="text-xs text-primary-700 font-medium flex-1">
               Filtrando por: <strong>{prefilledName || clients.find(c => c.id === filterClient)?.name}</strong>
             </span>
-            <button onClick={clearClientFilter} className="text-primary-400 hover:text-primary-700 transition-colors">
+            <button onClick={clearClientFilter} className="text-primary-400 hover:text-primary-700 transition-colors" type="button">
               <X size={14} />
             </button>
           </div>
@@ -401,7 +402,7 @@ export function OrdersPage() {
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {s.label}
             </button>
           ))}
@@ -415,7 +416,7 @@ export function OrdersPage() {
           title="No hay pedidos"
           description="Registra el primer pedido del día"
           action={
-            <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
               <Plus size={14} /> Nuevo pedido
             </button>
           }
@@ -506,14 +507,14 @@ export function OrdersPage() {
                 </p>
               )}
               <div className="flex gap-2">
-                <button onClick={() => setWaOrder(null)} className="btn-ghost flex-1 justify-center">
+                <button onClick={() => setWaOrder(null)} className="btn-ghost flex-1 justify-center" type="button">
                   Cerrar
                 </button>
                 {client?.phone && (
                   <button
                     onClick={() => { openWhatsApp(client.phone, message); setWaOrder(null); }}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                  >
+                   type="button">
                     <MessageCircle size={14} /> Enviar por WhatsApp
                   </button>
                 )}

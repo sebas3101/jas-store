@@ -97,7 +97,7 @@ export function GlobalSearch({ dark = false }: { dark?: boolean }) {
             : 'flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-400 text-sm transition-colors w-full'
         }
         aria-label="Buscar"
-      >
+       type="button">
         <Search size={15} />
         <span className="flex-1 text-left">Buscar...</span>
         <kbd className={`hidden sm:inline text-[10px] rounded px-1.5 py-0.5 ${dark ? 'bg-white/10 border border-white/15 text-white/40' : 'bg-white border border-gray-200 text-gray-400'}`}>⌘K</kbd>
@@ -119,7 +119,7 @@ export function GlobalSearch({ dark = false }: { dark?: boolean }) {
                 className="flex-1 text-sm text-gray-800 placeholder-gray-400 outline-none bg-transparent"
               />
               {query && (
-                <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600">
+                <button onClick={() => setQuery('')} className="text-gray-400 hover:text-gray-600" type="button">
                   <X size={16} />
                 </button>
               )}
@@ -140,7 +140,7 @@ export function GlobalSearch({ dark = false }: { dark?: boolean }) {
                         <button
                           onClick={() => go(r.href)}
                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
-                        >
+                         type="button">
                           <span className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${r.color}`}>
                             <Icon size={15} />
                           </span>

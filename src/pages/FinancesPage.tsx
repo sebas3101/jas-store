@@ -160,7 +160,7 @@ export function FinancesPage() {
           <p className="text-sm text-gray-500 mt-0.5">Resumen financiero y exportación</p>
         </div>
         {can('finanzas', 'exportar') && (
-          <button onClick={handleExportExcel} className="btn-primary">
+          <button onClick={handleExportExcel} className="btn-primary" type="button">
             <Download size={15} /> Exportar Excel
           </button>
         )}
@@ -175,7 +175,7 @@ export function FinancesPage() {
               className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
                 viewMode === m ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {m === 'month' ? 'Por mes' : 'Rango de fechas'}
             </button>
           ))}

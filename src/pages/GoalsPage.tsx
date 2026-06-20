@@ -134,7 +134,7 @@ export function GoalsPage() {
           <p className="text-sm text-gray-500 mt-0.5">Seguimiento de ventas y recaudo por mes</p>
         </div>
         {can('metas', 'crear') && (
-          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary" type="button">
             <Plus size={16} /> Nueva meta
           </button>
         )}
@@ -156,7 +156,7 @@ export function GoalsPage() {
             </span>
             {can('metas', 'editar') && (
               <button onClick={() => { setEditing(currentGoal); setModalOpen(true); }}
-                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors" type="button">
                 <Edit2 size={14} />
               </button>
             )}
@@ -192,7 +192,7 @@ export function GoalsPage() {
           <Target size={32} className="text-primary-300 mx-auto" />
           <p className="text-sm font-semibold text-gray-600">Sin meta para este mes</p>
           {can('metas', 'crear') && (
-            <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary mx-auto">
+            <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary mx-auto" type="button">
               <Plus size={14} /> Crear meta del mes
             </button>
           )}
@@ -225,13 +225,13 @@ export function GoalsPage() {
                     <div className="flex gap-1">
                       {can('metas', 'editar') && (
                         <button onClick={() => { setEditing(goal); setModalOpen(true); }}
-                          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors">
+                          className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors" type="button">
                           <Edit2 size={13} />
                         </button>
                       )}
                       {can('metas', 'eliminar') && (
                         <button onClick={() => setDeleting(goal)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
+                          className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors" type="button">
                           <Trash2 size={13} />
                         </button>
                       )}

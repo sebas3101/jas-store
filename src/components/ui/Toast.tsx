@@ -79,7 +79,7 @@ function ToastItem({ toast: t, onClose }: { toast: Toast; onClose: () => void })
     >
       <Icon size={16} className={`flex-shrink-0 ${iconColors[t.type]}`} />
       <p className="text-sm font-medium flex-1">{t.message}</p>
-      <button onClick={onClose} className="flex-shrink-0 hover:opacity-60 transition-opacity">
+      <button onClick={onClose} className="flex-shrink-0 hover:opacity-60 transition-opacity" type="button">
         <X size={14} />
       </button>
     </div>

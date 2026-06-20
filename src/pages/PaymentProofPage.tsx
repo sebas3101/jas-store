@@ -390,7 +390,7 @@ export function PaymentProofPage() {
           <button
             onClick={() => { setEditing(null); setModalOpen(true); }}
             className="btn-primary"
-          >
+           type="button">
             <Plus size={16} /> Registrar
           </button>
         )}
@@ -432,7 +432,7 @@ export function PaymentProofPage() {
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {s === 'all' ? 'Todos' : STATUS_LABEL[s]}
               {s === 'pendiente_revision' && pendingCount > 0 && (
                 <span className="ml-1.5 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
@@ -456,7 +456,7 @@ export function PaymentProofPage() {
           }
           action={
             can('comprobantes', 'crear') ? (
-              <button onClick={() => setModalOpen(true)} className="btn-primary">
+              <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
                 <Plus size={14} /> Registrar comprobante
               </button>
             ) : undefined
@@ -541,7 +541,7 @@ export function PaymentProofPage() {
                           onClick={() => setViewImage(proof.imageUrl!)}
                           className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
                           title="Ver imagen"
-                        >
+                         type="button">
                           <Eye size={13} />
                         </button>
                       )}
@@ -549,7 +549,7 @@ export function PaymentProofPage() {
                         <button
                           onClick={() => { setEditing(proof); setModalOpen(true); }}
                           className="text-xs px-2 py-1 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700 transition-colors"
-                        >
+                         type="button">
                           Editar
                         </button>
                       )}
@@ -558,7 +558,7 @@ export function PaymentProofPage() {
                           onClick={() => setDeleting(proof)}
                           className="p-1.5 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-500 transition-colors"
                           title="Eliminar"
-                        >
+                         type="button">
                           <XCircle size={13} />
                         </button>
                       )}
@@ -572,7 +572,7 @@ export function PaymentProofPage() {
                         <button
                           onClick={() => setConfirming(proof)}
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-                        >
+                         type="button">
                           <CheckCircle2 size={13} /> Confirmar pago
                         </button>
                       )}
@@ -580,7 +580,7 @@ export function PaymentProofPage() {
                         <button
                           onClick={() => { setRejecting(proof); setRejectReason(''); }}
                           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors"
-                        >
+                         type="button">
                           <XCircle size={13} /> Rechazar
                         </button>
                       )}
@@ -589,7 +589,7 @@ export function PaymentProofPage() {
                           onClick={() => setDuplicating(proof)}
                           className="flex items-center justify-center gap-1 py-2 px-3 rounded-xl bg-gray-100 text-gray-500 text-xs font-medium hover:bg-gray-200 transition-colors"
                           title="Marcar como duplicado"
-                        >
+                         type="button">
                           <FileImage size={13} />
                         </button>
                       )}
@@ -647,14 +647,14 @@ export function PaymentProofPage() {
                 onClick={() => setConfirming(null)}
                 className="btn-ghost flex-1 justify-center"
                 disabled={confirmLoading}
-              >
+               type="button">
                 Cancelar
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={confirmLoading}
                 className="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60"
-              >
+               type="button">
                 {confirmLoading ? 'Confirmando...' : 'Confirmar pago'}
               </button>
             </div>
@@ -686,14 +686,14 @@ export function PaymentProofPage() {
                 onClick={() => { setRejecting(null); setRejectReason(''); }}
                 className="btn-ghost flex-1 justify-center"
                 disabled={rejectLoading}
-              >
+               type="button">
                 Cancelar
               </button>
               <button
                 onClick={handleReject}
                 disabled={rejectLoading}
                 className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
-              >
+               type="button">
                 {rejectLoading ? 'Rechazando...' : 'Rechazar'}
               </button>
             </div>

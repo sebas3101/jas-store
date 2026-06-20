@@ -122,7 +122,7 @@ export function PublicationsPage() {
           <h1 className="page-title">Publicaciones</h1>
           <p className="text-sm text-gray-500 mt-0.5">Seguimiento de publicaciones en canales</p>
         </div>
-        <button onClick={() => setModal(true)} className="btn-primary">
+        <button onClick={() => setModal(true)} className="btn-primary" type="button">
           <Plus size={16} /> Nueva publicación
         </button>
       </div>
@@ -143,7 +143,7 @@ export function PublicationsPage() {
             onClick={() => setFilter(tab.v as typeof filter)}
             className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
               filter === tab.v ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}>
+            }`} type="button">
             {tab.l}
           </button>
         ))}
@@ -151,7 +151,7 @@ export function PublicationsPage() {
 
       {filtered.length === 0 ? (
         <EmptyState icon={Megaphone} title="No hay publicaciones" description="Registra los productos que debes publicar"
-          action={<button onClick={() => setModal(true)} className="btn-primary"><Plus size={14} /> Nueva</button>} />
+          action={<button onClick={() => setModal(true)} className="btn-primary" type="button"><Plus size={14} /> Nueva</button>} />
       ) : (
         <div className="space-y-2">
           {filtered.map(pub => {
@@ -187,7 +187,7 @@ export function PublicationsPage() {
                           publishedAt: new Date().toISOString(),
                         })}
                         className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors font-medium"
-                      >
+                       type="button">
                         <CheckCircle2 size={12} /> Marcar publicado
                       </button>
                     ) : (
@@ -196,7 +196,7 @@ export function PublicationsPage() {
                       </span>
                     )}
                     <button onClick={() => deletePublication(pub.id)}
-                      className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500">
+                      className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500" type="button">
                       <Trash2 size={13} />
                     </button>
                   </div>

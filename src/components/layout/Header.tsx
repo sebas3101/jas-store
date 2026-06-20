@@ -213,7 +213,7 @@ export function Header() {
             onClick={() => { setNotifOpen(true); }}
             className="p-2 rounded-xl hover:bg-gray-100 relative"
             aria-label={`Notificaciones${alertCount > 0 ? ` (${alertCount})` : ''}`}
-          >
+           type="button">
             <Bell size={18} className={alertCount > 0 ? 'text-red-500' : 'text-gray-500'} />
             {unread > 0 && (
               <span className="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
@@ -224,7 +224,7 @@ export function Header() {
           <button
             onClick={() => setMenuOpen(true)}
             className="w-8 h-8 bg-primary-100 rounded-xl flex items-center justify-center"
-          >
+           type="button">
             <span className="text-primary-700 font-bold text-xs">
               {currentUser?.name.charAt(0).toUpperCase()}
             </span>
@@ -251,12 +251,12 @@ export function Header() {
               <div className="flex items-center gap-2">
                 {unread > 0 && (
                   <button onClick={markAllRead}
-                    className="text-[11px] text-primary-600 font-medium hover:underline">
+                    className="text-[11px] text-primary-600 font-medium hover:underline" type="button">
                     Marcar todas leídas
                   </button>
                 )}
                 <button onClick={() => setNotifOpen(false)}
-                  className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+                  className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" type="button">
                   <X size={18} />
                 </button>
               </div>
@@ -296,7 +296,7 @@ export function Header() {
                           onClick={e => handleDismiss(n.id, e)}
                           className="p-1 rounded-lg hover:bg-white/60 text-gray-400 hover:text-gray-600 transition-colors"
                           title="Descartar"
-                        >
+                         type="button">
                           <X size={12} />
                         </button>
                       </div>
@@ -322,7 +322,7 @@ export function Header() {
                     setRead(r); saveRead(r);
                   }}
                   className="w-full text-xs text-gray-400 hover:text-primary-600 py-2 transition-colors"
-                >
+                 type="button">
                   Restaurar notificaciones descartadas
                 </button>
               </div>
@@ -348,14 +348,14 @@ export function Header() {
                 <p className="text-xs text-gray-400 truncate">{currentUser?.email}</p>
               </div>
               <button onClick={() => setMenuOpen(false)}
-                className="p-2 rounded-xl hover:bg-gray-100 text-gray-400">
+                className="p-2 rounded-xl hover:bg-gray-100 text-gray-400" type="button">
                 <X size={18} />
               </button>
             </div>
             <button
               onClick={() => { logout(); setMenuOpen(false); }}
               className="w-full flex items-center gap-3 px-4 py-3.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-semibold text-sm transition-colors"
-            >
+             type="button">
               <LogOut size={18} />
               Cerrar sesión
             </button>

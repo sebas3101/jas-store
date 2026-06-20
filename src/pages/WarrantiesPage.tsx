@@ -256,7 +256,7 @@ export function WarrantiesPage() {
           </p>
         </div>
         {can('garantias', 'crear') && (
-          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary" type="button">
             <Plus size={16} /> Nueva garantía
           </button>
         )}
@@ -275,7 +275,7 @@ export function WarrantiesPage() {
             className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
               filterStatus === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600'
             }`}
-          >
+           type="button">
             Todas
           </button>
           {WARRANTY_STATUSES.map(s => (
@@ -284,7 +284,7 @@ export function WarrantiesPage() {
               className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
                 filterStatus === s ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600'
               }`}
-            >
+             type="button">
               {WARRANTY_STATUS_LABEL[s]}
             </button>
           ))}
@@ -298,7 +298,7 @@ export function WarrantiesPage() {
           title="Sin garantías"
           description="Las garantías se registran desde pedidos entregados"
           action={
-            <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
               <Plus size={14} /> Registrar garantía
             </button>
           }
@@ -343,7 +343,7 @@ export function WarrantiesPage() {
                       <button
                         onClick={() => { setEditing(w); setModalOpen(true); }}
                         className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                      >
+                       type="button">
                         <Edit2 size={13} />
                       </button>
                     )}
@@ -351,7 +351,7 @@ export function WarrantiesPage() {
                       <button
                         onClick={() => setDeleting(w)}
                         className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-                      >
+                       type="button">
                         <Trash2 size={13} />
                       </button>
                     )}

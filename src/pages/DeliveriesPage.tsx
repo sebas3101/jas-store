@@ -105,17 +105,17 @@ export function DeliveriesPage() {
       <div className="card !p-4 space-y-3">
         <div className="flex gap-2">
           <button onClick={() => setTab('recogidas')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'recogidas' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'recogidas' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} type="button">
             <ShoppingBag size={13} /> Recogidas
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'recogidas' ? 'bg-amber-400 text-white' : 'bg-gray-200 text-gray-600'}`}>{recogidas.length}</span>
           </button>
           <button onClick={() => setTab('entregas')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'entregas' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'entregas' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} type="button">
             <Truck size={13} /> En camino
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'entregas' ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{entregas.length}</span>
           </button>
           <button onClick={() => setTab('historial')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'historial' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-colors ${tab === 'historial' ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} type="button">
             <CheckCircle2 size={13} /> Historial
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${tab === 'historial' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-600'}`}>{historialEntregas.length}</span>
           </button>
@@ -288,7 +288,7 @@ export function DeliveriesPage() {
                             ? 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         }`}
-                      >
+                       type="button">
                         <MapPin size={11} /> Ver en Maps
                       </button>
                     </div>

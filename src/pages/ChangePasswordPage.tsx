@@ -119,7 +119,7 @@ export function ChangePasswordPage() {
           <button
             onClick={() => { logout(); navigate('/login'); }}
             className="w-full text-center text-xs text-gray-400 hover:text-gray-600 mt-4 transition-colors"
-          >
+           type="button">
             Cerrar sesión
           </button>
         </div>

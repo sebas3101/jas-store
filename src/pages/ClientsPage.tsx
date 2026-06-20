@@ -198,7 +198,7 @@ export function ClientsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{clients.length} clientes registrados</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => exportClientes(clients, orders, [])} className="btn-ghost">
+          <button onClick={() => exportClientes(clients, orders, [])} className="btn-ghost" type="button">
             <Download size={15} /> Excel
           </button>
           {isAdmin && (
@@ -210,7 +210,7 @@ export function ClientsPage() {
             <button
               onClick={() => { setEditing(null); setModalOpen(true); }}
               className="btn-primary"
-            >
+             type="button">
               <Plus size={16} /> Nuevo cliente
             </button>
           )}
@@ -286,7 +286,7 @@ export function ClientsPage() {
               <button
                 onClick={() => setShowAllCartera(v => !v)}
                 className="w-full text-xs text-red-600 font-semibold py-1.5 rounded-xl hover:bg-red-50 transition-colors"
-              >
+               type="button">
                 {showAllCartera ? 'Ver menos ↑' : `Ver todos (${carteraVencida.length}) ↓`}
               </button>
             )}
@@ -316,7 +316,7 @@ export function ClientsPage() {
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {s.label}
             </button>
           ))}
@@ -332,7 +332,7 @@ export function ClientsPage() {
                   ? 'bg-gray-800 text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {t === 'all' ? 'Todos' : t === 'internal' ? 'Internos' : 'Externos'}
             </button>
           ))}
@@ -346,7 +346,7 @@ export function ClientsPage() {
           title="No hay clientes"
           description="Agrega el primer cliente para comenzar"
           action={
-            <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
               <Plus size={14} /> Agregar cliente
             </button>
           }
@@ -410,7 +410,7 @@ export function ClientsPage() {
                       <button
                         onClick={() => { setEditing(client); setModalOpen(true); }}
                         className="text-xs text-gray-500 hover:text-gray-800 px-2 py-2 rounded-lg hover:bg-gray-100 font-medium transition-colors"
-                      >
+                       type="button">
                         Editar
                       </button>
                     )}

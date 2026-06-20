@@ -113,7 +113,7 @@ export function Sidebar() {
         <button
           onClick={logout}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
-        >
+         type="button">
           <LogOut size={16} />
           Cerrar sesión
         </button>

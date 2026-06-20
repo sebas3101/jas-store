@@ -128,16 +128,16 @@ export function OrderDetailPage() {
       {/* Actions */}
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => { setNewStatus(order.status); setStatusModal(true); }}
-          className="btn-primary">
+          className="btn-primary" type="button">
           <Edit2 size={14} /> Cambiar estado
         </button>
         <button
           onClick={() => printReceipt(order, client?.name ?? 'Cliente', paymentMethodLabel[order.paymentMethod])}
           className="btn-ghost"
-        >
+         type="button">
           <Printer size={14} /> Recibo
         </button>
-        <button onClick={() => setDeleteDialog(true)} className="btn-secondary text-red-500 hover:text-red-600">
+        <button onClick={() => setDeleteDialog(true)} className="btn-secondary text-red-500 hover:text-red-600" type="button">
           <Trash2 size={14} /> Eliminar
         </button>
       </div>
@@ -314,7 +314,7 @@ export function OrderDetailPage() {
               ✓ Al guardar, podrás enviar un WhatsApp de disponibilidad a {client.name}.
             </div>
           )}
-          <button onClick={handleStatusUpdate} className="btn-primary w-full justify-center">
+          <button onClick={handleStatusUpdate} className="btn-primary w-full justify-center" type="button">
             Actualizar estado
           </button>
         </div>
@@ -333,7 +333,7 @@ export function OrderDetailPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setAvailabilityModal(false)} className="btn-ghost flex-1 justify-center">
+              <button onClick={() => setAvailabilityModal(false)} className="btn-ghost flex-1 justify-center" type="button">
                 Omitir
               </button>
               {client.phone && (
@@ -343,7 +343,7 @@ export function OrderDetailPage() {
                     setAvailabilityModal(false);
                   }}
                   className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
-                >
+                 type="button">
                   <MessageCircle size={14} /> Enviar WhatsApp
                 </button>
               )}

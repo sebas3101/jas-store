@@ -127,7 +127,7 @@ export function RecordatoriosPage() {
               ? 'bg-red-500 text-white shadow-sm'
               : 'text-gray-500 hover:text-gray-700'
           }`}
-        >
+         type="button">
           Urgente · {urgente.length}
         </button>
         <button
@@ -137,7 +137,7 @@ export function RecordatoriosPage() {
               ? 'bg-white text-gray-900 shadow-sm'
               : 'text-gray-500 hover:text-gray-700'
           }`}
-        >
+         type="button">
           Todos · {totalCount}
         </button>
       </div>
@@ -156,7 +156,7 @@ export function RecordatoriosPage() {
           <button
             onClick={handleSendAll}
             className="flex-shrink-0 text-xs bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-1.5 font-semibold transition-colors"
-          >
+           type="button">
             <Send size={13} /> Enviar a todos
           </button>
         </div>
@@ -240,13 +240,13 @@ export function RecordatoriosPage() {
                   <button
                     onClick={() => handleSend(c.id, c.phone, waReminder)}
                     className="flex-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
-                  >
+                   type="button">
                     <MessageCircle size={12} /> Recordatorio
                   </button>
                   <button
                     onClick={() => handleSend(c.id, c.phone, waInfo)}
                     className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
-                  >
+                   type="button">
                     <MessageCircle size={12} /> Detalle deuda
                   </button>
                   <Link

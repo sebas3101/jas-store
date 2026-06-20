@@ -200,12 +200,12 @@ export function ExpensesPage() {
         </div>
         <div className="flex gap-2">
           {can('gastos', 'exportar') && (
-            <button onClick={handleExport} className="btn-ghost">
+            <button onClick={handleExport} className="btn-ghost" type="button">
               <Download size={15} /> Excel
             </button>
           )}
           {can('gastos', 'crear') && (
-            <button onClick={() => { setEditing(null); setModal(true); }} className="btn-primary">
+            <button onClick={() => { setEditing(null); setModal(true); }} className="btn-primary" type="button">
               <Plus size={16} /> Nuevo gasto
             </button>
           )}
@@ -220,7 +220,7 @@ export function ExpensesPage() {
               className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
                 viewMode === m ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {m === 'month' ? 'Por mes' : 'Rango de fechas'}
             </button>
           ))}
@@ -251,7 +251,7 @@ export function ExpensesPage() {
             className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
               filterType === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'
             }`}
-          >
+           type="button">
             Todos
           </button>
           {EXPENSE_TYPES.map(t => (
@@ -259,7 +259,7 @@ export function ExpensesPage() {
               className={`text-xs px-3 py-1 rounded-full font-medium transition-colors ${
                 filterType === t.value ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'
               }`}
-            >
+             type="button">
               {t.label}
             </button>
           ))}
@@ -335,7 +335,7 @@ export function ExpensesPage() {
                       <button
                         onClick={() => { setEditing(expense); setModal(true); }}
                         className="p-1.5 hover:bg-white rounded-xl text-gray-500 hover:text-gray-700 transition-colors"
-                      >
+                       type="button">
                         <Edit2 size={14} />
                       </button>
                     )}
@@ -343,7 +343,7 @@ export function ExpensesPage() {
                       <button
                         onClick={() => setDeleting(expense)}
                         className="p-1.5 hover:bg-red-50 rounded-xl text-gray-500 hover:text-red-500 transition-colors"
-                      >
+                       type="button">
                         <Trash2 size={14} />
                       </button>
                     )}

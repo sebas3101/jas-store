@@ -179,7 +179,7 @@ export function ProductsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{products.length} productos en catálogo</p>
         </div>
         {can('productos', 'crear') && (
-          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary" type="button">
             <Plus size={16} /> Nuevo producto
           </button>
         )}
@@ -198,7 +198,7 @@ export function ProductsPage() {
             className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
               filterCat === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
-          >
+           type="button">
             Todas
           </button>
           {CATEGORIES.map(c => (
@@ -207,7 +207,7 @@ export function ProductsPage() {
               className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
                 filterCat === c ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {categoryLabel[c]}
             </button>
           ))}
@@ -218,7 +218,7 @@ export function ProductsPage() {
             className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
               filterStatus === 'all' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
-          >
+           type="button">
             Todos
           </button>
           {STATUSES.map(s => (
@@ -227,7 +227,7 @@ export function ProductsPage() {
               className={`text-xs px-3 py-1.5 rounded-full font-medium whitespace-nowrap transition-colors ${
                 filterStatus === s ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
-            >
+             type="button">
               {productStatusLabel[s]}
             </button>
           ))}
@@ -241,7 +241,7 @@ export function ProductsPage() {
           title="No hay productos"
           description="Agrega productos al catálogo"
           action={
-            <button onClick={() => setModalOpen(true)} className="btn-primary">
+            <button onClick={() => setModalOpen(true)} className="btn-primary" type="button">
               <Plus size={14} /> Agregar producto
             </button>
           }
@@ -262,7 +262,7 @@ export function ProductsPage() {
                       <button
                         onClick={() => { setEditing(product); setModalOpen(true); }}
                         className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition-colors"
-                      >
+                       type="button">
                         <Edit2 size={13} />
                       </button>
                     )}
@@ -270,7 +270,7 @@ export function ProductsPage() {
                       <button
                         onClick={() => setDeleting(product)}
                         className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
-                      >
+                       type="button">
                         <Trash2 size={13} />
                       </button>
                     )}

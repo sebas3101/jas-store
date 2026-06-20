@@ -366,20 +366,20 @@ export function ClientDetailPage() {
               }}
               className="btn-ghost text-xs"
               title="Solicitar actualización de datos por WhatsApp"
-            >
+             type="button">
               <RefreshCw size={14} /> Actualizar datos
             </button>
             <button
               onClick={() => printEstadoCuenta(client, clientOrders, clientPayments)}
               className="btn-ghost text-xs"
               title="Imprimir estado de cuenta"
-            >
+             type="button">
               <FileText size={14} /> Estado de cuenta
             </button>
             <Link to={`/pedidos?cliente=${client.id}`} className="btn-ghost text-xs">
               <ShoppingBag size={14} /> Nuevo pedido
             </Link>
-            <button onClick={() => setPayModal(true)} className="btn-primary">
+            <button onClick={() => setPayModal(true)} className="btn-primary" type="button">
               <CreditCard size={16} /> Registrar abono
             </button>
           </div>
@@ -447,14 +447,14 @@ export function ClientDetailPage() {
               <button
                 onClick={handleCopyMessage}
                 className="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
-              >
+               type="button">
                 {msgCopied ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12} />}
                 {msgCopied ? 'Copiado' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(client.phone, waMessage)}
                 className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
-              >
+               type="button">
                 <MessageCircle size={12} /> WhatsApp
               </button>
             </div>
@@ -477,14 +477,14 @@ export function ClientDetailPage() {
               <button
                 onClick={handleCopyInfo}
                 className="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
-              >
+               type="button">
                 {infoCopied ? <CheckCircle2 size={12} className="text-emerald-500" /> : <Copy size={12} />}
                 {infoCopied ? 'Copiado' : 'Copiar'}
               </button>
               <button
                 onClick={() => openWhatsApp(client.phone, waInfoMessage)}
                 className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
-              >
+               type="button">
                 <MessageCircle size={12} /> WhatsApp
               </button>
             </div>

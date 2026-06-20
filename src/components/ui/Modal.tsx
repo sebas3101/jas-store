@@ -64,7 +64,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             onClick={onClose}
             className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
             aria-label="Cerrar"
-          >
+           type="button">
             <X size={18} />
           </button>
         </div>

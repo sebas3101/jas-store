@@ -143,7 +143,7 @@ export function SuppliersPage() {
           <p className="text-sm text-gray-500 mt-0.5">{suppliers.length} proveedores</p>
         </div>
         {can('proveedores', 'crear') && (
-          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary">
+          <button onClick={() => { setEditing(null); setModalOpen(true); }} className="btn-primary" type="button">
             <Plus size={16} /> Nuevo proveedor
           </button>
         )}
@@ -157,7 +157,7 @@ export function SuppliersPage() {
 
       {suppliers.length === 0 ? (
         <EmptyState icon={Store} title="No hay proveedores" description="Agrega tus proveedores principales"
-          action={<button onClick={() => setModalOpen(true)} className="btn-primary"><Plus size={14} /> Agregar</button>} />
+          action={<button onClick={() => setModalOpen(true)} className="btn-primary" type="button"><Plus size={14} /> Agregar</button>} />
       ) : (
         <div className="space-y-3">
           {suppliers.map(supplier => {
@@ -191,19 +191,19 @@ export function SuppliersPage() {
                   <div className="flex gap-1 flex-shrink-0">
                     {can('proveedores', 'editar') && (
                       <button onClick={() => { setEditing(supplier); setModalOpen(true); }}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" type="button">
                         <Edit2 size={13} />
                       </button>
                     )}
                     {can('proveedores', 'eliminar') && (
                       <button onClick={() => setDeleting(supplier)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500">
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500" type="button">
                         <Trash2 size={13} />
                       </button>
                     )}
                     <button
                       onClick={() => setExpanded(isExpanded ? null : supplier.id)}
-                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400">
+                      className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400" type="button">
                       {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     </button>
                   </div>
@@ -216,7 +216,7 @@ export function SuppliersPage() {
                         Historial de compras
                       </h4>
                       <button onClick={() => setPurchaseModal(supplier.id)}
-                        className="btn-primary !text-xs !px-3 !py-1.5">
+                        className="btn-primary !text-xs !px-3 !py-1.5" type="button">
                         <Plus size={12} /> Nueva compra
                       </button>
                     </div>

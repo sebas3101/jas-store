@@ -86,7 +86,7 @@ export function MobileNav() {
               className={`relative flex flex-col items-center justify-center flex-1 py-2 px-1 text-[11px] font-medium transition-colors ${
                 moreIsActive || moreOpen ? 'text-primary-600' : 'text-gray-400'
               }`}
-            >
+             type="button">
               {(moreIsActive || moreOpen) && (
                 <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary-600" />
               )}
@@ -107,7 +107,7 @@ export function MobileNav() {
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
             <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <h3 className="text-sm font-bold text-gray-800">Más secciones</h3>
-              <button onClick={() => setMoreOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors">
+              <button onClick={() => setMoreOpen(false)} className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors" type="button">
                 <X size={18} className="text-gray-500" />
               </button>
             </div>

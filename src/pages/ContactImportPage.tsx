@@ -7,7 +7,7 @@ import {
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import {
-  parseVCF, parseCSV, parseXLSX, matchContactsToClients,
+  parseVCF, parseCSV, matchContactsToClients,
   normalizePhone, isValidColombian,
 } from '../utils/contactMatcher';
 import type { ParsedContact, MatchResult, Confidence } from '../utils/contactMatcher';
@@ -70,9 +70,6 @@ export function ContactImportPage() {
       } else if (ext === 'csv') {
         const text = await file.text();
         parsed = parseCSV(text);
-      } else if (ext === 'xlsx' || ext === 'xls') {
-        const buffer = await file.arrayBuffer();
-        parsed = await parseXLSX(buffer);
       } else if (ext === 'json') {
         const text = await file.text();
         const data = JSON.parse(text);
@@ -81,7 +78,7 @@ export function ContactImportPage() {
           phone: normalizePhone(String(r.phone ?? r.celular ?? r.tel ?? r.Tel ?? '')),
         })).filter((c: ParsedContact) => c.name);
       } else {
-        setError('Formato no soportado. Usa .vcf, .csv, .xlsx o .json');
+        setError('Formato no soportado. Usa .vcf, .csv o .json');
         return;
       }
 
@@ -213,8 +210,7 @@ export function ContactImportPage() {
             <p className="font-semibold text-gray-800">Sube el archivo de contactos</p>
             <p className="text-xs text-gray-400 mt-1">
               Soporta <span className="font-medium">.vcf</span> (iPhone/Android),{' '}
-              <span className="font-medium">.csv</span>,{' '}
-              <span className="font-medium">.xlsx</span> y{' '}
+              <span className="font-medium">.csv</span> y{' '}
               <span className="font-medium">.json</span>
             </p>
           </div>
@@ -225,7 +221,7 @@ export function ContactImportPage() {
           <input
             ref={fileRef}
             type="file"
-            accept=".vcf,.csv,.xlsx,.xls,.json"
+            accept=".vcf,.csv,.json"
             className="hidden"
             onChange={onFileInput}
           />
@@ -256,7 +252,7 @@ export function ContactImportPage() {
               <button
                 onClick={() => { setMatches([]); setContacts([]); setFileName(''); setApplied(false); }}
                 className="btn-ghost text-xs"
-              >
+               type="button">
                 <X size={13} /> Cambiar archivo
               </button>
             </div>
@@ -270,7 +266,7 @@ export function ContactImportPage() {
                   className={`rounded-xl px-3 py-2 text-center transition-all border-2 ${
                     filter === c ? 'border-primary-400 shadow-sm' : 'border-transparent'
                   } ${CONF_COLOR[c]}`}
-                >
+                 type="button">
                   <p className="text-base font-bold">{stats[c]}</p>
                   <p className="text-[10px] font-medium">{CONF_LABEL[c]}</p>
                 </button>
@@ -280,7 +276,7 @@ export function ContactImportPage() {
 
           {/* Botón confirmar todos alta */}
           {confirmable > 0 && !applied && (
-            <button onClick={confirmAll} className="btn-primary w-full justify-center gap-2">
+            <button onClick={confirmAll} className="btn-primary w-full justify-center gap-2" type="button">
               <CheckCircle2 size={15} />
               Confirmar las {confirmable} coincidencias de confianza alta
             </button>
@@ -366,7 +362,7 @@ export function ContactImportPage() {
                             onClick={() => skip(m.clientId)}
                             className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
                             title="Desmarcar"
-                          >
+                           type="button">
                             <Check size={15} />
                           </button>
                         ) : (
@@ -376,14 +372,14 @@ export function ContactImportPage() {
                               disabled={!validPhone}
                               className="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors disabled:opacity-40"
                               title="Confirmar número"
-                            >
+                             type="button">
                               <Check size={15} />
                             </button>
                             <button
                               onClick={() => skip(m.clientId)}
                               className="p-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
                               title="Omitir"
-                            >
+                             type="button">
                               <X size={15} />
                             </button>
                           </>
@@ -404,7 +400,7 @@ export function ContactImportPage() {
               <button
                 onClick={() => setShowAll(v => !v)}
                 className="w-full text-xs text-gray-400 py-2 hover:text-gray-600 flex items-center justify-center gap-1"
-              >
+               type="button">
                 {showAll
                   ? <><ChevronUp size={13}/> Ocultar {stats.ninguna} sin coincidencia</>
                   : <><ChevronDown size={13}/> Ver {stats.ninguna} clientes sin coincidencia</>
@@ -423,7 +419,7 @@ export function ContactImportPage() {
                 onClick={applyChanges}
                 disabled={applying}
                 className="btn-primary bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto justify-center"
-              >
+               type="button">
                 {applying ? 'Guardando...' : `Guardar ${confirmed.size} número${confirmed.size !== 1 ? 's' : ''}`}
               </button>
             </div>

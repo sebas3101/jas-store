@@ -40,7 +40,7 @@ function InactivityWarning({ onStay }: { onStay: () => void }) {
             Por inactividad, la sesión se cerrará en 2 minutos.
           </p>
         </div>
-        <button onClick={onStay} className="btn-primary w-full justify-center">
+        <button onClick={onStay} className="btn-primary w-full justify-center" type="button">
           Seguir en la app
         </button>
       </div>

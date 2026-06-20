@@ -215,11 +215,11 @@ export function PaymentsPage() {
           <p className="text-sm text-gray-500 mt-0.5">{payments.length} pagos registrados</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => exportPagos(payments, clients)} className="btn-ghost">
+          <button onClick={() => exportPagos(payments, clients)} className="btn-ghost" type="button">
             <Download size={15} /> Excel
           </button>
           {can('pagos', 'registrar_pago') && (
-            <button onClick={() => setModal(true)} className="btn-primary">
+            <button onClick={() => setModal(true)} className="btn-primary" type="button">
               <Plus size={16} /> Registrar pago
             </button>
           )}
@@ -255,7 +255,7 @@ export function PaymentsPage() {
         </div>
         {(dateFrom || dateTo) && (
           <button onClick={() => { setDateFrom(''); setDateTo(''); }}
-            className="btn-ghost text-xs w-full justify-center">
+            className="btn-ghost text-xs w-full justify-center" type="button">
             Limpiar filtro de fechas
           </button>
         )}
@@ -268,7 +268,7 @@ export function PaymentsPage() {
           title="No hay pagos"
           description="Registra el primer abono o pago"
           action={
-            <button onClick={() => setModal(true)} className="btn-primary">
+            <button onClick={() => setModal(true)} className="btn-primary" type="button">
               <Plus size={14} /> Registrar pago
             </button>
           }
