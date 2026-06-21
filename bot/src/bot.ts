@@ -81,6 +81,23 @@ function buildResumen(ocr: ExtractedPayment, nombre: string, vinculado: boolean,
   return lines.join('\n');
 }
 
+function notifyPush(clientName: string, amount: number | undefined) {
+  const funcUrl = `${process.env.SUPABASE_URL}/functions/v1/send-push`;
+  const amtStr  = amount?.toLocaleString('es-CO') ?? '?';
+  fetch(funcUrl, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+    },
+    body: JSON.stringify({
+      title: '💰 Nuevo comprobante',
+      body:  `${clientName} — ${amtStr} COP`,
+      url:   '/comprobantes',
+    }),
+  }).catch(err => console.error('[PUSH]', (err as Error).message));
+}
+
 async function guardar(chatId: number, session: Session, client: DbClient | null, nombre: string) {
   const ocr = await withOcrTimeout(session.ocrPromise);
 
@@ -141,6 +158,9 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
     await bot.sendMessage(chatId, '❌ Error al guardar en la base de datos. Intenta de nuevo o contacta al admin.');
     return;
   }
+
+  // Push notification a todos los suscriptores de la app
+  notifyPush(client?.name ?? nombre, ocr.amount);
 
   // Notificar al admin si el comprobante lo registró otra persona
   const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
@@ -274,6 +294,7 @@ bot.on('message', async msg => {
         await bot.sendMessage(chatId, '❌ Error al guardar. Intenta de nuevo o contacta al admin.');
         return;
       }
+      notifyPush(client?.name ?? nombre, ocr.amount);
       const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
       if (adminId && adminId !== chatId) {
         const adminMsg = [`🧾 *Comprobante registrado (duplicado confirmado)*`, `👤 ${client?.name ?? nombre}`,

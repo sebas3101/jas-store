@@ -1,6 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
-import { Shield, Clock, WifiOff } from 'lucide-react';
+import { Shield, Clock, WifiOff, Bell, X } from 'lucide-react';
 import { SkeletonList, Skeleton } from '../ui/Skeleton';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
@@ -9,6 +9,7 @@ import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 function PageLoader() {
   return (
@@ -57,6 +58,7 @@ export function AppLayout() {
   const { pathname }  = useLocation();
   const { showWarning, stayActive } = useInactivityLogout();
   const { isOnline } = useOnlineStatus();
+  const { showBanner, isLoading: pushLoading, subscribe, dismiss } = usePushNotifications();
 
   const basePath  = '/' + (pathname.split('/')[1] ?? '');
   const hasAccess = canAccess(basePath);
@@ -70,6 +72,25 @@ export function AppLayout() {
           <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 text-xs font-medium flex-shrink-0">
             <WifiOff size={13} className="flex-shrink-0" />
             <span>Sin conexión — mostrando datos guardados</span>
+          </div>
+        )}
+        {showBanner && (
+          <div className="flex items-center gap-3 bg-primary-50 border-b border-primary-100 px-4 py-2.5 flex-shrink-0">
+            <Bell size={14} className="text-primary-600 flex-shrink-0" />
+            <p className="text-xs text-primary-800 font-medium flex-1">
+              Activa las notificaciones para recibir alertas de comprobantes
+            </p>
+            <button
+              type="button"
+              onClick={subscribe}
+              disabled={pushLoading}
+              className="text-xs font-semibold text-primary-700 hover:text-primary-900 bg-primary-100 hover:bg-primary-200 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              Activar
+            </button>
+            <button type="button" onClick={dismiss} className="text-primary-400 hover:text-primary-600 flex-shrink-0">
+              <X size={14} />
+            </button>
           </div>
         )}
         <main className="flex-1 overflow-y-auto lg:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
