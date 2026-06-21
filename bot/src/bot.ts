@@ -2,6 +2,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import 'dotenv/config';
 import { extractPaymentData, type ExtractedPayment } from './ocr';
 import { searchClients, savePaymentProof, checkDuplicateByRef, checkDuplicateByAmount, type DbClient } from './db';
+import { startDailyCron } from './cron';
 
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 if (!TOKEN) throw new Error('TELEGRAM_BOT_TOKEN no configurado en .env');
@@ -332,3 +333,7 @@ bot.on('message', async msg => {
 });
 
 console.log('🤖 JAS Bot iniciado — esperando comprobantes...');
+
+// Resumen diario automático a las 8:00 AM Colombia
+const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
+if (adminId) startDailyCron(bot, adminId);

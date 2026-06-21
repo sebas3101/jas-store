@@ -68,6 +68,62 @@ export async function checkDuplicateByAmount(amount: number, date?: string): Pro
   return (data?.length ?? 0) > 0;
 }
 
+export interface DailySummary {
+  activeOrders:     { tomado: number; por_recoger: number; recogido: number };
+  staleOrders:      Array<{ orderNumber: string; clientName: string; status: string; days: number }>;
+  pendingProofs:    number;
+  yesterdayPayments:{ total: number; count: number };
+  clientsInMora:    number;
+}
+
+export async function getDailySummary(): Promise<DailySummary> {
+  const now       = new Date();
+  const yesterday = new Date(now);
+  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().slice(0, 10);
+
+  const [ordersRes, staleRes, proofsRes, paymentsRes, moraRes] = await Promise.all([
+    supabase.from('orders').select('status').not('status', 'in', '("cancelado","pagado")'),
+    supabase.from('orders')
+      .select('order_number, status, order_date, clients(name)')
+      .in('status', ['tomado', 'por_recoger'])
+      .lt('order_date', sevenDaysAgoStr)
+      .order('order_date', { ascending: true })
+      .limit(5),
+    supabase.from('payment_proofs').select('id', { count: 'exact', head: true }).eq('status', 'pendiente_revision'),
+    supabase.from('payments').select('amount').eq('date', yesterdayStr),
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('status', 'mora'),
+  ]);
+
+  const active = { tomado: 0, por_recoger: 0, recogido: 0 };
+  for (const o of ordersRes.data ?? []) {
+    if (o.status === 'tomado')      active.tomado++;
+    else if (o.status === 'por_recoger') active.por_recoger++;
+    else if (o.status === 'recogido')    active.recogido++;
+  }
+
+  const staleOrders = (staleRes.data ?? []).map((o: any) => ({
+    orderNumber: o.order_number ?? '',
+    clientName:  o.clients?.name ?? 'Sin cliente',
+    status:      o.status,
+    days:        Math.floor((now.getTime() - new Date(o.order_date).getTime()) / 86_400_000),
+  }));
+
+  const payments    = paymentsRes.data ?? [];
+  const totalPaid   = payments.reduce((s: number, p: any) => s + (p.amount ?? 0), 0);
+
+  return {
+    activeOrders:      active,
+    staleOrders,
+    pendingProofs:     proofsRes.count ?? 0,
+    yesterdayPayments: { total: totalPaid, count: payments.length },
+    clientsInMora:     moraRes.count ?? 0,
+  };
+}
+
 /** Inserta un comprobante en payment_proofs con estado pendiente_revision. */
 export async function savePaymentProof(p: {
   clientId?:   string;
