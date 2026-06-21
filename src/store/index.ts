@@ -7,6 +7,10 @@ import type {
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
+// ─── Realtime channel (módulo) ────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _realtimeChannel: any = null;
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 let _onStoreError: ((msg: string) => void) | null = null;
@@ -234,6 +238,34 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             });
         }
       }
+
+      // ── Supabase Realtime: auto-actualizar cuando el bot registra datos ──────
+      if (_realtimeChannel) {
+        supabase.removeChannel(_realtimeChannel);
+      }
+
+      const refetchPaymentProofs = async () => {
+        const { data } = await supabase.from('payment_proofs').select('*').order('created_at');
+        if (data) set({ paymentProofs: cam(data) as PaymentProof[] });
+      };
+
+      const refetchOrders = async () => {
+        const { data } = await supabase.from('orders').select('*').order('created_at');
+        if (data) set({ orders: cam(data) as Order[] });
+      };
+
+      const refetchPayments = async () => {
+        const { data } = await supabase.from('payments').select('*').order('created_at');
+        if (data) set({ payments: cam(data) as Payment[] });
+      };
+
+      _realtimeChannel = supabase
+        .channel('jas-realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' }, refetchPaymentProofs)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },         refetchOrders)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' },        refetchPayments)
+        .subscribe();
+
     } catch (err) {
       set({ error: 'Error al conectar con la base de datos', isLoading: false });
       console.error('initialize error:', err);
