@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen, ChevronRight } from 'lucide-react';
+import { useSwipeCard } from '../hooks/useSwipeCard';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -349,6 +350,106 @@ function OrderFormWithWa({ onCreated }: { onCreated: (o: Order) => void }) {
   );
 }
 
+interface SwipeableCardProps {
+  order:           Order;
+  client?:         { id: string; name: string; phone?: string };
+  seller?:         { id: string; name: string };
+  canEdit:         boolean;
+  canChangeStatus: boolean;
+  advancing:       boolean;
+  onAdvance:       () => void;
+  onEdit:          () => void;
+}
+
+function SwipeableOrderCard({ order, client, seller, canEdit, canChangeStatus, advancing, onAdvance, onEdit }: SwipeableCardProps) {
+  const balance = order.totalAmount - order.amountPaid;
+  const canAdvance = canChangeStatus && !['pagado', 'cancelado'].includes(order.status);
+
+  const { handlers, translateX, isSwiping } = useSwipeCard({
+    onSwipeRight: canAdvance ? onAdvance : undefined,
+    onSwipeLeft:  client?.phone ? () => openWhatsApp(client.phone!, '') : undefined,
+  });
+
+  const showAdvanceHint = translateX > 30;
+  const showWaHint      = translateX < -30;
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl">
+      {/* Background: swipe right → avanzar estado */}
+      <div className={`absolute inset-y-0 left-0 flex items-center gap-1 px-4 bg-emerald-500 rounded-l-2xl transition-opacity ${showAdvanceHint && canAdvance ? 'opacity-100' : 'opacity-0'}`}>
+        <ChevronRight size={18} className="text-white" />
+        <span className="text-white text-xs font-semibold">Avanzar</span>
+      </div>
+      {/* Background: swipe left → WhatsApp */}
+      <div className={`absolute inset-y-0 right-0 flex items-center gap-1 px-4 bg-emerald-500 rounded-r-2xl transition-opacity ${showWaHint && client?.phone ? 'opacity-100' : 'opacity-0'}`}>
+        <span className="text-white text-xs font-semibold">WhatsApp</span>
+        <MessageCircle size={18} className="text-white" />
+      </div>
+
+      {/* Card */}
+      <div
+        {...handlers}
+        style={{ transform: `translateX(${translateX}px)`, transition: isSwiping ? 'none' : 'transform 0.25s ease' }}
+        className="card !p-4 hover:shadow-md transition-shadow relative z-10 touch-pan-y"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <ShoppingBag size={16} className="text-primary-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-gray-900">{order.orderNumber}</span>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[order.status]}`}>
+                {orderStatusLabel[order.status]}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {client?.name ?? 'Cliente'} · {formatDate(order.orderDate)}
+              {seller && ` · ${seller.name}`}
+            </p>
+          </div>
+          <div className="text-right flex-shrink-0">
+            <p className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+            {balance > 0 && (
+              <p className="text-xs font-semibold text-amber-600">Debe {formatCurrency(balance)}</p>
+            )}
+          </div>
+          {canEdit && !['pagado', 'cancelado'].includes(order.status) && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              title="Editar pedido"
+            >
+              <Pen size={14} />
+            </button>
+          )}
+          <Link to={`/pedidos/${order.id}`} className="btn-primary !px-2.5 !py-1.5 flex-shrink-0">
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+        <div className="flex items-center gap-1 mt-3 flex-wrap">
+          <div className="flex gap-1 flex-1 flex-wrap">
+            {order.items.map((it, i) => (
+              <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                {it.quantity}x {it.productName}
+              </span>
+            ))}
+          </div>
+          {canChangeStatus && (
+            <OrderStatusButton
+              order={order}
+              onAdvance={() => onAdvance()}
+              advancing={advancing}
+              variant="pill"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OrdersPage() {
   const location  = useLocation();
   const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
@@ -471,70 +572,19 @@ export function OrdersPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(order => {
-            const client = clients.find(c => c.id === order.clientId);
-            const seller = users.find(u => u.id === order.sellerId);
-            const balance = order.totalAmount - order.amountPaid;
-            return (
-              <div key={order.id} className="card !p-4 hover:shadow-md transition-shadow">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag size={16} className="text-primary-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-gray-900">{order.orderNumber}</span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[order.status]}`}>
-                        {orderStatusLabel[order.status]}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {client?.name ?? 'Cliente'} · {formatDate(order.orderDate)}
-                      {seller && ` · ${seller.name}`}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
-                    {balance > 0 && (
-                      <p className="text-xs font-semibold text-amber-600">
-                        Debe {formatCurrency(balance)}
-                      </p>
-                    )}
-                  </div>
-                  {can('pedidos', 'editar') && !['pagado', 'cancelado'].includes(order.status) && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingOrder(order)}
-                      className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                      title="Editar pedido"
-                    >
-                      <Pen size={14} />
-                    </button>
-                  )}
-                  <Link to={`/pedidos/${order.id}`} className="btn-primary !px-2.5 !py-1.5 flex-shrink-0">
-                    <ArrowRight size={14} />
-                  </Link>
-                </div>
-                <div className="flex items-center gap-1 mt-3 flex-wrap">
-                  <div className="flex gap-1 flex-1 flex-wrap">
-                    {order.items.map((it, i) => (
-                      <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                        {it.quantity}x {it.productName}
-                      </span>
-                    ))}
-                  </div>
-                  {can('pedidos', 'cambiar_estado') && (
-                    <OrderStatusButton
-                      order={order}
-                      onAdvance={handleAdvanceStatus}
-                      advancing={advancingId === order.id}
-                      variant="pill"
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(order => (
+            <SwipeableOrderCard
+              key={order.id}
+              order={order}
+              client={clients.find(c => c.id === order.clientId)}
+              seller={users.find(u => u.id === order.sellerId)}
+              canEdit={can('pedidos', 'editar')}
+              canChangeStatus={can('pedidos', 'cambiar_estado')}
+              advancing={advancingId === order.id}
+              onAdvance={() => handleAdvanceStatus(order)}
+              onEdit={() => setEditingOrder(order)}
+            />
+          ))}
         </div>
       )}
 
