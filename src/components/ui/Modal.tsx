@@ -14,7 +14,22 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : '';
+    if (!isOpen) return;
+    // iOS Safari: overflow:hidden no funciona en body — guardar y fijar posición
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top      = `-${scrollY}px`;
+      document.body.style.width    = '100%';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top      = '';
+        document.body.style.width    = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+    document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
@@ -51,7 +66,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       <div
         ref={panelRef}
         className={cn(
-          'relative bg-white w-full flex flex-col max-h-[92vh] sm:max-h-[90vh]',
+          'relative bg-white w-full flex flex-col max-h-[92dvh] sm:max-h-[90dvh]',
           'rounded-t-2xl sm:rounded-2xl shadow-2xl',
           sizes[size]
         )}
@@ -68,7 +83,12 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             <X size={18} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 sm:py-5">{children}</div>
+        <div
+          className="overflow-y-auto overscroll-contain flex-1 px-4 sm:px-6 py-4 sm:py-5"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
