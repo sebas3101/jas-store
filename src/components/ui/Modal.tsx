@@ -18,7 +18,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  // Animate in on mount
+  // Animate in on mount — limpiar transform tras la animación para no trabar scroll iOS
   useEffect(() => {
     if (!isOpen || !panelRef.current) return;
     const el = panelRef.current;
@@ -30,6 +30,12 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       el.style.opacity = '1';
       el.style.transform = 'translateY(0) scale(1)';
     });
+    const t = setTimeout(() => {
+      if (!panelRef.current) return;
+      panelRef.current.style.transition = '';
+      panelRef.current.style.transform  = '';
+    }, 220);
+    return () => clearTimeout(t);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -69,7 +75,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
           </button>
         </div>
         <div
-          className="overflow-y-auto overscroll-contain flex-1 px-4 sm:px-6 py-4 sm:py-5"
+          className="overflow-y-auto overscroll-contain flex-1 min-h-0 px-4 sm:px-6 py-4 sm:py-5"
           style={{ touchAction: 'pan-y' }}
         >
           {children}
