@@ -237,7 +237,7 @@ export function Header() {
       {notifOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/30" onClick={() => setNotifOpen(false)} />
-          <div className="relative w-full bg-white rounded-t-2xl shadow-2xl pb-safe max-h-[80vh] flex flex-col">
+          <div className="relative w-full bg-white rounded-t-2xl shadow-2xl pb-safe max-h-[80vh] flex flex-col overflow-x-hidden" style={{ touchAction: 'pan-y' }}>
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-1 flex-shrink-0" />
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export function Header() {
       {menuOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex items-end">
           <div className="absolute inset-0 bg-black/30" onClick={() => setMenuOpen(false)} />
-          <div className="relative w-full bg-white rounded-t-2xl shadow-2xl p-5 pb-safe space-y-4">
+          <div className="relative w-full bg-white rounded-t-2xl shadow-2xl p-5 pb-safe space-y-4 overflow-x-hidden" style={{ touchAction: 'pan-y' }}>
             <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto -mt-1 mb-2" />
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 bg-primary-100 rounded-2xl flex items-center justify-center">

@@ -57,10 +57,11 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       <div
         ref={panelRef}
         className={cn(
-          'relative bg-white w-full flex flex-col max-h-[92dvh] sm:max-h-[90dvh]',
+          'relative bg-white w-full flex flex-col max-h-[92dvh] sm:max-h-[90dvh] overflow-x-hidden',
           'rounded-t-2xl sm:rounded-2xl shadow-2xl',
           sizes[size]
         )}
+        style={{ touchAction: 'pan-y' }}
       >
         {/* Pull handle — solo móvil */}
         <div className="sm:hidden w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-1 flex-shrink-0" />
