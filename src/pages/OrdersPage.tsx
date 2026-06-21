@@ -36,7 +36,7 @@ function OrderForm({ onSave, initial }: {
   onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void;
   initial?: Order;
 }) {
-  const { clients, products, users, suppliers, currentUser } = useAppStore();
+  const { clients, products, users, suppliers, currentUser, getClientDebt } = useAppStore();
   const [clientId, setClientId]   = useState(initial?.clientId ?? '');
   const [items, setItems]         = useState<Omit<OrderItem, 'id'>[]>(
     initial?.items.map(({ id: _id, ...rest }) => rest) ?? [{
@@ -87,6 +87,18 @@ function OrderForm({ onSave, initial }: {
   const totalAmount = items.reduce((s, it) => s + it.salePrice * it.quantity, 0);
   const totalCost   = items.reduce((s, it) => s + it.costPrice * it.quantity, 0);
 
+  // Alerta de límite de crédito (solo pedidos nuevos)
+  const creditWarning = (() => {
+    if (initial || !clientId || !['credito', 'fiado', 'abono'].includes(payMethod)) return null;
+    const client = clients.find(c => c.id === clientId);
+    if (!client?.creditLimit) return null;
+    const currentDebt  = getClientDebt(clientId);
+    const newBalance   = Math.max(0, totalAmount - amountPaid);
+    const projectedDebt = currentDebt + newBalance;
+    if (projectedDebt <= client.creditLimit) return null;
+    return { limit: client.creditLimit, currentDebt, newBalance, projectedDebt };
+  })();
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
@@ -126,6 +138,14 @@ function OrderForm({ onSave, initial }: {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+          {creditWarning && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs">
+              <p className="font-semibold text-red-700">⚠️ Supera el límite de crédito</p>
+              <p className="text-red-600 mt-0.5">
+                Límite: {formatCurrency(creditWarning.limit)} · Deuda actual: {formatCurrency(creditWarning.currentDebt)} · Nuevo saldo: {formatCurrency(creditWarning.newBalance)} → Total proyectado: <strong>{formatCurrency(creditWarning.projectedDebt)}</strong>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Items */}
@@ -343,10 +363,11 @@ export function OrdersPage() {
   const [search, setSearch]       = useState(prefilledName);
   const [filterClient, setFilterClient] = useState(clienteParam);
   const [filterStatus, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [filterSeller, setFilterSeller] = useState('');
   const [modalOpen, setModalOpen]     = useState(false);
   const [page, setPage]               = useState(1);
 
-  useEffect(() => { setPage(1); }, [search, filterStatus, filterClient]);
+  useEffect(() => { setPage(1); }, [search, filterStatus, filterClient, filterSeller]);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [waOrder, setWaOrder]         = useState<Order | null>(null);
   const [advancingId, setAdvancingId] = useState<string | null>(null);
@@ -367,7 +388,8 @@ export function OrdersPage() {
       (client?.name ?? '').toLowerCase().includes(search.toLowerCase());
     const matchStatus = filterStatus === 'all' || o.status === filterStatus;
     const matchClient = !filterClient || o.clientId === filterClient;
-    return matchSearch && matchStatus && matchClient;
+    const matchSeller = !filterSeller || o.sellerId === filterSeller;
+    return matchSearch && matchStatus && matchClient && matchSeller;
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
@@ -421,6 +443,18 @@ export function OrdersPage() {
             </button>
           ))}
         </div>
+        {users.length > 0 && (
+          <select
+            className="input-field !text-xs !py-1.5"
+            value={filterSeller}
+            onChange={e => setFilterSeller(e.target.value)}
+          >
+            <option value="">Todos los vendedores</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* List */}

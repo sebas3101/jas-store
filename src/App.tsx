@@ -31,6 +31,7 @@ const RecordatoriosPage  = lazy(() => import('./pages/RecordatoriosPage').then(m
 const ExpensesPage       = lazy(() => import('./pages/ExpensesPage').then(m => ({ default: m.ExpensesPage })));
 const ChangePasswordPage    = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 const ContactImportPage     = lazy(() => import('./pages/ContactImportPage').then(m => ({ default: m.ContactImportPage })));
+const CalendarPage          = lazy(() => import('./pages/CalendarPage').then(m => ({ default: m.CalendarPage })));
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const currentUser = useAppStore(s => s.currentUser);
@@ -109,6 +110,7 @@ export default function App() {
             <Route path="clientes/:id"      element={<PermissionRoute module="clientes"><ClientDetailPage /></PermissionRoute>} />
             <Route path="pedidos"           element={<PermissionRoute module="pedidos"><OrdersPage /></PermissionRoute>} />
             <Route path="pedidos/:id"       element={<PermissionRoute module="pedidos"><OrderDetailPage /></PermissionRoute>} />
+            <Route path="calendario"        element={<PermissionRoute module="pedidos"><CalendarPage /></PermissionRoute>} />
             <Route path="pagos"             element={<PermissionRoute module="pagos"><PaymentsPage /></PermissionRoute>} />
             <Route path="productos"         element={<PermissionRoute module="productos"><ProductsPage /></PermissionRoute>} />
             <Route path="proveedores"       element={<PermissionRoute module="proveedores"><SuppliersPage /></PermissionRoute>} />

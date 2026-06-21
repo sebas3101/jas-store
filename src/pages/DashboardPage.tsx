@@ -14,9 +14,11 @@ import { calculateClientDebt } from '../utils/businessLogic';
 import { useGoalsStore } from '../store/goals';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
-import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, differenceInDays } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, differenceInDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getReminderLog, daysSinceReminder } from '../utils/reminders';
+
+type Period = 'hoy' | 'semana' | 'mes' | 'año';
 
 export function DashboardPage() {
   const { orders, clients, payments, products, currentUser, paymentProofs } = useAppStore();
@@ -24,16 +26,40 @@ export function DashboardPage() {
 
   const now = new Date();
 
+  // ── Filtro de período ────────────────────────────────────────────────────────
+  const [period, setPeriod] = useState<Period>('mes');
+  const periodRange = (() => {
+    switch (period) {
+      case 'hoy':    return { start: startOfDay(now),  end: endOfDay(now) };
+      case 'semana': return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+      case 'mes':    return { start: startOfMonth(now), end: endOfMonth(now) };
+      case 'año':    return { start: startOfYear(now),  end: endOfYear(now) };
+    }
+  })();
+  const isInPeriod = (dateStr: string) => {
+    try { return isWithinInterval(parseISO(dateStr), periodRange); }
+    catch { return false; }
+  };
+  const periodOrders  = orders.filter(o => o.status !== 'cancelado' && isInPeriod(o.orderDate));
+  const periodSales   = periodOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const periodCobrado = payments.filter(p => isInPeriod(p.date)).reduce((s, p) => s + p.amount, 0);
+  const periodPending = periodOrders.filter(o => !['pagado', 'entregado'].includes(o.status)).length;
+  const periodProfit  = periodOrders
+    .filter(o => ['entregado', 'pagado', 'pendiente_pago'].includes(o.status))
+    .reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
+
+  // ── Pedidos estancados (tomado/por_recoger hace >7 días) ─────────────────────
+  const staleOrders = orders.filter(o =>
+    ['tomado', 'por_recoger'].includes(o.status) &&
+    differenceInDays(now, parseISO(o.orderDate)) > 7
+  );
+
   // ── KPIs ────────────────────────────────────────────────────────────────────
-  const totalSales   = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.totalAmount, 0);
-  const totalPaid    = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.amountPaid, 0);
   // Deuda real: solo pedidos entregados/pendiente_pago, usando la misma lógica centralizada
   const totalPending = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
-  const totalProfit  = orders.filter(o => o.status === 'entregado' || o.status === 'pagado' || o.status === 'pendiente_pago').reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
 
   const clientsWithDebt = clients.filter(c => c.status === 'mora' || c.status === 'pendiente').length;
   const clientsUpToDate = clients.filter(c => c.status === 'al_dia').length;
-  const pendingOrders   = orders.filter(o => !['pagado','cancelado','entregado'].includes(o.status)).length;
   const deliveredOrders = orders.filter(o => o.status === 'entregado' || o.status === 'pagado').length;
   const ordersToPickup  = orders.filter(o => o.status === 'por_recoger').length;
 
@@ -225,22 +251,71 @@ export function DashboardPage() {
         </Link>
       )}
 
+      {/* Period filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {(['hoy', 'semana', 'mes', 'año'] as Period[]).map(p => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => setPeriod(p)}
+            className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors capitalize ${
+              period === p
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {p === 'hoy' ? 'Hoy' : p === 'semana' ? 'Semana' : p === 'mes' ? 'Mes' : 'Año'}
+          </button>
+        ))}
+      </div>
+
       {/* KPI Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Ventas totales" value={formatCurrency(totalSales)}   icon={DollarSign}  color="purple" subtitle={`${orders.filter(o => o.status !== 'cancelado').length} pedidos`} />
-        <StatCard title="Por cobrar"     value={formatCurrency(totalPending)} icon={Clock}       color="yellow" subtitle={`${clientsWithDebt} clientes con deuda`} />
-        <StatCard title="Total cobrado"  value={formatCurrency(totalPaid)}    icon={CheckCircle2} color="green" subtitle={`${clientsUpToDate} clientes al día`} />
-        <StatCard title="Ganancia est."  value={formatCurrency(totalProfit)}  icon={TrendingUp}  color="blue"  subtitle="Margen sobre ventas" />
+        <StatCard title="Ventas" value={formatCurrency(periodSales)} icon={DollarSign} color="purple" subtitle={`${periodOrders.length} pedido${periodOrders.length !== 1 ? 's' : ''}`} />
+        <StatCard title="Por cobrar" value={formatCurrency(totalPending)} icon={Clock} color="yellow" subtitle={`${clientsWithDebt} con deuda`} />
+        <StatCard title="Recaudado" value={formatCurrency(periodCobrado)} icon={CheckCircle2} color="green" subtitle={`${clientsUpToDate} clientes al día`} />
+        <StatCard title="Ganancia est." value={formatCurrency(periodProfit)} icon={TrendingUp} color="blue" subtitle="Margen sobre ventas" />
       </div>
 
       {/* Second row KPIs */}
       <div className="grid grid-cols-3 lg:grid-cols-5 gap-3">
-        <StatCard title="Activos"     value={pendingOrders}   icon={ShoppingBag}   color="purple" />
+        <StatCard title="Activos"     value={periodPending}   icon={ShoppingBag}   color="purple" />
         <StatCard title="Entregados"  value={deliveredOrders} icon={CheckCircle2}  color="green"  />
         <StatCard title="Por recoger" value={ordersToPickup}  icon={Package}       color="yellow" />
         <StatCard title="Con deuda"   value={clientsWithDebt} icon={AlertTriangle} color="red"    className="hidden lg:flex" />
         <StatCard title="Al día"      value={clientsUpToDate} icon={Users}         color="green"  className="hidden lg:flex" />
       </div>
+
+      {/* Pedidos estancados */}
+      {staleOrders.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+          <h2 className="text-sm font-bold text-amber-800 flex items-center gap-2">
+            <Clock size={15} className="text-amber-500" />
+            {staleOrders.length} pedido{staleOrders.length !== 1 ? 's' : ''} sin moverse hace más de 7 días
+          </h2>
+          {staleOrders.slice(0, 5).map(o => {
+            const client = clients.find(c => c.id === o.clientId);
+            const days   = differenceInDays(now, parseISO(o.orderDate));
+            return (
+              <Link key={o.id} to={`/pedidos/${o.id}`}
+                className="flex items-center gap-3 bg-white rounded-xl px-3 py-2 hover:shadow-sm transition-shadow">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-800 truncate">
+                    {o.orderNumber} — {client?.name ?? 'Cliente'}
+                  </p>
+                  <p className="text-[10px] text-amber-600 font-medium">{orderStatusLabel[o.status]} · {days} días</p>
+                </div>
+                <ArrowRight size={13} className="text-amber-400 flex-shrink-0" />
+              </Link>
+            );
+          })}
+          {staleOrders.length > 5 && (
+            <Link to="/pedidos" className="block text-center text-xs text-amber-700 font-medium hover:underline pt-1">
+              Ver {staleOrders.length - 5} más →
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Alertas — visibles antes de las gráficas */}
       {alerts.length > 0 && (

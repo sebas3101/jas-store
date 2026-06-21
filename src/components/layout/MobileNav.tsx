@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, CreditCard, Package,
   Truck, Megaphone, BarChart3, Settings, Store, TrendingUp,
-  Target, ShieldCheck, FileImage, Bell, Receipt, MoreHorizontal, X,
+  Target, ShieldCheck, FileImage, Bell, Receipt, MoreHorizontal, X, CalendarDays,
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAppStore } from '../../store';
@@ -18,6 +18,7 @@ const PINNED_ITEMS = [
 ];
 
 const MORE_ITEMS = [
+  { to: '/calendario',    icon: CalendarDays, label: 'Calendario' },
   { to: '/productos',     icon: Package,    label: 'Productos'    },
   { to: '/proveedores',   icon: Store,      label: 'Proveedores'  },
   { to: '/entregas',      icon: Truck,      label: 'Entregas'     },

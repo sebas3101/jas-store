@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Users, ShoppingBag, CreditCard, Package,
   Truck, Megaphone, BarChart3, Settings, LogOut, Store,
-  TrendingUp, Target, ShieldCheck, FileImage, Bell, Receipt,
+  TrendingUp, Target, ShieldCheck, FileImage, Bell, Receipt, CalendarDays,
 } from 'lucide-react';
 import { useAppStore } from '../../store';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -15,6 +15,7 @@ const ALL_NAV_ITEMS = [
   { to: '/',               icon: LayoutDashboard, label: 'Inicio'         },
   { to: '/clientes',       icon: Users,           label: 'Clientes'       },
   { to: '/pedidos',        icon: ShoppingBag,     label: 'Pedidos'        },
+  { to: '/calendario',     icon: CalendarDays,    label: 'Calendario'     },
   { to: '/pagos',          icon: CreditCard,      label: 'Pagos'          },
   { to: '/recordatorios',  icon: Bell,            label: 'Recordatorios'  },
   { to: '/productos',      icon: Package,         label: 'Productos'      },
