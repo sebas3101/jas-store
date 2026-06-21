@@ -10,16 +10,17 @@ import { useAppStore } from '../../store';
 import { calculateClientDebt } from '../../utils/businessLogic';
 
 const PINNED_ITEMS = [
-  { to: '/',              icon: LayoutDashboard, label: 'Inicio'   },
-  { to: '/clientes',     icon: Users,           label: 'Clientes' },
-  { to: '/pedidos',      icon: ShoppingBag,     label: 'Pedidos'  },
-  { to: '/pagos',        icon: CreditCard,      label: 'Pagos'    },
-  { to: '/recordatorios',icon: Bell,            label: 'Cobros'   },
+  { to: '/',              icon: LayoutDashboard, label: 'Inicio'        },
+  { to: '/clientes',      icon: Users,           label: 'Clientes'      },
+  { to: '/pedidos',       icon: ShoppingBag,     label: 'Pedidos'       },
+  { to: '/comprobantes',  icon: FileImage,       label: 'Comprobantes'  },
+  { to: '/recordatorios', icon: Bell,            label: 'Cobros'        },
 ];
 
 const MORE_ITEMS = [
+  { to: '/pagos',         icon: CreditCard,   label: 'Pagos'      },
   { to: '/calendario',    icon: CalendarDays, label: 'Calendario' },
-  { to: '/productos',     icon: Package,    label: 'Productos'    },
+  { to: '/productos',     icon: Package,      label: 'Productos'  },
   { to: '/proveedores',   icon: Store,      label: 'Proveedores'  },
   { to: '/entregas',      icon: Truck,      label: 'Entregas'     },
   { to: '/garantias',     icon: ShieldCheck,label: 'Garantías'    },
