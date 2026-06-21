@@ -23,6 +23,8 @@ export function usePullToRefresh({ onRefresh, containerRef }: Options) {
       containerRef?.current ? containerRef.current.scrollTop : window.scrollY;
 
     const onTouchStart = (e: Event) => {
+      // No activar cuando hay un modal abierto (overflow:hidden en body)
+      if (document.body.style.overflow === 'hidden') return;
       const touch = (e as TouchEvent).touches[0];
       if (getScrollTop() === 0) {
         startY.current = touch.clientY;
