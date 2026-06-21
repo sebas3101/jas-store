@@ -11,6 +11,20 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo.jpeg', 'logo-192.png', 'logo-512.png'],
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,jpeg,svg,woff2}'],
+        runtimeCaching: [
+          {
+            // Fuentes de Google — cache-first (raramente cambian)
+            urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
+        ],
+      },
       manifest: {
         name:             'JAS Store',
         short_name:       'JAS',
