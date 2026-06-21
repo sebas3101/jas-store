@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw, Download } from 'lucide-react';
+import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw, Download, Bell, BellOff, BellRing } from 'lucide-react';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { format } from 'date-fns';
 import { useAppStore } from '../store';
 import { Modal } from '../components/ui/Modal';
@@ -258,6 +259,72 @@ function PermissionsModal({
   );
 }
 
+// ─── Sección notificaciones push ─────────────────────────────────────────────
+
+function PushSection() {
+  const { isSubscribed, isLoading, permission, subscribe, unsubscribe } = usePushNotifications();
+
+  const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
+
+  // Diagnóstico visible: muestra el estado real para facilitar debug en móvil
+  const items = [
+    { label: 'Notification API', ok: 'Notification' in window },
+    { label: 'Service Worker',   ok: 'serviceWorker' in navigator },
+    { label: 'Push Manager',     ok: 'PushManager' in window },
+    { label: 'VAPID key',        ok: !!vapidKey },
+  ];
+  const allOk = items.every(i => i.ok);
+
+  return (
+    <div className="card !p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        {isSubscribed ? <BellRing size={16} className="text-emerald-600" /> : <Bell size={16} className="text-gray-500" />}
+        <p className="text-sm font-semibold text-gray-800">Notificaciones push</p>
+        {isSubscribed && <span className="badge-green text-[10px]">Activa</span>}
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Recibe alertas de comprobantes en este dispositivo aunque la app esté cerrada.
+        {!allOk && ' Requiere iOS 16.4+ instalado como app desde Safari.'}
+      </p>
+
+      {/* Diagnóstico */}
+      <div className="grid grid-cols-2 gap-1.5">
+        {items.map(({ label, ok }) => (
+          <div key={label} className={`flex items-center gap-1.5 text-[11px] rounded-lg px-2 py-1 ${ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+            <span>{ok ? '✓' : '✗'}</span> {label}
+          </div>
+        ))}
+        <div className={`flex items-center gap-1.5 text-[11px] rounded-lg px-2 py-1 col-span-2 ${permission === 'granted' ? 'bg-emerald-50 text-emerald-700' : permission === 'denied' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
+          <span>{permission === 'granted' ? '✓' : permission === 'denied' ? '✗' : '○'}</span>
+          Permiso del sistema: {permission === 'granted' ? 'concedido' : permission === 'denied' ? 'bloqueado — actívalo en Ajustes' : 'pendiente'}
+        </div>
+      </div>
+
+      {/* Acciones */}
+      {allOk && permission !== 'denied' && (
+        isSubscribed ? (
+          <button type="button" onClick={unsubscribe} disabled={isLoading}
+            className="btn-ghost text-xs w-full justify-center text-red-500 hover:text-red-700">
+            <BellOff size={13} /> Desactivar notificaciones en este dispositivo
+          </button>
+        ) : (
+          <button type="button" onClick={subscribe} disabled={isLoading}
+            className="btn-primary w-full justify-center text-sm">
+            <Bell size={14} /> {isLoading ? 'Activando…' : 'Activar notificaciones'}
+          </button>
+        )
+      )}
+
+      {permission === 'denied' && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+          Las notificaciones están bloqueadas. Ve a Ajustes → {navigator.userAgent.includes('iPhone') ? 'JAS Store → Notificaciones' : 'Configuración del sitio → Notificaciones'} y actívalas.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal de Configuración ───────────────────────────────────────
 
 export function SettingsPage() {
@@ -487,6 +554,9 @@ export function SettingsPage() {
           </button>
         </div>
       )}
+
+      {/* Notificaciones push */}
+      <PushSection />
 
       {/* Modal crear/editar usuario */}
       <Modal
