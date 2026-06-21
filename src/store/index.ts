@@ -148,6 +148,9 @@ interface AppStore {
   orderHistory: OrderHistory[];
   getOrderHistory: (orderId: string) => OrderHistory[];
 
+  // Manual refresh (pull-to-refresh)
+  refreshData: () => Promise<void>;
+
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
   getClientTotalPaid:(clientId: string) => number;
@@ -269,6 +272,34 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     } catch (err) {
       set({ error: 'Error al conectar con la base de datos', isLoading: false });
       console.error('initialize error:', err);
+    }
+  },
+
+  // ── Manual refresh (pull-to-refresh) ─────────────────────────────────────
+  refreshData: async () => {
+    try {
+      const [
+        { data: orders },
+        { data: payments },
+        { data: paymentProofs },
+        { data: clients },
+        { data: expenses },
+      ] = await Promise.all([
+        supabase.from('orders').select('*').order('created_at'),
+        supabase.from('payments').select('*').order('created_at'),
+        supabase.from('payment_proofs').select('*').order('created_at'),
+        supabase.from('clients').select('*').order('created_at'),
+        supabase.from('expenses').select('*').order('created_at'),
+      ]);
+      const update: Partial<AppStore> = {};
+      if (orders)        update.orders        = cam(orders)        as Order[];
+      if (payments)      update.payments      = cam(payments)      as Payment[];
+      if (paymentProofs) update.paymentProofs = cam(paymentProofs) as PaymentProof[];
+      if (clients)       update.clients       = cam(clients)       as Client[];
+      if (expenses)      update.expenses      = cam(expenses)      as Expense[];
+      set(update);
+    } catch (err) {
+      console.error('refreshData error:', err);
     }
   },
 

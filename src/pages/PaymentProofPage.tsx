@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { PullToRefresh } from '../components/ui/PullToRefresh';
 import {
   FileImage, CheckCircle2, XCircle, Clock, Plus, Search, Eye,
   Upload, Camera, Sparkles, AlertTriangle, User as UserIcon,
@@ -337,8 +338,9 @@ export function PaymentProofPage() {
   const {
     paymentProofs, clients, users,
     addPaymentProof, updatePaymentProof, deletePaymentProof,
-    confirmPaymentProof, rejectPaymentProof,
+    confirmPaymentProof, rejectPaymentProof, refreshData,
   } = useAppStore();
+  const handleRefresh = useCallback(() => refreshData(), [refreshData]);
   const { can } = usePermissions();
 
   const [search,      setSearch]    = useState('');
@@ -410,6 +412,7 @@ export function PaymentProofPage() {
   const canReject  = can('comprobantes', 'rechazar_comprobante')  || can('comprobantes', 'crear');
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -759,5 +762,6 @@ export function PaymentProofPage() {
         danger
       />
     </div>
+    </PullToRefresh>
   );
 }

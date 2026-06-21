@@ -17,11 +17,14 @@ import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatter
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, differenceInDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getReminderLog, daysSinceReminder } from '../utils/reminders';
+import { PullToRefresh } from '../components/ui/PullToRefresh';
+import { useCallback } from 'react';
 
 type Period = 'hoy' | 'semana' | 'mes' | 'año';
 
 export function DashboardPage() {
-  const { orders, clients, payments, products, currentUser, paymentProofs } = useAppStore();
+  const { orders, clients, payments, products, currentUser, paymentProofs, refreshData } = useAppStore();
+  const handleRefresh = useCallback(() => refreshData(), [refreshData]);
   const { goals } = useGoalsStore();
 
   const now = new Date();
@@ -203,6 +206,7 @@ export function DashboardPage() {
               'bg-primary-50 text-primary-600';
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-6">
       {/* Welcome */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary-600 to-primary-800 px-5 py-5 text-white"
@@ -624,5 +628,6 @@ export function DashboardPage() {
         </div>
       </div>
     </div>
+    </PullToRefresh>
   );
 }

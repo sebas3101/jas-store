@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen, ChevronRight } from 'lucide-react';
 import { useSwipeCard } from '../hooks/useSwipeCard';
+import { PullToRefresh } from '../components/ui/PullToRefresh';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -454,8 +455,9 @@ export function OrdersPage() {
   const location  = useLocation();
   const clienteParam = new URLSearchParams(location.search).get('cliente') ?? '';
 
-  const { orders, clients, users, updateOrder } = useAppStore();
+  const { orders, clients, users, updateOrder, refreshData } = useAppStore();
   const { can } = usePermissions();
+  const handleRefresh = useCallback(() => refreshData(), [refreshData]);
 
   const prefilledName = clienteParam
     ? (clients.find(c => c.id === clienteParam)?.name ?? '')
@@ -494,6 +496,7 @@ export function OrdersPage() {
   }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
@@ -646,5 +649,6 @@ export function OrdersPage() {
         );
       })()}
     </div>
+    </PullToRefresh>
   );
 }

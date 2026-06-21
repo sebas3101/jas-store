@@ -1,17 +1,20 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { Suspense } from 'react';
-import { Shield, Clock } from 'lucide-react';
+import { Shield, Clock, WifiOff } from 'lucide-react';
+import { SkeletonList, Skeleton } from '../ui/Skeleton';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Header } from './Header';
 import { ErrorBoundary } from '../ui/ErrorBoundary';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useInactivityLogout } from '../../hooks/useInactivityLogout';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+    <div className="space-y-5 pt-1">
+      <Skeleton className="h-7 w-40" />
+      <SkeletonList count={4} />
     </div>
   );
 }
@@ -53,6 +56,7 @@ export function AppLayout() {
   const { canAccess } = usePermissions();
   const { pathname }  = useLocation();
   const { showWarning, stayActive } = useInactivityLogout();
+  const { isOnline } = useOnlineStatus();
 
   const basePath  = '/' + (pathname.split('/')[1] ?? '');
   const hasAccess = canAccess(basePath);
@@ -62,6 +66,12 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
         <Header />
+        {!isOnline && (
+          <div className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 text-xs font-medium flex-shrink-0">
+            <WifiOff size={13} className="flex-shrink-0" />
+            <span>Sin conexión — mostrando datos guardados</span>
+          </div>
+        )}
         <main className="flex-1 overflow-y-auto lg:pb-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-6 lg:!pb-6">
             {hasAccess
