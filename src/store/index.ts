@@ -403,9 +403,23 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   deleteClient: async (id) => {
+    // Eliminar registros relacionados antes de borrar el cliente (FK constraints)
+    const clientOrders = get().orders.filter(o => o.clientId === id).map(o => o.id);
+    if (clientOrders.length > 0) {
+      await supabase.from('order_history').delete().in('order_id', clientOrders);
+      await supabase.from('warranties').delete().in('order_id', clientOrders);
+      await supabase.from('orders').delete().in('id', clientOrders);
+    }
+    await supabase.from('payment_proofs').delete().eq('client_id', id);
+    await supabase.from('payments').delete().eq('client_id', id);
+    await supabase.from('reminder_logs').delete().eq('client_id', id);
     const { error } = await supabase.from('clients').delete().eq('id', id);
     if (error) { notifyError('deleteClient'); return; }
-    set(s => ({ clients: s.clients.filter(x => x.id !== id) }));
+    set(s => ({
+      clients:  s.clients.filter(x => x.id !== id),
+      orders:   s.orders.filter(o => o.clientId !== id),
+      payments: s.payments.filter(p => p.clientId !== id),
+    }));
   },
 
   // ── Products ──────────────────────────────────────────────────────────────
