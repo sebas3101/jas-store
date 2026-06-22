@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check } from 'lucide-react';
+import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check, X, ZoomIn } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -44,6 +44,7 @@ export function DeliveriesPage() {
   const [search, setSearch] = useState('');
   const [expandedSupplier, setExpandedSupplier] = useState<string | null>(null);
   const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [photoModal, setPhotoModal] = useState<string | null>(null);
 
   // Recogidas: pedidos pendientes de ir a buscar (por_recoger)
   const recogidas = orders.filter(o => o.status === 'por_recoger');
@@ -225,9 +226,17 @@ export function DeliveriesPage() {
                             <div className="space-y-1">
                               {supItems.map((it, idx) => (
                                 <div key={idx} className="flex items-center gap-2 text-[11px]">
-                                  {it.imageUrl
-                                    ? <img src={it.imageUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
-                                    : <Package size={12} className="text-amber-500 flex-shrink-0" />}
+                                  {it.imageUrl ? (
+                                    <button type="button" onClick={() => setPhotoModal(it.imageUrl!)}
+                                      className="relative flex-shrink-0 group">
+                                      <img src={it.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-amber-200" />
+                                      <span className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-active:opacity-100 transition-opacity">
+                                        <ZoomIn size={14} className="text-white" />
+                                      </span>
+                                    </button>
+                                  ) : (
+                                    <Package size={12} className="text-amber-500 flex-shrink-0" />
+                                  )}
                                   <span className="flex-1 min-w-0 text-amber-900">
                                     {it.productName}
                                     {it.size  && <span className="text-amber-700 ml-1">T.{it.size}</span>}
@@ -401,6 +410,24 @@ export function DeliveriesPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Lightbox foto de producto */}
+      {photoModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setPhotoModal(null)}>
+          <button type="button" onClick={() => setPhotoModal(null)}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center">
+            <X size={20} className="text-white" />
+          </button>
+          <img
+            src={photoModal}
+            alt="Foto producto"
+            className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
         </div>
       )}
 
