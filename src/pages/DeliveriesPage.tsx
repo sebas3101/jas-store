@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check, X, ZoomIn } from 'lucide-react';
+import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check, X, ZoomIn, MessageCircle, FileText } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -202,18 +202,40 @@ export function DeliveriesPage() {
                     <ChevronDown size={18} className={`text-gray-400 transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`} />
                   </button>
                   {expanded && (
-                    <div className="px-4 pb-4 space-y-2">
+                    <div className="px-4 pb-4 space-y-3">
                       {purs.map(pur => {
                         const order    = orders.find(o => o.id === pur.orderId);
                         const client   = clients.find(c => c.id === order?.clientId);
-                        const supItems = order?.items.filter(it => it.supplierId === supplier?.id) ?? [];
-                        const saldo    = Math.max(0, pur.cost - (pur.paidAmount ?? 0));
+                        const filtered = order?.items.filter(it => it.supplierId === supplier?.id) ?? [];
+                        // Fallback para pedidos sin supplierId por ítem (pedidos viejos)
+                        const supItems = filtered.length > 0 ? filtered : (order?.items ?? []);
+                        const paid     = pur.paidAmount ?? 0;
+                        const saldo    = Math.max(0, pur.cost - paid);
+                        const totalItems = supItems.reduce((s, it) => s + it.quantity, 0);
                         return (
-                          <div key={pur.id} className="bg-amber-50 rounded-xl p-3">
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <div key={pur.id} className="bg-amber-50 rounded-xl overflow-hidden border border-amber-100">
+
+                            {/* ── Cabecera: pedido + cliente + botón ── */}
+                            <div className="flex items-start justify-between gap-2 p-3 pb-2">
                               <div className="min-w-0">
-                                <span className="text-sm font-bold text-gray-900">{order?.orderNumber ?? 'Pedido'}</span>
-                                {client?.name && <span className="text-[11px] text-gray-600 ml-2">{client.name}</span>}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-bold text-gray-900">{order?.orderNumber ?? 'Pedido'}</span>
+                                  {totalItems > 0 && (
+                                    <span className="text-[10px] font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                                      {totalItems} {totalItems === 1 ? 'prenda' : 'prendas'}
+                                    </span>
+                                  )}
+                                </div>
+                                {client && (
+                                  <p className="text-xs font-semibold text-gray-700 mt-0.5">{client.name}</p>
+                                )}
+                                {client?.phone && (
+                                  <a href={`https://wa.me/57${client.phone.replace(/\D/g,'')}`}
+                                    target="_blank" rel="noreferrer"
+                                    className="inline-flex items-center gap-1 text-[11px] text-emerald-700 mt-0.5">
+                                    <MessageCircle size={10} /> {client.phone}
+                                  </a>
+                                )}
                               </div>
                               {can('entregas', 'cambiar_estado') && (
                                 <button type="button" disabled={checkingId === pur.id}
@@ -223,34 +245,84 @@ export function DeliveriesPage() {
                                 </button>
                               )}
                             </div>
-                            <div className="space-y-1">
+
+                            {/* ── Ítems ── */}
+                            <div className="px-3 pb-2 space-y-2">
                               {supItems.map((it, idx) => (
-                                <div key={idx} className="flex items-center gap-2 text-[11px]">
+                                <div key={idx} className="flex gap-3">
+                                  {/* Foto portrait */}
                                   {it.imageUrl ? (
                                     <button type="button" onClick={() => setPhotoModal(it.imageUrl!)}
                                       className="relative flex-shrink-0 group">
-                                      <img src={it.imageUrl} alt="" className="w-10 h-10 rounded-lg object-cover border border-amber-200" />
-                                      <span className="absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg opacity-0 group-active:opacity-100 transition-opacity">
-                                        <ZoomIn size={14} className="text-white" />
+                                      <img src={it.imageUrl} alt=""
+                                        className="w-16 h-20 rounded-xl object-cover border border-amber-200 shadow-sm" />
+                                      <span className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-xl opacity-0 group-active:opacity-100 transition-opacity">
+                                        <ZoomIn size={18} className="text-white drop-shadow" />
                                       </span>
                                     </button>
                                   ) : (
-                                    <Package size={12} className="text-amber-500 flex-shrink-0" />
+                                    <div className="w-16 h-20 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                                      <Package size={20} className="text-amber-400" />
+                                    </div>
                                   )}
-                                  <span className="flex-1 min-w-0 text-amber-900">
-                                    {it.productName}
-                                    {it.size  && <span className="text-amber-700 ml-1">T.{it.size}</span>}
-                                    {it.color && <span className="text-amber-700 ml-1">· {it.color}</span>}
-                                  </span>
-                                  <span className="font-semibold text-amber-900 flex-shrink-0">×{it.quantity}</span>
+
+                                  {/* Info del ítem */}
+                                  <div className="flex-1 min-w-0 pt-0.5 space-y-0.5">
+                                    <p className="text-xs font-bold text-gray-900 leading-snug">{it.productName}</p>
+                                    <div className="flex flex-wrap gap-1">
+                                      {it.size  && (
+                                        <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+                                          T. {it.size}
+                                        </span>
+                                      )}
+                                      {it.color && (
+                                        <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+                                          {it.color}
+                                        </span>
+                                      )}
+                                      <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">
+                                        ×{it.quantity}
+                                      </span>
+                                    </div>
+                                    {it.costPrice > 0 && (
+                                      <p className="text-[11px] text-gray-500">
+                                        Costo: <span className="font-semibold text-gray-700">{formatCurrency(it.costPrice * it.quantity)}</span>
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
-                            {saldo > 0 && (
-                              <p className="text-[11px] text-right text-amber-700 mt-1.5 border-t border-amber-200 pt-1.5">
-                                Saldo al proveedor: <span className="font-semibold">{formatCurrency(saldo)}</span>
-                              </p>
+
+                            {/* ── Nota del pedido ── */}
+                            {order?.notes && (
+                              <div className="mx-3 mb-2 flex items-start gap-1.5 bg-white/60 rounded-lg px-2.5 py-1.5">
+                                <FileText size={11} className="text-gray-400 flex-shrink-0 mt-0.5" />
+                                <p className="text-[11px] text-gray-600 italic">{order.notes}</p>
+                              </div>
                             )}
+
+                            {/* ── Pago al proveedor ── */}
+                            <div className="mx-3 mb-3 flex items-center justify-between bg-white/70 rounded-lg px-3 py-2 border border-amber-100">
+                              <div className="space-y-0.5">
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Total compra</p>
+                                <p className="text-sm font-bold text-gray-900">{formatCurrency(pur.cost)}</p>
+                              </div>
+                              {paid > 0 && (
+                                <div className="space-y-0.5 text-right">
+                                  <p className="text-[10px] text-gray-400 uppercase tracking-wide">Abonado</p>
+                                  <p className="text-sm font-semibold text-emerald-600">{formatCurrency(paid)}</p>
+                                </div>
+                              )}
+                              <div className="space-y-0.5 text-right">
+                                <p className="text-[10px] text-gray-400 uppercase tracking-wide">
+                                  {saldo > 0 ? 'Por pagar' : 'Pagado ✓'}
+                                </p>
+                                <p className={`text-sm font-bold ${saldo > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                  {saldo > 0 ? formatCurrency(saldo) : '—'}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
