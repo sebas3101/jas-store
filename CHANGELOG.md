@@ -7,6 +7,16 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.3] — 2026-06-21 — Swipe WhatsApp con mensaje de confirmación
+
+### Mejorado
+
+#### Swipe izquierda en pedido envía mensaje completo (`OrdersPage`)
+- Antes el swipe izquierda abría WhatsApp sin texto.
+- Ahora envía el mismo mensaje de confirmación del modal: productos, valor del pedido y saldo pendiente total del cliente.
+
+---
+
 ## [1.9.2] — 2026-06-21 — Auto-compra proveedor y fix eliminar cliente
 
 ### Nuevas funcionalidades
