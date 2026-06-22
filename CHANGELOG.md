@@ -7,6 +7,17 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.6] — 2026-06-22 — Auto-pagar compra proveedor al avanzar a "por recoger"
+
+### Mejorado
+
+#### Compra de proveedor se marca como pagada automáticamente (`store/index.ts`)
+- Al cambiar un pedido a estado `por_recoger`, el sistema busca la compra del proveedor vinculada (mismo proveedor, descripción que empieza con el número de pedido) y la pasa a `pagado`.
+- Refleja la realidad del negocio: el proveedor no entrega mercancía sin pago previo.
+- Solo aplica si la compra no está ya en `pagado` o `cancelado`.
+
+---
+
 ## [1.9.5] — 2026-06-22 — Rediseño tarjetas de compra en proveedores
 
 ### Mejorado
