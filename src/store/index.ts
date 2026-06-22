@@ -617,7 +617,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     const row = toSnake({ ...w, createdAt: now, updatedAt: now });
     const { data, error } = await supabase.from('warranties').insert(row).select().single();
-    if (error) { notifyError('addWarranty'); return; }
+    if (error) {
+      console.error('[addWarranty] Supabase error:', error.code, error.message, error.details, '\nRow:', JSON.stringify(row));
+      notifyError('addWarranty');
+      return;
+    }
     set(s => ({ warranties: [...s.warranties, toCamel(data) as Warranty] }));
   },
 

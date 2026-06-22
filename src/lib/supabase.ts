@@ -24,10 +24,11 @@ export function toCamel(row: Row): Row {
   return out;
 }
 
-/** App → DB: convierte claves camelCase a snake_case */
+/** App → DB: convierte claves camelCase a snake_case, omite undefined */
 export function toSnake(obj: Row): Row {
   const out: Row = {};
   for (const key of Object.keys(obj)) {
+    if (obj[key] === undefined) continue;
     const snake = key.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
     out[snake] = obj[key];
   }
