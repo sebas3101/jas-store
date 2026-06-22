@@ -456,6 +456,21 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       if (he) { console.error('orderHistory insert:', he); return; }
       if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
     });
+    // Auto-crear compra al proveedor si el pedido tiene proveedor asignado
+    if (o.supplierId) {
+      const client = get().clients.find(c => c.id === o.clientId);
+      const itemNames = o.items.map(i => i.productName).filter(Boolean).join(', ');
+      const description = itemNames
+        ? `${newOrder.orderNumber} — ${itemNames}`
+        : `Pedido ${newOrder.orderNumber}${client ? ` — ${client.name}` : ''}`;
+      await get().addPurchase({
+        supplierId: o.supplierId,
+        description,
+        cost: o.totalAmount,
+        status: 'pendiente',
+        purchaseDate: o.orderDate || now,
+      });
+    }
     // Resincronizar status del cliente tras agregar un pedido (genera deuda)
     const { clients, orders, payments } = get();
     await syncOneClientStatus(o.clientId, clients, orders, payments, set);
