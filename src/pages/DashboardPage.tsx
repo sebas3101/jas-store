@@ -58,8 +58,9 @@ export function DashboardPage() {
   );
 
   // ── KPIs ────────────────────────────────────────────────────────────────────
-  // Deuda real: solo pedidos entregados/pendiente_pago, usando la misma lógica centralizada
-  const totalPending = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
+  const totalDebt   = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
+  const totalCredit = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + Math.max(0, o.amountPaid - o.totalAmount), 0);
+  const totalPending = Math.max(0, totalDebt - totalCredit);
 
   const clientsWithDebt = clients.filter(c => c.status === 'mora' || c.status === 'pendiente').length;
   const clientsUpToDate = clients.filter(c => c.status === 'al_dia').length;

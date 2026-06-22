@@ -108,7 +108,7 @@ export function ReportsPage() {
   const totalSales    = activeOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalCollected = activeOrders.reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
   const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
-  const totalDebt     = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
+  const totalDebt     = Math.max(0, clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0) - activeOrders.reduce((s, o) => s + Math.max(0, o.amountPaid - o.totalAmount), 0));
   const totalInvestment = purchases.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.cost, 0);
 
   // Indicadores de rendimiento
