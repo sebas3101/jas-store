@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAppStore, registerStoreErrorHandler } from './store';
+import { registerWhatsAppNotifier } from './utils/whatsapp';
 import { AppLayout } from './components/layout/AppLayout';
 import { usePermissions } from './hooks/usePermissions';
 import { useToast } from './components/ui/Toast';
@@ -87,6 +88,7 @@ export default function App() {
 
   useEffect(() => {
     registerStoreErrorHandler(msg => toast(msg, 'error'));
+    registerWhatsAppNotifier((msg, type) => toast(msg, type ?? 'success'));
   }, [toast]);
 
   if (isLoading || !initialized) return <LoadingScreen />;

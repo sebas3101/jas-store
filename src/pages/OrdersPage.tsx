@@ -8,7 +8,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { OrderStatusButton, NEXT_STATUS } from '../components/ui/OrderStatusButton';
 import { exportPedidos } from '../utils/exportExcel';
-import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildOrderConfirmationMessage, sendClientMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Pagination } from '../components/ui/Pagination';
@@ -377,7 +377,8 @@ function SwipeableOrderCard({ order, client, seller, canEdit, canChangeStatus, a
         ? Math.max(0, getClientDebt(fullClient.id) - (countedInDebt ? Math.max(0, order.totalAmount - order.amountPaid) : 0))
         : 0;
       const message = fullClient ? buildOrderConfirmationMessage(fullClient, order, previousDebt) : '';
-      openWhatsApp(client.phone!, message);
+      if (fullClient) sendClientMessage(fullClient, message);
+      else openWhatsApp(client.phone!, message);
     } : undefined,
   });
 
@@ -648,7 +649,7 @@ export function OrdersPage() {
                 </button>
                 {client?.phone && (
                   <button
-                    onClick={() => { openWhatsApp(client.phone, message); setWaOrder(null); }}
+                    onClick={() => { sendClientMessage(client, message); setWaOrder(null); }}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
                    type="button">
                     <MessageCircle size={14} /> Enviar por WhatsApp

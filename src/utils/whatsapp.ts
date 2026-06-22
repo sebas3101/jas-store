@@ -182,3 +182,33 @@ export const openWhatsApp = (phone: string, message: string) => {
   const encoded = encodeURIComponent(message);
   window.open(`https://wa.me/${full}?text=${encoded}`, '_blank');
 };
+
+// ─── Notificador global (registrado por App para mostrar toasts) ─────────────
+let _notify: ((msg: string, type?: 'success' | 'warning') => void) | null = null;
+export function registerWhatsAppNotifier(fn: (msg: string, type?: 'success' | 'warning') => void) {
+  _notify = fn;
+}
+
+/**
+ * Envía un mensaje al cliente por WhatsApp respetando su configuración.
+ * - Cliente normal: abre el chat 1-a-1 con su número y el mensaje listo para enviar.
+ * - Cliente con `sendToGroup`: copia el mensaje al portapapeles y abre el grupo de
+ *   WhatsApp. WhatsApp no permite precargar texto en un grupo, así que solo hay que
+ *   pegarlo (Ctrl/Cmd+V o mantener pulsado → Pegar).
+ */
+export const sendClientMessage = (
+  client: Pick<Client, 'name' | 'phone' | 'sendToGroup' | 'whatsappGroupLink'>,
+  message: string,
+) => {
+  if (client.sendToGroup) {
+    // Abrir el grupo primero (dentro del gesto del clic, evita bloqueo de popups)
+    if (client.whatsappGroupLink?.trim()) {
+      window.open(client.whatsappGroupLink, '_blank');
+    }
+    navigator.clipboard?.writeText(message)
+      .then(() => _notify?.('📋 Mensaje copiado — pégalo en el grupo', 'success'))
+      .catch(() => _notify?.('No pude copiar el mensaje automáticamente. Cópialo a mano.', 'warning'));
+    return;
+  }
+  openWhatsApp(client.phone, message);
+};

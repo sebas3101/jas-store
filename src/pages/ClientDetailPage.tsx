@@ -25,7 +25,7 @@ import {
   paymentMethodLabel,
   clientStatusLabel,
 } from '../utils/formatters';
-import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, sendClientMessage } from '../utils/whatsapp';
 import { printDocument } from '../utils/print';
 import { distributeFifo, calculateClientDebt } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -358,7 +358,7 @@ export function ClientDetailPage() {
             <button
               onClick={() => {
                 if (!client.phone) { alert('El cliente no tiene número registrado.'); return; }
-                openWhatsApp(client.phone, buildDataUpdateMessage(client));
+                sendClientMessage(client, buildDataUpdateMessage(client));
               }}
               className="btn-ghost text-xs"
               title="Solicitar actualización de datos por WhatsApp"
@@ -450,7 +450,7 @@ export function ClientDetailPage() {
                 {msgCopied ? 'Copiado' : 'Copiar'}
               </button>
               <button
-                onClick={() => openWhatsApp(client.phone, waMessage)}
+                onClick={() => sendClientMessage(client, waMessage)}
                 className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
                type="button">
                 <MessageCircle size={12} /> WhatsApp
@@ -480,7 +480,7 @@ export function ClientDetailPage() {
                 {infoCopied ? 'Copiado' : 'Copiar'}
               </button>
               <button
-                onClick={() => openWhatsApp(client.phone, waInfoMessage)}
+                onClick={() => sendClientMessage(client, waInfoMessage)}
                 className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors"
                type="button">
                 <MessageCircle size={12} /> WhatsApp

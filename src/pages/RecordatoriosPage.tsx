@@ -6,10 +6,11 @@ import {
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
+import type { Client } from '../types';
 import { StatCard } from '../components/ui/StatCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency } from '../utils/formatters';
-import { buildDebtReminderMessage, buildDebtInfoMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, sendClientMessage } from '../utils/whatsapp';
 import {
   getReminderLog, markReminderSent, daysSinceReminder, type ReminderLog,
 } from '../utils/reminders';
@@ -87,17 +88,20 @@ export function RecordatoriosPage() {
   const totalDebt  = all.reduce((s, c) => s + c.debt, 0);
   const totalCount = all.length;
 
-  const handleSend = useCallback(async (clientId: string, phone: string, message: string) => {
-    openWhatsApp(phone, message);
-    await markReminderSent(clientId);
-    setLog(prev => ({ ...prev, [clientId]: new Date().toISOString() }));
+  const handleSend = useCallback(async (
+    client: Pick<Client, 'id' | 'name' | 'phone' | 'sendToGroup' | 'whatsappGroupLink'>,
+    message: string,
+  ) => {
+    sendClientMessage(client, message);
+    await markReminderSent(client.id);
+    setLog(prev => ({ ...prev, [client.id]: new Date().toISOString() }));
   }, []);
 
   function handleSendAll() {
     urgente.forEach((c, i) => {
       const msg = buildDebtReminderMessage(c, c.debt, orders, c.clientPayments);
       setTimeout(async () => {
-        openWhatsApp(c.phone, msg);
+        sendClientMessage(c, msg);
         await markReminderSent(c.id);
         setLog(prev => ({ ...prev, [c.id]: new Date().toISOString() }));
       }, i * 800);
@@ -243,13 +247,13 @@ export function RecordatoriosPage() {
 
                 <div className="flex gap-2 pt-2 border-t border-gray-100">
                   <button
-                    onClick={() => handleSend(c.id, c.phone, waReminder)}
+                    onClick={() => handleSend(c, waReminder)}
                     className="flex-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
                    type="button">
                     <MessageCircle size={12} /> Recordatorio
                   </button>
                   <button
-                    onClick={() => handleSend(c.id, c.phone, waInfo)}
+                    onClick={() => handleSend(c, waInfo)}
                     className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
                    type="button">
                     <MessageCircle size={12} /> Detalle deuda

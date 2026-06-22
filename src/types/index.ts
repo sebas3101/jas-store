@@ -116,6 +116,11 @@ export interface Client {
   isInternal: boolean;
   notes?: string;
   creditLimit?: number;
+  /** Si está activo, los mensajes de WhatsApp se copian para pegar en un grupo
+   *  en vez de abrir el chat 1-a-1 con su número personal. */
+  sendToGroup?: boolean;
+  /** Enlace del grupo de WhatsApp (chat.whatsapp.com/...) al que se envían los mensajes. */
+  whatsappGroupLink?: string;
   createdAt: string;
   updatedAt: string;
 }

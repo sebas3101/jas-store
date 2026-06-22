@@ -30,6 +30,8 @@ create table if not exists clients (
   is_internal   boolean not null default false,
   notes         text,
   credit_limit  numeric,
+  send_to_group       boolean not null default false,
+  whatsapp_group_link text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );

@@ -15,7 +15,7 @@ import {
   clientStatusColor,
   formatCurrency,
 } from '../utils/formatters';
-import { buildDebtReminderMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildDebtReminderMessage, sendClientMessage } from '../utils/whatsapp';
 import type { Client, ClientStatus } from '../types';
 
 const PER_PAGE = 20;
@@ -55,6 +55,8 @@ function ClientForm({
     isInternal:  initial?.isInternal ?? false,
     notes:       initial?.notes ?? '',
     creditLimit: initial?.creditLimit ?? 200000,
+    sendToGroup:       initial?.sendToGroup ?? false,
+    whatsappGroupLink: initial?.whatsappGroupLink ?? '',
   });
 
   const set = (k: string, v: unknown) => setForm(f => ({ ...f, [k]: v }));
@@ -131,6 +133,25 @@ function ClientForm({
             <span className="text-sm text-gray-700 font-medium">Cliente interno (empresa)</span>
           </label>
         </div>
+        <div className="col-span-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={form.sendToGroup}
+              onChange={e => set('sendToGroup', e.target.checked)}
+              className="w-4 h-4 rounded accent-primary-600" />
+            <span className="text-sm text-gray-700 font-medium">Enviar mensajes a un grupo de WhatsApp</span>
+          </label>
+        </div>
+        {form.sendToGroup && (
+          <div className="col-span-2">
+            <label className="label">Enlace del grupo de WhatsApp</label>
+            <input className="input-field" type="url" value={form.whatsappGroupLink ?? ''}
+              onChange={e => set('whatsappGroupLink', e.target.value)}
+              placeholder="https://chat.whatsapp.com/..." />
+            <p className="text-xs text-gray-500 mt-1">
+              Los mensajes se copiarán para que los pegues en el grupo (WhatsApp no permite precargar texto en grupos).
+            </p>
+          </div>
+        )}
       </div>
       <button type="submit" disabled={!!phoneDuplicate} className="btn-primary w-full justify-center">
         Guardar cliente
@@ -425,7 +446,7 @@ export function ClientsPage() {
                           const msg = debt > 0
                             ? buildDebtReminderMessage(client, debt, orders, payments.filter(p => p.clientId === client.id))
                             : '';
-                          openWhatsApp(client.phone, msg);
+                          sendClientMessage(client, msg);
                         }}
                         className="p-2 hover:bg-green-50 text-green-400 hover:text-green-600 rounded-xl transition-colors"
                         title={debt > 0 ? 'Enviar recordatorio de deuda' : 'WhatsApp'}

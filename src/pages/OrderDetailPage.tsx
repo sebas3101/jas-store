@@ -14,7 +14,7 @@ import {
   paymentMethodLabel,
   categoryLabel,
 } from '../utils/formatters';
-import { buildAvailabilityMessage, openWhatsApp } from '../utils/whatsapp';
+import { buildAvailabilityMessage, sendClientMessage } from '../utils/whatsapp';
 import { printDocument } from '../utils/print';
 import type { Order, OrderStatus } from '../types';
 
@@ -334,7 +334,7 @@ export function OrderDetailPage() {
               {client.phone && (
                 <button
                   onClick={() => {
-                    openWhatsApp(client.phone!, buildAvailabilityMessage(client, order));
+                    sendClientMessage(client, buildAvailabilityMessage(client, order));
                     setAvailabilityModal(false);
                   }}
                   className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition-colors"
