@@ -7,6 +7,23 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.2] — 2026-06-21 — Auto-compra proveedor y fix eliminar cliente
+
+### Nuevas funcionalidades
+
+#### Auto-crear compra al proveedor al registrar un pedido (`store/index.ts`)
+- Al crear un pedido con proveedor asignado, se genera automáticamente un `SupplierPurchase` en la sección del proveedor.
+- Descripción: número de pedido + productos. Costo: precio de venta. Estado: pendiente.
+- Ya no es necesario registrar la compra del proveedor manualmente.
+
+### Corregido
+
+#### Error al eliminar cliente con registros asociados (`store/index.ts`)
+- `deleteClient` fallaba con error de FK cuando el cliente tenía órdenes, comprobantes, pagos, garantías o recordatorios vinculados.
+- Ahora elimina en cascada en el orden correcto antes de borrar el cliente.
+
+---
+
 ## [1.9.1] — 2026-06-21 — Correcciones contables: saldo a favor
 
 ### Corregido
