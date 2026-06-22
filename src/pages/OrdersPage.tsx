@@ -12,6 +12,7 @@ import { buildOrderConfirmationMessage, openWhatsApp } from '../utils/whatsapp';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchSelect } from '../components/ui/SearchSelect';
 
 const PER_PAGE = 20;
 import {
@@ -133,13 +134,13 @@ function OrderForm({ onSave, initial }: {
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="label">Cliente *</label>
-          <select className="input-field" required value={clientId}
-            onChange={e => setClientId(e.target.value)}>
-            <option value="">Seleccionar cliente...</option>
-            {clients.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+          <SearchSelect
+            required
+            placeholder="Buscar cliente..."
+            value={clientId}
+            onChange={setClientId}
+            options={clients.map(c => ({ value: c.id, label: c.name, sublabel: c.phone }))}
+          />
           {creditWarning && (
             <div className="mt-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs">
               <p className="font-semibold text-red-700">⚠️ Supera el límite de crédito</p>

@@ -26,6 +26,7 @@ import {
   clientStatusLabel,
 } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, openWhatsApp } from '../utils/whatsapp';
+import { printDocument } from '../utils/print';
 import { distributeFifo, calculateClientDebt } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { Client, Order, Payment, PaymentMethod } from '../types';
@@ -148,12 +149,7 @@ function printEstadoCuenta(client: Client, clientOrders: Order[], clientPayments
 </body>
 </html>`;
 
-  const w = window.open('', '_blank', 'width=960,height=720');
-  if (!w) { alert('Permite ventanas emergentes para imprimir el estado de cuenta.'); return; }
-  w.document.write(html);
-  w.document.close();
-  w.onafterprint = () => w.close();
-  setTimeout(() => { w.focus(); w.print(); }, 400);
+  printDocument(html);
 }
 
 // ─── Formulario de abono — fuera del padre para evitar re-mount en cada render
@@ -280,6 +276,7 @@ export function ClientDetailPage() {
     orders,
     payments,
     getClientDebt,
+    getClientBalance,
   } = useAppStore();
 
   const client = clients.find(c => c.id === id);
@@ -299,6 +296,7 @@ export function ClientDetailPage() {
   }
 
   const debt         = getClientDebt(client.id);
+  const balance      = getClientBalance(client.id);
   const clientOrders = orders.filter(o => o.clientId === client.id)
     .sort((a, b) => new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime());
   const clientPayments = payments.filter(p => p.clientId === client.id)
@@ -426,9 +424,11 @@ export function ClientDetailPage() {
           <p className="text-lg font-bold text-emerald-600 tabular-nums">{formatCurrency(totalPaid)}</p>
         </div>
         <div className="flex items-center justify-between sm:flex-col sm:items-start px-5 py-3.5 gap-3">
-          <p className="text-xs text-gray-500 flex-shrink-0">{debt > 0 ? 'Saldo pendiente' : 'Al día'}</p>
-          <p className={`text-lg font-bold tabular-nums ${debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-            {formatCurrency(debt)}
+          <p className="text-xs text-gray-500 flex-shrink-0">
+            {balance > 0 ? 'Saldo a favor' : debt > 0 ? 'Saldo pendiente' : 'Al día'}
+          </p>
+          <p className={`text-lg font-bold tabular-nums ${balance > 0 ? 'text-emerald-600' : debt > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+            {balance > 0 ? formatCurrency(balance) : formatCurrency(debt)}
           </p>
         </div>
       </div>

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload, MessageCircle } from 'lucide-react';
+import { Plus, Search, Phone, Users, ArrowRight, AlertTriangle, Download, Upload, MessageCircle, Trash2 } from 'lucide-react';
 import { exportClientes } from '../utils/exportExcel';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Pagination } from '../components/ui/Pagination';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -147,13 +148,15 @@ function debtSeverity(daysOverdue: number): { label: string; bg: string; text: s
 }
 
 export function ClientsPage() {
-  const { clients, addClient, updateClient, orders, payments, getClientDebt } = useAppStore();
+  const { clients, addClient, updateClient, deleteClient, orders, payments, getClientDebt, getClientBalance } = useAppStore();
   const { can, isAdmin } = usePermissions();
   const [search, setSearch]           = useState('');
   const [filterStatus, setFilterStatus] = useState<ClientStatus | 'all'>('all');
   const [filterType, setFilterType]   = useState<'all' | 'internal' | 'external'>('all');
+  const [filterCredit, setFilterCredit] = useState(false);
   const [modalOpen, setModalOpen]     = useState(false);
   const [editing, setEditing]         = useState<Client | null>(null);
+  const [deleting, setDeleting]       = useState<Client | null>(null);
   const [showAllCartera, setShowAllCartera] = useState(false);
   const [page, setPage]               = useState(1);
 
@@ -183,7 +186,8 @@ export function ClientsPage() {
     const matchType   = filterType === 'all' ||
       (filterType === 'internal' && c.isInternal) ||
       (filterType === 'external' && !c.isInternal);
-    return matchSearch && matchStatus && matchType;
+    const matchCredit = !filterCredit || getClientBalance(c.id) > 0;
+    return matchSearch && matchStatus && matchType && matchCredit;
   });
 
   const handleSave = (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
@@ -343,6 +347,16 @@ export function ClientsPage() {
               {t === 'all' ? 'Todos' : t === 'internal' ? 'Internos' : 'Externos'}
             </button>
           ))}
+          <button
+            onClick={() => setFilterCredit(v => !v)}
+            className={`text-xs px-3 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+              filterCredit
+                ? 'bg-emerald-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+           type="button">
+            Saldo a favor
+          </button>
         </div>
       </div>
 
@@ -362,6 +376,7 @@ export function ClientsPage() {
         <div className="space-y-2">
           {filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE).map(client => {
             const debt = getClientDebt(client.id);
+            const balance = getClientBalance(client.id);
             const clientOrders = orders.filter(o => o.clientId === client.id);
             return (
               <div key={client.id} className="card !p-3 sm:!p-4 hover:shadow-md transition-shadow">
@@ -390,9 +405,11 @@ export function ClientsPage() {
                       </span>
                       <span>{clientOrders.length} pedido{clientOrders.length !== 1 ? 's' : ''}</span>
                     </div>
-                    {/* Deuda — visible siempre en móvil */}
+                    {/* Balance */}
                     <div className="mt-1">
-                      {debt > 0 ? (
+                      {balance > 0 ? (
+                        <span className="text-xs font-bold text-emerald-600">Saldo a favor: {formatCurrency(balance)}</span>
+                      ) : debt > 0 ? (
                         <span className="text-xs font-bold text-red-600">{formatCurrency(debt)} pendiente</span>
                       ) : (
                         <span className="text-xs font-semibold text-emerald-600">Al día ✓</span>
@@ -425,6 +442,15 @@ export function ClientsPage() {
                         Editar
                       </button>
                     )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setDeleting(client)}
+                        className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors"
+                        title="Eliminar cliente"
+                        type="button">
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                     <Link to={`/clientes/${client.id}`}
                       className="p-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl transition-colors">
                       <ArrowRight size={15} />
@@ -438,7 +464,7 @@ export function ClientsPage() {
       )}
       <Pagination total={filtered.length} page={page} perPage={PER_PAGE} onChange={setPage} />
 
-      {/* Modal */}
+      {/* Modal crear/editar */}
       <Modal
         isOpen={modalOpen}
         onClose={() => { setModalOpen(false); setEditing(null); }}
@@ -450,6 +476,17 @@ export function ClientsPage() {
           existingClients={clients}
         />
       </Modal>
+
+      {/* Confirmar eliminar */}
+      <ConfirmDialog
+        isOpen={!!deleting}
+        title="Eliminar cliente"
+        message={`¿Eliminar a "${deleting?.name}"? Se borrarán todos sus pedidos y datos. Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        danger
+        onConfirm={() => { if (deleting) deleteClient(deleting.id); }}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }

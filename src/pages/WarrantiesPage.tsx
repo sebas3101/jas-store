@@ -3,6 +3,7 @@ import { ShieldCheck, Plus, Search, Edit2, Trash2, CheckCircle2 } from 'lucide-r
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { Modal } from '../components/ui/Modal';
+import { SearchSelect } from '../components/ui/SearchSelect';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatDate } from '../utils/formatters';
@@ -99,18 +100,20 @@ function WarrantyForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="label">Pedido entregado *</label>
-          <select className="input-field" required value={orderId}
-            onChange={e => setOrderId(e.target.value)}>
-            <option value="">Seleccionar pedido...</option>
-            {deliveredOrders.map(o => {
+          <SearchSelect
+            required
+            placeholder="Buscar por cliente o N° pedido..."
+            value={orderId}
+            onChange={setOrderId}
+            options={deliveredOrders.map(o => {
               const c = clients.find(c => c.id === o.clientId);
-              return (
-                <option key={o.id} value={o.id}>
-                  {o.orderNumber} — {c?.name ?? '?'} — {o.items[0]?.productName ?? ''}
-                </option>
-              );
+              return {
+                value: o.id,
+                label: `${o.orderNumber} — ${c?.name ?? '?'}`,
+                sublabel: o.items[0]?.productName ?? '',
+              };
             })}
-          </select>
+          />
           {selectedOrder && orderItems.length > 0 && (
             <>
               {orderItems.length > 1 && (

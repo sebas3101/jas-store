@@ -153,6 +153,7 @@ interface AppStore {
 
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
+  getClientBalance:  (clientId: string) => number; // positive = credit, negative = debt (net)
   getClientTotalPaid:(clientId: string) => number;
   getClientOrders:   (clientId: string) => Order[];
   getClientPayments: (clientId: string) => Payment[];
@@ -262,11 +263,29 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (data) set({ payments: cam(data) as Payment[] });
       };
 
+      const refetchClients = async () => {
+        const { data } = await supabase.from('clients').select('*').order('created_at');
+        if (data) set({ clients: cam(data) as Client[] });
+      };
+
+      const refetchWarranties = async () => {
+        const { data } = await supabase.from('warranties').select('*').order('created_at');
+        if (data) set({ warranties: cam(data) as Warranty[] });
+      };
+
+      const refetchExpenses = async () => {
+        const { data } = await supabase.from('expenses').select('*').order('created_at');
+        if (data) set({ expenses: cam(data) as Expense[] });
+      };
+
       _realtimeChannel = supabase
         .channel('jas-realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' }, refetchPaymentProofs)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },         refetchOrders)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' },        refetchPayments)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' },         refetchClients)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'warranties' },      refetchWarranties)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' },        refetchExpenses)
         .subscribe();
 
     } catch (err) {
@@ -448,7 +467,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const clientId = prev?.clientId;
     const row = toSnake({ ...o, updatedAt: new Date().toISOString() });
     const { error } = await supabase.from('orders').update(row).eq('id', id);
-    if (error) { notifyError('updateOrder'); return; }
+    if (error) { console.error('[updateOrder] Supabase error:', error.code, error.message, error.details, '\nRow:', JSON.stringify(row)); notifyError('updateOrder'); return; }
     set(s => ({
       orders: s.orders.map(x =>
         x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
@@ -762,6 +781,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         (o.status === 'entregado' || o.status === 'pendiente_pago')
       )
       .reduce((sum, o) => sum + Math.max(0, o.totalAmount - o.amountPaid), 0),
+
+  getClientBalance: (clientId) =>
+    get().orders
+      .filter(o => o.clientId === clientId && o.status !== 'cancelado')
+      .reduce((sum, o) => sum + (o.amountPaid - o.totalAmount), 0),
 
   getClientTotalPaid: (clientId) =>
     get().payments

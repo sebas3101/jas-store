@@ -15,6 +15,7 @@ import {
   categoryLabel,
 } from '../utils/formatters';
 import { buildAvailabilityMessage, openWhatsApp } from '../utils/whatsapp';
+import { printDocument } from '../utils/print';
 import type { Order, OrderStatus } from '../types';
 
 function printReceipt(order: Order, clientName: string, payMethod: string) {
@@ -49,13 +50,7 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
   <p class="footer">Gracias por su compra — JAS Store</p>
   <div class="no-print"><button onclick="window.close()" style="margin-top:8px;padding:8px 20px;background:#7c3aed;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">✕ Cerrar ventana</button></div>
   </body></html>`;
-  const win = window.open('', '_blank', 'width=600,height=700');
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  win.onafterprint = () => win.close();
-  setTimeout(() => { win.print(); }, 400);
+  printDocument(html);
 }
 
 export function OrderDetailPage() {
