@@ -22,7 +22,7 @@ import {
   orderStatusColor,
   paymentMethodLabel,
 } from '../utils/formatters';
-import type { Order, OrderStatus, PaymentMethod, OrderItem, SupplierPaymentStatus, SupplierPaymentMethod } from '../types';
+import type { Order, OrderStatus, PaymentMethod, OrderItem } from '../types';
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all',           label: 'Todos'          },
@@ -56,11 +56,6 @@ function OrderForm({ onSave, initial }: {
   const [estDelivery, setEstDelivery] = useState(initial?.estimatedDeliveryDate?.slice(0, 10) ?? '');
   const [amountPaid, setAmountPaid]   = useState(initial?.amountPaid ?? 0);
   const [notes, setNotes]             = useState(initial?.notes ?? '');
-  // Proveedor
-  const [supplierId, setSupplierId]                 = useState(initial?.supplierId ?? '');
-  const [supplierPayStatus, setSupplierPayStatus]   = useState<SupplierPaymentStatus>(initial?.supplierPaymentStatus ?? 'pendiente');
-  const [supplierPayAmount, setSupplierPayAmount]   = useState(initial?.supplierPaymentAmount ?? 0);
-  const [supplierPayMethod, setSupplierPayMethod]   = useState<SupplierPaymentMethod>(initial?.supplierPaymentMethod ?? 'efectivo');
 
   const addItem = () => setItems(prev => [...prev, {
     productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
@@ -119,10 +114,6 @@ function OrderForm({ onSave, initial }: {
       paymentMethod: payMethod,
       sellerId,
       deliveryPersonId:      deliveryId     || undefined,
-      supplierId:            supplierId     || undefined,
-      supplierPaymentStatus: supplierId ? supplierPayStatus  : undefined,
-      supplierPaymentAmount: supplierId ? supplierPayAmount  : undefined,
-      supplierPaymentMethod: supplierId ? supplierPayMethod  : undefined,
       orderDate: new Date(orderDate).toISOString(),
       estimatedDeliveryDate: estDelivery ? new Date(estDelivery).toISOString() : undefined,
       notes,
@@ -180,6 +171,15 @@ function OrderForm({ onSave, initial }: {
                         onChange={e => setItem(i, 'productName', e.target.value)} />
                     </div>
                   )}
+                  <div className="col-span-2">
+                    <select className="input-field text-xs" value={item.supplierId ?? ''}
+                      onChange={e => setItem(i, 'supplierId', e.target.value || undefined)}>
+                      <option value="">Proveedor (para recogida)...</option>
+                      {suppliers.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <input className="input-field text-xs" placeholder="Talla (S, M, L...)"
                       value={item.size ?? ''}
@@ -282,42 +282,6 @@ function OrderForm({ onSave, initial }: {
           <input type="date" className="input-field" value={estDelivery}
             onChange={e => setEstDelivery(e.target.value)} />
         </div>
-
-        {/* Proveedor */}
-        <div className="col-span-2 border-t border-gray-100 pt-3">
-          <label className="label font-semibold text-gray-700">Proveedor (para recogida)</label>
-          <select className="input-field" value={supplierId}
-            onChange={e => setSupplierId(e.target.value)}>
-            <option value="">Sin proveedor</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-        {supplierId && (
-          <>
-            <div>
-              <label className="label">Pago proveedor ($)</label>
-              <CurrencyInput value={supplierPayAmount} min={0} onChange={setSupplierPayAmount} />
-            </div>
-            <div>
-              <label className="label">Estado pago proveedor</label>
-              <select className="input-field" value={supplierPayStatus}
-                onChange={e => setSupplierPayStatus(e.target.value as SupplierPaymentStatus)}>
-                <option value="pendiente">Pendiente</option>
-                <option value="pagado">Pagado</option>
-              </select>
-            </div>
-            <div className="col-span-2">
-              <label className="label">Método pago proveedor</label>
-              <select className="input-field" value={supplierPayMethod}
-                onChange={e => setSupplierPayMethod(e.target.value as SupplierPaymentMethod)}>
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-              </select>
-            </div>
-          </>
-        )}
 
         <div className="col-span-2">
           <label className="label">Notas</label>

@@ -78,7 +78,24 @@ export function OrderDetailPage() {
   const client   = clients.find(c => c.id === order.clientId);
   const seller   = users.find(u => u.id === order.sellerId);
   const delivery = users.find(u => u.id === order.deliveryPersonId);
-  const supplier = suppliers.find(s => s.id === order.supplierId);
+  // Proveedores por producto (un pedido puede tener varios). Agrupa ítems por proveedor.
+  const supplierGroups = (() => {
+    const map = new Map<string, { name: string; address?: string; items: typeof order.items; cost: number }>();
+    for (const it of order.items) {
+      if (!it.supplierId) continue;
+      const sup = suppliers.find(s => s.id === it.supplierId);
+      if (!sup) continue;
+      const g = map.get(it.supplierId) ?? { name: sup.name, address: sup.address, items: [], cost: 0 };
+      g.items.push(it);
+      g.cost += (it.costPrice ?? 0) * it.quantity;
+      map.set(it.supplierId, g);
+    }
+    return [...map.values()];
+  })();
+  // Compatibilidad: pedidos viejos con un solo proveedor a nivel de pedido
+  const legacySupplier = supplierGroups.length === 0
+    ? suppliers.find(s => s.id === order.supplierId)
+    : undefined;
   const balance  = order.totalAmount - order.amountPaid;
   const profit   = order.totalAmount - order.totalCost;
 
@@ -239,8 +256,36 @@ export function OrderDetailPage() {
         </div>
       </div>
 
-      {/* Proveedor */}
-      {supplier && (
+      {/* Proveedores por producto */}
+      {supplierGroups.length > 0 && (
+        <div className="card">
+          <h2 className="section-title mb-3 flex items-center gap-2">
+            <Store size={14} className="text-amber-500" /> Proveedores ({supplierGroups.length})
+          </h2>
+          <div className="space-y-3">
+            {supplierGroups.map((g, gi) => (
+              <div key={gi} className="bg-gray-50 rounded-xl p-3">
+                <div className="flex justify-between items-start mb-1">
+                  <span className="font-semibold text-gray-800 text-sm">{g.name}</span>
+                  <span className="text-sm font-bold text-gray-900">{formatCurrency(g.cost)}</span>
+                </div>
+                {g.address && (
+                  <p className="text-xs text-gray-500 mb-1.5">{g.address}</p>
+                )}
+                <p className="text-xs text-gray-600">
+                  {g.items.map(it => `${it.quantity}× ${it.productName}`).join(', ')}
+                </p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-2">
+            Cada proveedor genera una compra propia en la sección Proveedores.
+          </p>
+        </div>
+      )}
+
+      {/* Proveedor (pedidos antiguos con un solo proveedor) */}
+      {legacySupplier && (
         <div className="card">
           <h2 className="section-title mb-3 flex items-center gap-2">
             <Store size={14} className="text-amber-500" /> Proveedor
@@ -248,12 +293,12 @@ export function OrderDetailPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Proveedor:</span>
-              <span className="font-semibold text-gray-800">{supplier.name}</span>
+              <span className="font-semibold text-gray-800">{legacySupplier.name}</span>
             </div>
-            {supplier.address && (
+            {legacySupplier.address && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Dirección:</span>
-                <span className="font-medium text-gray-700 text-right max-w-[60%]">{supplier.address}</span>
+                <span className="font-medium text-gray-700 text-right max-w-[60%]">{legacySupplier.address}</span>
               </div>
             )}
             {order.supplierPaymentAmount != null && order.supplierPaymentAmount > 0 && (

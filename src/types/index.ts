@@ -152,6 +152,9 @@ export interface OrderItem {
   costPrice: number;
   size?: string;
   color?: string;
+  /** Proveedor de este producto (para recogida). Permite que un pedido tenga
+   *  productos de varios proveedores y se cree una compra por cada uno. */
+  supplierId?: string;
 }
 
 export interface Order {

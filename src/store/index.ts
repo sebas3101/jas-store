@@ -470,17 +470,30 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       if (he) { console.error('orderHistory insert:', he); return; }
       if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
     });
-    // Auto-crear compra al proveedor si el pedido tiene proveedor asignado
-    if (o.supplierId) {
-      const client = get().clients.find(c => c.id === o.clientId);
-      const itemNames = o.items.map(i => i.productName).filter(Boolean).join(', ');
+    // Auto-crear compras al proveedor, una por cada proveedor presente en los ítems.
+    // Un pedido puede tener productos de varios proveedores → una compra por cada uno.
+    const client = get().clients.find(c => c.id === o.clientId);
+    const bySupplier = new Map<string, OrderItem[]>();
+    for (const it of o.items) {
+      if (!it.supplierId) continue;
+      const arr = bySupplier.get(it.supplierId) ?? [];
+      arr.push(it as OrderItem);
+      bySupplier.set(it.supplierId, arr);
+    }
+    // Compatibilidad: pedidos viejos con un solo proveedor a nivel de pedido
+    if (bySupplier.size === 0 && o.supplierId) {
+      bySupplier.set(o.supplierId, o.items as OrderItem[]);
+    }
+    for (const [supplierId, its] of bySupplier) {
+      const itemNames = its.map(i => i.productName).filter(Boolean).join(', ');
       const description = itemNames
         ? `${newOrder.orderNumber} — ${itemNames}`
         : `Pedido ${newOrder.orderNumber}${client ? ` — ${client.name}` : ''}`;
+      const cost = its.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
       await get().addPurchase({
-        supplierId: o.supplierId,
+        supplierId,
         description,
-        cost: o.totalAmount,
+        cost,
         status: 'pendiente',
         purchaseDate: o.orderDate || now,
       });
@@ -517,15 +530,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (he) { console.error('orderHistory insert:', he); return; }
         if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
       });
-    // Auto-marcar compra del proveedor como pagada cuando el pedido pasa a por_recoger
-    if (o.status === 'recogido' && prev?.status !== 'recogido' && prev?.supplierId && prev?.orderNumber) {
-      const linked = get().purchases.find(p =>
-        p.supplierId === prev.supplierId &&
-        p.description.startsWith(prev.orderNumber) &&
+    // Auto-marcar como pagadas TODAS las compras del pedido cuando pasa a recogido
+    // (un pedido puede tener varias compras, una por proveedor)
+    if (o.status === 'recogido' && prev?.status !== 'recogido' && prev?.orderNumber) {
+      const linked = get().purchases.filter(p =>
+        p.description.startsWith(`${prev.orderNumber} —`) &&
         p.status !== 'pagado' &&
         p.status !== 'cancelado'
       );
-      if (linked) await get().updatePurchase(linked.id, { status: 'pagado' });
+      for (const p of linked) await get().updatePurchase(p.id, { status: 'pagado' });
     }
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {

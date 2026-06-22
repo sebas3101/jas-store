@@ -199,75 +199,69 @@ export function DeliveriesPage() {
                   </div>
                 </div>
 
-                {/* ─── RECOGIDAS: foco en proveedor y mercancía ─── */}
-                {tab === 'recogidas' && (
-                  <div className="space-y-2">
-                    {/* Proveedor */}
-                    {supplier ? (
-                      <div className="bg-amber-50 rounded-xl p-3 space-y-1">
-                        <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                          <Store size={11} /> {supplier.name}
-                        </p>
-                        {supplier.address && (
-                          <p className="text-[11px] text-amber-700">📍 {supplier.address}</p>
-                        )}
-                        {supplier.phone && (
-                          <p className="text-[11px] text-amber-700">📞 {supplier.phone}</p>
-                        )}
-                        {/* Pago al proveedor */}
-                        {order.supplierPaymentAmount != null && order.supplierPaymentAmount > 0 && (
-                          <div className="border-t border-amber-200 pt-2 mt-2 space-y-0.5">
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-amber-700 font-medium">Pago proveedor:</span>
-                              <span className="font-bold text-amber-900">{formatCurrency(order.supplierPaymentAmount)}</span>
-                            </div>
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-amber-700">Estado:</span>
-                              <span className={`font-semibold px-1.5 py-0.5 rounded-full text-[10px] ${
-                                order.supplierPaymentStatus === 'pagado'
-                                  ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}>
-                                {order.supplierPaymentStatus === 'pagado' ? 'Pagado ✓' : '⚠️ Pendiente'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-[11px]">
-                              <span className="text-amber-700">Método:</span>
-                              <span className="font-medium text-amber-900">
-                                {order.supplierPaymentMethod === 'transferencia' ? 'Transferencia' : 'Efectivo'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-gray-400 italic">Sin proveedor asignado</p>
-                    )}
+                {/* ─── RECOGIDAS: foco en proveedor(es) y mercancía ─── */}
+                {tab === 'recogidas' && (() => {
+                  // Agrupar la mercancía por proveedor (un pedido puede tener varios)
+                  const groups = new Map<string, { sup?: typeof suppliers[number]; items: typeof order.items }>();
+                  const sinProv: typeof order.items = [];
+                  for (const it of order.items) {
+                    if (!it.supplierId) { sinProv.push(it); continue; }
+                    const g = groups.get(it.supplierId)
+                      ?? { sup: suppliers.find(s => s.id === it.supplierId), items: [] };
+                    g.items.push(it);
+                    groups.set(it.supplierId, g);
+                  }
+                  // Compat: pedido viejo con un solo proveedor a nivel de pedido
+                  if (groups.size === 0 && supplier) {
+                    groups.set(order.supplierId!, { sup: supplier, items: order.items });
+                    sinProv.length = 0;
+                  }
+                  const groupArr = [...groups.values()];
 
-                    {/* Mercancía a recoger */}
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Prendas a recoger</p>
-                      {order.items.map((it, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-lg px-2.5 py-1.5">
-                          <Package size={10} className="text-gray-400 flex-shrink-0" />
-                          <div className="flex-1 min-w-0 text-xs">
-                            <span className="font-medium text-gray-800">{it.productName}</span>
-                            {it.size  && <span className="text-gray-500 ml-1">Talla {it.size}</span>}
-                            {it.color && <span className="text-gray-500 ml-1">· {it.color}</span>}
+                  const renderItem = (it: typeof order.items[number], idx: number) => (
+                    <div key={idx} className="flex items-center gap-2 text-[11px]">
+                      <Package size={10} className="text-amber-500 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 text-amber-900">
+                        {it.productName}
+                        {it.size  && <span className="text-amber-700 ml-1">T.{it.size}</span>}
+                        {it.color && <span className="text-amber-700 ml-1">· {it.color}</span>}
+                      </span>
+                      <span className="font-semibold text-amber-900 flex-shrink-0">×{it.quantity}</span>
+                    </div>
+                  );
+
+                  return (
+                    <div className="space-y-2">
+                      {groupArr.length === 0 && sinProv.length === order.items.length ? (
+                        <p className="text-xs text-gray-400 italic">Sin proveedor asignado</p>
+                      ) : groupArr.map((g, gi) => (
+                        <div key={gi} className="bg-amber-50 rounded-xl p-3 space-y-1">
+                          <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                            <Store size={11} /> {g.sup?.name ?? 'Proveedor'}
+                          </p>
+                          {g.sup?.address && <p className="text-[11px] text-amber-700">📍 {g.sup.address}</p>}
+                          {g.sup?.phone   && <p className="text-[11px] text-amber-700">📞 {g.sup.phone}</p>}
+                          <div className="border-t border-amber-200 pt-1.5 mt-1.5 space-y-1">
+                            {g.items.map(renderItem)}
                           </div>
-                          <span className="text-xs font-semibold text-gray-700 flex-shrink-0">
-                            ×{it.quantity}
-                          </span>
                         </div>
                       ))}
-                    </div>
 
-                    {/* Cliente (referencia) */}
-                    <p className="text-[11px] text-gray-500">
-                      Para: <span className="font-medium text-gray-700">{client?.name ?? '—'}</span>
-                    </p>
-                  </div>
-                )}
+                      {/* Ítems sin proveedor asignado (si hay otros con proveedor) */}
+                      {groupArr.length > 0 && sinProv.length > 0 && (
+                        <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                          <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Sin proveedor</p>
+                          <div className="space-y-1">{sinProv.map(renderItem)}</div>
+                        </div>
+                      )}
+
+                      {/* Cliente (referencia) */}
+                      <p className="text-[11px] text-gray-500">
+                        Para: <span className="font-medium text-gray-700">{client?.name ?? '—'}</span>
+                      </p>
+                    </div>
+                  );
+                })()}
 
                 {/* ─── ENTREGAS: foco en cliente, prendas y dirección ─── */}
                 {tab === 'entregas' && (
