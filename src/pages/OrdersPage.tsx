@@ -372,8 +372,9 @@ function SwipeableOrderCard({ order, client, seller, canEdit, canChangeStatus, a
     onSwipeLeft: client?.phone ? () => {
       const { getClientDebt, clients: allClients } = useAppStore.getState();
       const fullClient = allClients.find(c => c.id === client.id);
+      const countedInDebt = order.status === 'entregado' || order.status === 'pendiente_pago';
       const previousDebt = fullClient
-        ? Math.max(0, getClientDebt(fullClient.id) - Math.max(0, order.totalAmount - order.amountPaid))
+        ? Math.max(0, getClientDebt(fullClient.id) - (countedInDebt ? Math.max(0, order.totalAmount - order.amountPaid) : 0))
         : 0;
       const message = fullClient ? buildOrderConfirmationMessage(fullClient, order, previousDebt) : '';
       openWhatsApp(client.phone!, message);
@@ -624,7 +625,8 @@ export function OrdersPage() {
       {waOrder && (() => {
         const client  = clients.find(c => c.id === waOrder.clientId);
         const { getClientDebt } = useAppStore.getState();
-        const previousDebt = client ? Math.max(0, getClientDebt(client.id) - Math.max(0, waOrder.totalAmount - waOrder.amountPaid)) : 0;
+        const waCountedInDebt = waOrder.status === 'entregado' || waOrder.status === 'pendiente_pago';
+        const previousDebt = client ? Math.max(0, getClientDebt(client.id) - (waCountedInDebt ? Math.max(0, waOrder.totalAmount - waOrder.amountPaid) : 0)) : 0;
         const message = client ? buildOrderConfirmationMessage(client, waOrder, previousDebt) : '';
         return (
           <Modal isOpen={!!waOrder} onClose={() => setWaOrder(null)} title="Pedido creado">
