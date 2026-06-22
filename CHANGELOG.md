@@ -7,6 +7,20 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.1] — 2026-06-21 — Correcciones contables: saldo a favor
+
+### Corregido
+
+#### Total por cobrar incluía créditos de clientes (`DashboardPage`, `ReportsPage`)
+- `calculateClientDebt` clampea a 0 por cliente, dejando saldos a favor (amountPaid > totalAmount) sin efecto en el total acumulado.
+- Ahora se resta el total de créditos al monto bruto: la deuda neta refleja correctamente $10.417.000 en lugar de $10.437.000.
+
+#### `totalCollected` en Reportes inflado por saldos a favor (`ReportsPage`)
+- `totalCollected` y `totalNetProfit` sumaban `amountPaid` sin límite, contando créditos de clientes como ingresos reales.
+- Corregido con `Math.min(amountPaid, totalAmount)` para no inflar los cobros con pagos en exceso.
+
+---
+
 ## [1.9.0] — 2026-06-21 — PWA completa, bot mejorado, UX móvil y correcciones contables
 
 ### Nuevas funcionalidades
