@@ -71,6 +71,8 @@ function PurchaseForm({ supplierId, onSave }: {
     supplierId,
     description:  '',
     cost:         0,
+    paidAmount:   0,
+    paymentMethod: 'efectivo',
     status:       'pendiente',
     purchaseDate: new Date().toISOString().slice(0, 10),
     notes:        '',
@@ -87,6 +89,18 @@ function PurchaseForm({ supplierId, onSave }: {
         <div>
           <label className="label">Costo total ($) *</label>
           <CurrencyInput required min={0} value={form.cost} onChange={v => set('cost', v)} />
+        </div>
+        <div>
+          <label className="label">Abono al proveedor ($)</label>
+          <CurrencyInput min={0} value={form.paidAmount ?? 0} onChange={v => set('paidAmount', v)} />
+        </div>
+        <div>
+          <label className="label">Método de pago</label>
+          <select className="input-field" value={form.paymentMethod ?? 'efectivo'}
+            onChange={e => set('paymentMethod', e.target.value as 'efectivo' | 'transferencia')}>
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
         </div>
         <div>
           <label className="label">Estado</label>
@@ -257,7 +271,15 @@ export function SuppliersPage() {
                                     ))}
                                   </select>
                                 </div>
-                                <span className="text-sm font-bold text-gray-900">{formatCurrency(purchase.cost)}</span>
+                                <div className="text-right">
+                                  <span className="text-sm font-bold text-gray-900">{formatCurrency(purchase.cost)}</span>
+                                  {(purchase.paidAmount ?? 0) > 0 && (
+                                    <p className="text-[10px] text-emerald-600">Abonado {formatCurrency(purchase.paidAmount ?? 0)}</p>
+                                  )}
+                                  {purchase.cost - (purchase.paidAmount ?? 0) > 0 && (
+                                    <p className="text-[10px] text-amber-600">Saldo {formatCurrency(purchase.cost - (purchase.paidAmount ?? 0))}</p>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );

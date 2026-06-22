@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen, ChevronRight } from 'lucide-react';
+import { Plus, Search, ShoppingBag, ArrowRight, X, MessageCircle, Download, Pen, ChevronRight, ImagePlus } from 'lucide-react';
 import { useSwipeCard } from '../hooks/useSwipeCard';
 import { PullToRefresh } from '../components/ui/PullToRefresh';
 import { useAppStore } from '../store';
@@ -13,6 +13,10 @@ import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchSelect } from '../components/ui/SearchSelect';
+import { uploadImage } from '../utils/storage';
+
+/** Abono al proveedor capturado al crear el pedido (por proveedor). */
+export type SupplierPaymentInput = { supplierId: string; paidAmount: number; paymentMethod: 'efectivo' | 'transferencia' };
 
 const PER_PAGE = 20;
 import {
@@ -36,7 +40,7 @@ const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
 ];
 
 function OrderForm({ onSave, initial }: {
-  onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => void;
+  onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: SupplierPaymentInput[]) => void;
   initial?: Order;
 }) {
   const { clients, products, users, suppliers, currentUser, getClientDebt } = useAppStore();
@@ -56,6 +60,17 @@ function OrderForm({ onSave, initial }: {
   const [estDelivery, setEstDelivery] = useState(initial?.estimatedDeliveryDate?.slice(0, 10) ?? '');
   const [amountPaid, setAmountPaid]   = useState(initial?.amountPaid ?? 0);
   const [notes, setNotes]             = useState(initial?.notes ?? '');
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  // Abono al proveedor (por proveedor) — solo al crear
+  const [supPays, setSupPays] = useState<Record<string, { paid: number; method: 'efectivo' | 'transferencia' }>>({});
+
+  const pickImage = async (i: number, file?: File) => {
+    if (!file) return;
+    setUploadingIdx(i);
+    const url = await uploadImage(file, 'pedidos');
+    setUploadingIdx(null);
+    if (url) setItem(i, 'imageUrl', url);
+  };
 
   const addItem = () => setItems(prev => [...prev, {
     productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
@@ -85,6 +100,19 @@ function OrderForm({ onSave, initial }: {
   const totalAmount = items.reduce((s, it) => s + it.salePrice * it.quantity, 0);
   const totalCost   = items.reduce((s, it) => s + it.costPrice * it.quantity, 0);
 
+  // Proveedores distintos presentes en los ítems (para abono al proveedor)
+  const supplierGroups = (() => {
+    const map = new Map<string, { name: string; cost: number }>();
+    for (const it of items) {
+      if (!it.supplierId) continue;
+      const sup = suppliers.find(s => s.id === it.supplierId);
+      const g = map.get(it.supplierId) ?? { name: sup?.name ?? 'Proveedor', cost: 0 };
+      g.cost += (it.costPrice ?? 0) * it.quantity;
+      map.set(it.supplierId, g);
+    }
+    return [...map.entries()].map(([supplierId, g]) => ({ supplierId, ...g }));
+  })();
+
   // Alerta de límite de crédito (solo pedidos nuevos)
   const creditWarning = (() => {
     if (initial || !clientId || !['credito', 'fiado', 'abono'].includes(payMethod)) return null;
@@ -99,6 +127,11 @@ function OrderForm({ onSave, initial }: {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const supplierPayments: SupplierPaymentInput[] = supplierGroups.map(g => ({
+      supplierId:    g.supplierId,
+      paidAmount:    supPays[g.supplierId]?.paid ?? 0,
+      paymentMethod: supPays[g.supplierId]?.method ?? 'efectivo',
+    }));
     onSave({
       clientId,
       items: items.map((it, i) => ({
@@ -117,7 +150,7 @@ function OrderForm({ onSave, initial }: {
       orderDate: new Date(orderDate).toISOString(),
       estimatedDeliveryDate: estDelivery ? new Date(estDelivery).toISOString() : undefined,
       notes,
-    });
+    }, supplierPayments);
   };
 
   return (
@@ -180,6 +213,23 @@ function OrderForm({ onSave, initial }: {
                       ))}
                     </select>
                   </div>
+                  <div className="col-span-2 flex items-center gap-2">
+                    {item.imageUrl ? (
+                      <div className="relative">
+                        <img src={item.imageUrl} alt="" className="w-12 h-12 rounded-lg object-cover border border-gray-200" />
+                        <button type="button" onClick={() => setItem(i, 'imageUrl', undefined)}
+                          className="absolute -top-1.5 -right-1.5 bg-white rounded-full text-red-500 shadow border border-gray-200">
+                          <X size={13} />
+                        </button>
+                      </div>
+                    ) : null}
+                    <label className="text-xs text-primary-600 font-medium flex items-center gap-1 cursor-pointer">
+                      <ImagePlus size={13} />
+                      {uploadingIdx === i ? 'Subiendo...' : item.imageUrl ? 'Cambiar foto' : 'Agregar foto'}
+                      <input type="file" accept="image/*" className="hidden"
+                        onChange={e => pickImage(i, e.target.files?.[0])} />
+                    </label>
+                  </div>
                   <div>
                     <input className="input-field text-xs" placeholder="Talla (S, M, L...)"
                       value={item.size ?? ''}
@@ -226,6 +276,38 @@ function OrderForm({ onSave, initial }: {
             <span className="text-primary-700">{formatCurrency(totalAmount)}</span>
           </div>
         </div>
+
+        {/* Abono a proveedores (uno por proveedor presente en los ítems) */}
+        {supplierGroups.length > 0 && (
+          <div className="col-span-2 border-t border-gray-100 pt-3">
+            <label className="label font-semibold text-gray-700">Abono a proveedores</label>
+            <div className="space-y-2">
+              {supplierGroups.map(g => {
+                const paid = supPays[g.supplierId]?.paid ?? 0;
+                const saldo = Math.max(0, g.cost - paid);
+                return (
+                  <div key={g.supplierId} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="font-semibold text-gray-800">{g.name}</span>
+                      <span className="text-gray-500">Costo: {formatCurrency(g.cost)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <CurrencyInput className="text-xs" placeholder="Abono" value={paid} min={0}
+                        onChange={v => setSupPays(p => ({ ...p, [g.supplierId]: { paid: v, method: p[g.supplierId]?.method ?? 'efectivo' } }))} />
+                      <select className="input-field text-xs"
+                        value={supPays[g.supplierId]?.method ?? 'efectivo'}
+                        onChange={e => setSupPays(p => ({ ...p, [g.supplierId]: { paid: p[g.supplierId]?.paid ?? 0, method: e.target.value as 'efectivo' | 'transferencia' } }))}>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                      </select>
+                    </div>
+                    <p className="text-[11px] text-right text-gray-500">Saldo al proveedor: <span className="font-semibold text-gray-700">{formatCurrency(saldo)}</span></p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="label">Estado</label>
@@ -289,8 +371,8 @@ function OrderForm({ onSave, initial }: {
             onChange={e => setNotes(e.target.value)} />
         </div>
       </div>
-      <button type="submit" className="btn-primary w-full justify-center">
-        {initial ? 'Actualizar pedido' : 'Guardar pedido'}
+      <button type="submit" disabled={uploadingIdx !== null} className="btn-primary w-full justify-center disabled:opacity-60">
+        {uploadingIdx !== null ? 'Subiendo foto...' : initial ? 'Actualizar pedido' : 'Guardar pedido'}
       </button>
     </form>
   );
@@ -300,9 +382,9 @@ function OrderForm({ onSave, initial }: {
 function OrderFormWithWa({ onCreated }: { onCreated: (o: Order) => void }) {
   const { addOrder, orders } = useAppStore();
   return (
-    <OrderForm onSave={async data => {
+    <OrderForm onSave={async (data, supplierPayments) => {
       const prevCount = orders.length;
-      await addOrder(data);
+      await addOrder(data, supplierPayments);
       // addOrder is async; get the new order from latest store state
       const storeOrders = useAppStore.getState().orders;
       if (storeOrders.length > prevCount) {

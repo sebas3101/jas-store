@@ -105,8 +105,11 @@ create table if not exists suppliers (
 create table if not exists supplier_purchases (
   id             uuid primary key default uuid_generate_v4(),
   supplier_id    uuid not null references suppliers(id) on delete cascade,
+  order_id       uuid references orders(id) on delete cascade,
   description    text not null,
   cost           numeric not null,
+  paid_amount    numeric not null default 0,
+  payment_method text,
   status         text not null default 'pendiente',
   purchase_date  timestamptz not null default now(),
   received_date  timestamptz,

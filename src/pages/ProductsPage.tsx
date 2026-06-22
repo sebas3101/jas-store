@@ -6,7 +6,7 @@ import { CurrencyInput } from '../components/ui/CurrencyInput';
 import { Modal } from '../components/ui/Modal';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
-import { supabase } from '../lib/supabase';
+import { uploadImage } from '../utils/storage';
 import {
   formatCurrency,
   productStatusLabel,
@@ -17,20 +17,7 @@ import {
 import type { Product, ProductStatus, ProductCategory } from '../types';
 
 const BUCKET = 'productos';
-
-async function uploadProductImage(file: File): Promise<string | null> {
-  try {
-    await supabase.storage.createBucket(BUCKET, { public: true }).catch(() => {});
-    const ext  = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { contentType: file.type, upsert: false });
-    if (error) return null;
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return publicUrl;
-  } catch {
-    return null;
-  }
-}
+const uploadProductImage = (file: File) => uploadImage(file, BUCKET);
 
 const CATEGORIES: ProductCategory[] = [
   'ropa_dama','ropa_caballero','deportivo','casual','locion','cosmetico','otro',

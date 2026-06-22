@@ -96,7 +96,7 @@ interface AppStore {
 
   // Orders
   orders: Order[];
-  addOrder:    (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addOrder:    (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: { supplierId: string; paidAmount: number; paymentMethod: 'efectivo' | 'transferencia' }[]) => Promise<void>;
   updateOrder: (id: string, o: Partial<Order>) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
 
@@ -453,7 +453,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   // ── Orders ────────────────────────────────────────────────────────────────
   orders: [],
 
-  addOrder: async (o) => {
+  addOrder: async (o, supplierPayments) => {
     const now = new Date().toISOString();
     const orderNumber = genOrderNumber(get().orders);
     const row = toSnake({ ...o, orderNumber, createdAt: now, updatedAt: now });
@@ -490,10 +490,14 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         ? `${newOrder.orderNumber} — ${itemNames}`
         : `Pedido ${newOrder.orderNumber}${client ? ` — ${client.name}` : ''}`;
       const cost = its.reduce((s, i) => s + (i.costPrice ?? 0) * i.quantity, 0);
+      const pay  = supplierPayments?.find(p => p.supplierId === supplierId);
       await get().addPurchase({
         supplierId,
+        orderId:       newOrder.id,
         description,
         cost,
+        paidAmount:    pay?.paidAmount ?? 0,
+        paymentMethod: pay?.paymentMethod ?? 'efectivo',
         status: 'pendiente',
         purchaseDate: o.orderDate || now,
       });
@@ -530,15 +534,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (he) { console.error('orderHistory insert:', he); return; }
         if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
       });
-    // Auto-marcar como pagadas TODAS las compras del pedido cuando pasa a recogido
+    // Al pasar el pedido a recogido, marcar todas sus compras como recogidas.
     // (un pedido puede tener varias compras, una por proveedor)
-    if (o.status === 'recogido' && prev?.status !== 'recogido' && prev?.orderNumber) {
+    if (o.status === 'recogido' && prev?.status !== 'recogido') {
       const linked = get().purchases.filter(p =>
-        p.description.startsWith(`${prev.orderNumber} —`) &&
-        p.status !== 'pagado' &&
+        (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
+        p.status !== 'recogido' &&
         p.status !== 'cancelado'
       );
-      for (const p of linked) await get().updatePurchase(p.id, { status: 'pagado' });
+      for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
     }
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
@@ -632,6 +636,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { error } = await supabase.from('supplier_purchases').update(toSnake(p)).eq('id', id);
     if (error) { notifyError('updatePurchase'); return; }
     set(s => ({ purchases: s.purchases.map(x => x.id === id ? { ...x, ...p } : x) }));
+    // Si la compra pasa a recogido y TODAS las compras del pedido ya están
+    // recogidas (o canceladas), avanzar el pedido a recogido.
+    if (p.status === 'recogido') {
+      const purchase = get().purchases.find(x => x.id === id);
+      const orderId  = purchase?.orderId;
+      if (orderId) {
+        const order = get().orders.find(o => o.id === orderId);
+        if (order && order.status !== 'recogido') {
+          const sibs = get().purchases.filter(x => x.orderId === orderId);
+          const allDone = sibs.every(x => x.status === 'recogido' || x.status === 'cancelado');
+          if (allDone) await get().updateOrder(orderId, { status: 'recogido' });
+        }
+      }
+    }
   },
 
   deletePurchase: async (id) => {

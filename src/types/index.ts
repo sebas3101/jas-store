@@ -155,6 +155,8 @@ export interface OrderItem {
   /** Proveedor de este producto (para recogida). Permite que un pedido tenga
    *  productos de varios proveedores y se cree una compra por cada uno. */
   supplierId?: string;
+  /** Foto de referencia de este producto en el pedido. */
+  imageUrl?: string;
 }
 
 export interface Order {
@@ -209,8 +211,13 @@ export interface Supplier {
 export interface SupplierPurchase {
   id: string;
   supplierId: string;
+  /** Pedido al que pertenece esta compra (multi-proveedor). */
+  orderId?: string;
   description: string;
   cost: number;
+  /** Abono pagado al proveedor. Saldo pendiente = cost - paidAmount. */
+  paidAmount?: number;
+  paymentMethod?: 'efectivo' | 'transferencia';
   status: SupplierPurchaseStatus;
   purchaseDate: string;
   receivedDate?: string;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store } from 'lucide-react';
+import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -38,13 +38,32 @@ function openMaps(address: string) {
 }
 
 export function DeliveriesPage() {
-  const { orders, clients, users, suppliers, updateOrder } = useAppStore();
+  const { orders, clients, users, suppliers, purchases, updateOrder, updatePurchase } = useAppStore();
   const { can } = usePermissions();
   const [tab, setTab]       = useState<Tab>('recogidas');
   const [search, setSearch] = useState('');
+  const [expandedSupplier, setExpandedSupplier] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
 
   // Recogidas: pedidos pendientes de ir a buscar (por_recoger)
   const recogidas = orders.filter(o => o.status === 'por_recoger');
+
+  // Recogidas agrupadas por PROVEEDOR: compras pendientes (sin recoger todavía)
+  const pendingBySupplier = (() => {
+    const map = new Map<string, { supplier?: typeof suppliers[number]; purchases: typeof purchases }>();
+    for (const p of purchases) {
+      if (p.status !== 'pendiente' || !p.orderId) continue;
+      const g = map.get(p.supplierId) ?? { supplier: suppliers.find(s => s.id === p.supplierId), purchases: [] };
+      g.purchases.push(p);
+      map.set(p.supplierId, g);
+    }
+    const q = search.toLowerCase();
+    return [...map.values()]
+      .filter(g => !q
+        || (g.supplier?.name ?? '').toLowerCase().includes(q)
+        || g.purchases.some(p => p.description.toLowerCase().includes(q)))
+      .sort((a, b) => (a.supplier?.name ?? '').localeCompare(b.supplier?.name ?? ''));
+  })();
   // Entregas pendientes: solo recogido (en camino). Entregados/pagados van al historial.
   const entregas        = orders.filter(o => o.status === 'recogido');
   const historialEntregas = orders.filter(o => ['entregado', 'pagado'].includes(o.status));
@@ -98,6 +117,15 @@ export function DeliveriesPage() {
     setAdvancingId(null);
   };
 
+  // Marca una compra como recogida (chulito). El store avanza el pedido a
+  // "recogido" cuando todas sus compras quedan recogidas.
+  const handleCheckPickup = async (purchaseId: string) => {
+    if (checkingId) return;
+    setCheckingId(purchaseId);
+    await updatePurchase(purchaseId, { status: 'recogido' });
+    setCheckingId(null);
+  };
+
   return (
     <div className="space-y-5">
       <div>
@@ -149,17 +177,91 @@ export function DeliveriesPage() {
                                <><CheckCircle2 size={13} /> Historial de pedidos ya entregados</>}
       </div>
 
-      {activeOrders.length === 0 ? (
+      {tab === 'recogidas' ? (
+        pendingBySupplier.length === 0 ? (
+          <EmptyState icon={Package} title="Sin recogidas pendientes" description="No hay compras por recoger" />
+        ) : (
+          <div className="space-y-3">
+            {pendingBySupplier.map(({ supplier, purchases: purs }) => {
+              const sid = supplier?.id ?? 'sin';
+              const expanded = expandedSupplier === sid;
+              return (
+                <div key={sid} className="card !p-0 overflow-hidden">
+                  <button type="button" onClick={() => setExpandedSupplier(expanded ? null : sid)}
+                    className="w-full flex items-center gap-3 p-4 text-left">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                      <Store size={16} className="text-amber-600" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900">{supplier?.name ?? 'Proveedor'}</p>
+                      <p className="text-[11px] text-gray-500">{purs.length} pedido{purs.length !== 1 ? 's' : ''} por recoger</p>
+                      {supplier?.address && <p className="text-[11px] text-gray-400">📍 {supplier.address}</p>}
+                      {supplier?.phone   && <p className="text-[11px] text-gray-400">📞 {supplier.phone}</p>}
+                    </div>
+                    <ChevronDown size={18} className={`text-gray-400 transition-transform flex-shrink-0 ${expanded ? 'rotate-180' : ''}`} />
+                  </button>
+                  {expanded && (
+                    <div className="px-4 pb-4 space-y-2">
+                      {purs.map(pur => {
+                        const order    = orders.find(o => o.id === pur.orderId);
+                        const client   = clients.find(c => c.id === order?.clientId);
+                        const supItems = order?.items.filter(it => it.supplierId === supplier?.id) ?? [];
+                        const saldo    = Math.max(0, pur.cost - (pur.paidAmount ?? 0));
+                        return (
+                          <div key={pur.id} className="bg-amber-50 rounded-xl p-3">
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="min-w-0">
+                                <span className="text-sm font-bold text-gray-900">{order?.orderNumber ?? 'Pedido'}</span>
+                                {client?.name && <span className="text-[11px] text-gray-600 ml-2">{client.name}</span>}
+                              </div>
+                              {can('entregas', 'cambiar_estado') && (
+                                <button type="button" disabled={checkingId === pur.id}
+                                  onClick={() => handleCheckPickup(pur.id)}
+                                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60 flex-shrink-0">
+                                  <Check size={13} /> Recogido
+                                </button>
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              {supItems.map((it, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-[11px]">
+                                  {it.imageUrl
+                                    ? <img src={it.imageUrl} alt="" className="w-8 h-8 rounded object-cover flex-shrink-0" />
+                                    : <Package size={12} className="text-amber-500 flex-shrink-0" />}
+                                  <span className="flex-1 min-w-0 text-amber-900">
+                                    {it.productName}
+                                    {it.size  && <span className="text-amber-700 ml-1">T.{it.size}</span>}
+                                    {it.color && <span className="text-amber-700 ml-1">· {it.color}</span>}
+                                  </span>
+                                  <span className="font-semibold text-amber-900 flex-shrink-0">×{it.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                            {saldo > 0 && (
+                              <p className="text-[11px] text-right text-amber-700 mt-1.5 border-t border-amber-200 pt-1.5">
+                                Saldo al proveedor: <span className="font-semibold">{formatCurrency(saldo)}</span>
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : activeOrders.length === 0 ? (
         <EmptyState
-          icon={tab === 'recogidas' ? Package : tab === 'entregas' ? Truck : CheckCircle2}
-          title={tab === 'recogidas' ? 'Sin recogidas pendientes' : tab === 'entregas' ? 'Sin entregas en camino' : 'Sin historial aún'}
-          description={tab === 'recogidas' ? 'No hay pedidos por recoger' : tab === 'entregas' ? 'Ningún pedido en camino al cliente' : 'Los pedidos entregados aparecerán aquí'}
+          icon={tab === 'entregas' ? Truck : CheckCircle2}
+          title={tab === 'entregas' ? 'Sin entregas en camino' : 'Sin historial aún'}
+          description={tab === 'entregas' ? 'Ningún pedido en camino al cliente' : 'Los pedidos entregados aparecerán aquí'}
         />
       ) : (
         <div className="space-y-3">
           {activeOrders.map(order => {
             const client         = clients.find(c => c.id === order.clientId);
-            const supplier       = suppliers.find(s => s.id === order.supplierId);
             const deliveryPerson = users.find(u => u.id === order.deliveryPersonId);
             const hasAddress     = !!client?.address;
 
@@ -169,13 +271,8 @@ export function DeliveriesPage() {
 
                 {/* Header */}
                 <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    tab === 'recogidas' ? 'bg-amber-50' : 'bg-primary-50'
-                  }`}>
-                    {tab === 'recogidas'
-                      ? <Store size={14} className="text-amber-600" />
-                      : <Truck size={14} className="text-primary-600" />
-                    }
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary-50">
+                    <Truck size={14} className="text-primary-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -198,70 +295,6 @@ export function DeliveriesPage() {
                     </p>
                   </div>
                 </div>
-
-                {/* ─── RECOGIDAS: foco en proveedor(es) y mercancía ─── */}
-                {tab === 'recogidas' && (() => {
-                  // Agrupar la mercancía por proveedor (un pedido puede tener varios)
-                  const groups = new Map<string, { sup?: typeof suppliers[number]; items: typeof order.items }>();
-                  const sinProv: typeof order.items = [];
-                  for (const it of order.items) {
-                    if (!it.supplierId) { sinProv.push(it); continue; }
-                    const g = groups.get(it.supplierId)
-                      ?? { sup: suppliers.find(s => s.id === it.supplierId), items: [] };
-                    g.items.push(it);
-                    groups.set(it.supplierId, g);
-                  }
-                  // Compat: pedido viejo con un solo proveedor a nivel de pedido
-                  if (groups.size === 0 && supplier) {
-                    groups.set(order.supplierId!, { sup: supplier, items: order.items });
-                    sinProv.length = 0;
-                  }
-                  const groupArr = [...groups.values()];
-
-                  const renderItem = (it: typeof order.items[number], idx: number) => (
-                    <div key={idx} className="flex items-center gap-2 text-[11px]">
-                      <Package size={10} className="text-amber-500 flex-shrink-0" />
-                      <span className="flex-1 min-w-0 text-amber-900">
-                        {it.productName}
-                        {it.size  && <span className="text-amber-700 ml-1">T.{it.size}</span>}
-                        {it.color && <span className="text-amber-700 ml-1">· {it.color}</span>}
-                      </span>
-                      <span className="font-semibold text-amber-900 flex-shrink-0">×{it.quantity}</span>
-                    </div>
-                  );
-
-                  return (
-                    <div className="space-y-2">
-                      {groupArr.length === 0 && sinProv.length === order.items.length ? (
-                        <p className="text-xs text-gray-400 italic">Sin proveedor asignado</p>
-                      ) : groupArr.map((g, gi) => (
-                        <div key={gi} className="bg-amber-50 rounded-xl p-3 space-y-1">
-                          <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
-                            <Store size={11} /> {g.sup?.name ?? 'Proveedor'}
-                          </p>
-                          {g.sup?.address && <p className="text-[11px] text-amber-700">📍 {g.sup.address}</p>}
-                          {g.sup?.phone   && <p className="text-[11px] text-amber-700">📞 {g.sup.phone}</p>}
-                          <div className="border-t border-amber-200 pt-1.5 mt-1.5 space-y-1">
-                            {g.items.map(renderItem)}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Ítems sin proveedor asignado (si hay otros con proveedor) */}
-                      {groupArr.length > 0 && sinProv.length > 0 && (
-                        <div className="bg-gray-50 rounded-xl p-3 space-y-1">
-                          <p className="text-[11px] font-semibold text-gray-600 uppercase tracking-wide">Sin proveedor</p>
-                          <div className="space-y-1">{sinProv.map(renderItem)}</div>
-                        </div>
-                      )}
-
-                      {/* Cliente (referencia) */}
-                      <p className="text-[11px] text-gray-500">
-                        Para: <span className="font-medium text-gray-700">{client?.name ?? '—'}</span>
-                      </p>
-                    </div>
-                  );
-                })()}
 
                 {/* ─── ENTREGAS: foco en cliente, prendas y dirección ─── */}
                 {tab === 'entregas' && (

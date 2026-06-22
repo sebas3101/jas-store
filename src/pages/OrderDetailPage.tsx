@@ -16,6 +16,7 @@ import {
 } from '../utils/formatters';
 import { buildAvailabilityMessage, sendClientMessage } from '../utils/whatsapp';
 import { printDocument } from '../utils/print';
+import { deleteImage } from '../utils/storage';
 import type { Order, OrderStatus } from '../types';
 
 function printReceipt(order: Order, clientName: string, payMethod: string) {
@@ -56,7 +57,7 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, clients, users, suppliers, updateOrder, deleteOrder, getOrderHistory } = useAppStore();
+  const { orders, clients, users, suppliers, purchases, updateOrder, deleteOrder, getOrderHistory } = useAppStore();
 
   const order = orders.find(o => o.id === id);
   const [statusModal, setStatusModal]     = useState(false);
@@ -80,18 +81,32 @@ export function OrderDetailPage() {
   const delivery = users.find(u => u.id === order.deliveryPersonId);
   // Proveedores por producto (un pedido puede tener varios). Agrupa ítems por proveedor.
   const supplierGroups = (() => {
-    const map = new Map<string, { name: string; address?: string; items: typeof order.items; cost: number }>();
+    const map = new Map<string, { supplierId: string; name: string; address?: string; items: typeof order.items; cost: number }>();
     for (const it of order.items) {
       if (!it.supplierId) continue;
       const sup = suppliers.find(s => s.id === it.supplierId);
       if (!sup) continue;
-      const g = map.get(it.supplierId) ?? { name: sup.name, address: sup.address, items: [], cost: 0 };
+      const g = map.get(it.supplierId) ?? { supplierId: it.supplierId, name: sup.name, address: sup.address, items: [], cost: 0 };
       g.items.push(it);
       g.cost += (it.costPrice ?? 0) * it.quantity;
       map.set(it.supplierId, g);
     }
-    return [...map.values()];
+    // Abono pagado a cada proveedor (desde la compra vinculada al pedido)
+    return [...map.values()].map(g => {
+      const purchase = purchases.find(p => p.orderId === order.id && p.supplierId === g.supplierId);
+      const paid = purchase?.paidAmount ?? 0;
+      return { ...g, paid, saldo: Math.max(0, g.cost - paid) };
+    });
   })();
+  // Una vez recogido (o más allá), se pueden borrar las fotos de referencia.
+  const canRemovePhotos = ['recogido', 'entregado', 'pendiente_pago', 'pagado'].includes(order.status);
+
+  const handleRemovePhoto = (itemId: string, url?: string) => {
+    if (url) void deleteImage(url, 'pedidos');
+    updateOrder(order.id, {
+      items: order.items.map(it => it.id === itemId ? { ...it, imageUrl: undefined } : it),
+    });
+  };
   // Compatibilidad: pedidos viejos con un solo proveedor a nivel de pedido
   const legacySupplier = supplierGroups.length === 0
     ? suppliers.find(s => s.id === order.supplierId)
@@ -232,9 +247,22 @@ export function OrderDetailPage() {
         <div className="space-y-2">
           {order.items.map(item => (
             <div key={item.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Package size={14} className="text-primary-600" />
-              </div>
+              {item.imageUrl ? (
+                <div className="relative flex-shrink-0">
+                  <img src={item.imageUrl} alt="" className="w-11 h-11 rounded-lg object-cover border border-gray-200" />
+                  {canRemovePhotos && (
+                    <button type="button" onClick={() => handleRemovePhoto(item.id, item.imageUrl)}
+                      className="absolute -top-1.5 -right-1.5 bg-white rounded-full text-red-500 shadow border border-gray-200"
+                      title="Eliminar foto">
+                      <Trash2 size={12} />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Package size={14} className="text-primary-600" />
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800">{item.productName}</p>
                 <p className="text-xs text-gray-400">
@@ -275,6 +303,10 @@ export function OrderDetailPage() {
                 <p className="text-xs text-gray-600">
                   {g.items.map(it => `${it.quantity}× ${it.productName}`).join(', ')}
                 </p>
+                <div className="flex justify-between text-[11px] mt-2 pt-2 border-t border-gray-200">
+                  <span className="text-gray-500">Abonado: <span className="font-semibold text-emerald-600">{formatCurrency(g.paid)}</span></span>
+                  <span className="text-gray-500">Saldo: <span className={`font-semibold ${g.saldo > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>{formatCurrency(g.saldo)}</span></span>
+                </div>
               </div>
             ))}
           </div>
