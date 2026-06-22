@@ -224,34 +224,44 @@ export function SuppliersPage() {
                       <p className="text-xs text-gray-400 text-center py-4">Sin compras registradas</p>
                     ) : (
                       <div className="space-y-2">
-                        {supplierPurchases.map(purchase => (
-                          <div key={purchase.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-xl">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-800 line-clamp-1">
-                                {purchase.description}
-                              </p>
-                              <p className="text-[10px] text-gray-400 mt-0.5">
-                                {formatDate(purchase.purchaseDate)}
-                                {purchase.notes && ` · ${purchase.notes}`}
-                              </p>
+                        {supplierPurchases.map(purchase => {
+                          const sepIdx = purchase.description.indexOf(' — ');
+                          const orderRef = sepIdx > 0 && sepIdx < 25 ? purchase.description.slice(0, sepIdx) : null;
+                          const mainDesc = orderRef ? purchase.description.slice(sepIdx + 3) : purchase.description;
+                          return (
+                            <div key={purchase.id} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                              <div>
+                                {orderRef && (
+                                  <span className="inline-block text-[10px] font-bold text-primary-700 bg-primary-50 border border-primary-100 px-2 py-0.5 rounded-full mb-1.5">
+                                    {orderRef}
+                                  </span>
+                                )}
+                                <p className="text-xs font-semibold text-gray-800 leading-snug line-clamp-2">{mainDesc}</p>
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                  {formatDate(purchase.purchaseDate)}
+                                  {purchase.notes && ` · ${purchase.notes}`}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${supplierPurchaseStatusColor[purchase.status]}`}>
+                                    {supplierPurchaseStatusLabel[purchase.status]}
+                                  </span>
+                                  <select
+                                    value={purchase.status}
+                                    onChange={e => updatePurchase(purchase.id, { status: e.target.value as SupplierPurchaseStatus })}
+                                    className="text-[10px] border border-gray-200 rounded-lg px-1.5 py-0.5 bg-white text-gray-500 focus:outline-none"
+                                  >
+                                    {(['pendiente','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
+                                      <option key={s} value={s}>{supplierPurchaseStatusLabel[s]}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <span className="text-sm font-bold text-gray-900">{formatCurrency(purchase.cost)}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${supplierPurchaseStatusColor[purchase.status]}`}>
-                                {supplierPurchaseStatusLabel[purchase.status]}
-                              </span>
-                              <p className="text-sm font-bold text-gray-900">{formatCurrency(purchase.cost)}</p>
-                              <select
-                                value={purchase.status}
-                                onChange={e => updatePurchase(purchase.id, { status: e.target.value as SupplierPurchaseStatus })}
-                                className="text-[10px] border border-gray-200 rounded-lg px-1.5 py-0.5 bg-white text-gray-600"
-                              >
-                                {(['pendiente','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
-                                  <option key={s} value={s}>{supplierPurchaseStatusLabel[s]}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

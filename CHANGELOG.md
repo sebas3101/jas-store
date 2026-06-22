@@ -7,6 +7,19 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.5] — 2026-06-22 — Rediseño tarjetas de compra en proveedores
+
+### Mejorado
+
+#### Tarjetas de compra más legibles en móvil (`SuppliersPage`)
+- Layout cambiado de fila horizontal comprimida a tarjeta vertical apilada.
+- El número de pedido (ej. `P-2026-001`, `HIST-001`) se extrae automáticamente de la descripción y se muestra como chip destacado.
+- Descripción con hasta 2 líneas visibles (antes 1 línea cortada).
+- Fecha y notas en su propia fila con mejor contraste.
+- Parte inferior separada por borde: estado con badge de color + selector de cambio a la izquierda, precio resaltado a la derecha.
+
+---
+
 ## [1.9.4] — 2026-06-21 — Fix saldo anterior en mensaje WhatsApp
 
 ### Corregido
