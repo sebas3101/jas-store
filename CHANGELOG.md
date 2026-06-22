@@ -7,6 +7,16 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.4] — 2026-06-21 — Fix saldo anterior en mensaje WhatsApp
+
+### Corregido
+
+#### Saldo anterior incorrecto en mensaje de confirmación WhatsApp (`OrdersPage`)
+- `calculateClientDebt` solo cuenta órdenes en estado `entregado` o `pendiente_pago`. Un pedido recién creado arranca en `tomado` y no está en ese total, pero el código le restaba su monto de todas formas — dando un saldo anterior menor al real y un total que no sumaba el nuevo pedido.
+- Ahora solo se resta el pedido del total si ya está contado en la deuda. El mensaje muestra correctamente: saldo anterior real + nuevo pedido = total actualizado.
+
+---
+
 ## [1.9.3] — 2026-06-21 — Swipe WhatsApp con mensaje de confirmación
 
 ### Mejorado
