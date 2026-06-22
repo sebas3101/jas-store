@@ -7,6 +7,78 @@ Versionamiento según [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [1.9.0] — 2026-06-21 — PWA completa, bot mejorado, UX móvil y correcciones contables
+
+### Nuevas funcionalidades
+
+#### PWA — Modo offline (`serviceWorker`, `workbox`)
+- Banner visible cuando el dispositivo pierde conexión; la app sigue navegable con datos en caché.
+- Workbox con precache optimizado y estrategias por ruta.
+
+#### Notificaciones push (`PushPage`, Web Push / VAPID)
+- Sección "Notificaciones" en Configuración para suscribir el dispositivo.
+- Notificaciones push nativas vía VAPID; funciona en Android Chrome y escritorio.
+
+#### Pull-to-refresh + Skeleton loaders
+- Deslizar hacia abajo en las páginas principales recarga datos desde Supabase.
+- Skeleton loaders reemplazan el spinner genérico mientras carga cada sección.
+
+#### Swipe en tarjetas de pedidos (`OrdersPage`)
+- Deslizar una tarjeta a la derecha avanza el estado del pedido (ciclo completo).
+- Deslizar a la izquierda abre WhatsApp con el cliente.
+
+#### Bot Telegram — resumen diario y OCR robusto
+- Resumen automático a las 8 a.m. (hora Colombia) con pedidos del día y deuda total.
+- OCR: pipeline Claude → Groq → Gemini con validación flexible; bloquea duplicados en lugar de solo advertir.
+- Registra comprobantes y pedidos directamente desde el bot; la app se actualiza en tiempo real vía Supabase Realtime.
+
+#### Realtime sync extendido (`store/index.ts`)
+- Canal Supabase Realtime ampliado de 3 a 6 tablas: `orders`, `payments`, `payment_proofs`, `clients`, `warranties`, `expenses`.
+- Cambios hechos en otro dispositivo o por el bot se reflejan automáticamente sin recargar.
+
+#### Clientes con saldo a favor (`ClientsPage`, `ClientDetailPage`, `store`)
+- Nueva función `getClientBalance` en el store: neto de `amountPaid - totalAmount` por cliente.
+- Filtro "Saldo a favor" en la pantalla de clientes.
+- Tarjeta del cliente muestra el saldo en verde cuando hay crédito positivo.
+- Perfil del cliente muestra "Saldo a favor: $X" en el resumen financiero.
+
+#### Autocomplete de búsqueda (`SearchSelect`, `OrdersPage`, `WarrantiesPage`)
+- Nuevo componente `SearchSelect` reutilizable con búsqueda fuzzy sobre clientes y productos.
+- Reemplaza los `<select>` nativos en Pedidos y Garantías.
+
+#### Pedidos estancados, filtros y alertas (`DashboardPage`, `OrdersPage`)
+- Dashboard alerta pedidos en estado tomado/por_recoger hace más de 7 días.
+- Filtro por período, vendedor y alerta visual de límite de crédito superado.
+- Calendario de entregas estimadas.
+
+#### Sidebar y navegación (`Sidebar`, `MobileNav`)
+- Grupos colapsables en sidebar desktop.
+- Comprobantes de pago anclado en la barra móvil.
+
+### Correcciones
+
+#### Impresión de recibo en Android (`utils/print.ts`)
+- `window.open('', '_blank')` es bloqueado por el popup blocker de Android Chrome.
+- Reemplazado por iframe oculto con `srcdoc` que llama `contentWindow.print()` directamente; no abre popups.
+
+#### addWarranty / updateOrder en pedidos de libreta (`store/index.ts`, `lib/supabase.ts`)
+- `toSnake` ahora omite valores `undefined` para no enviar `null` a columnas `NOT NULL`.
+- Logging detallado en `addWarranty` para facilitar diagnóstico de errores de Supabase.
+
+#### Botón eliminar cliente (`ClientsPage`)
+- `ConfirmDialog` usa `onClose`, no `onCancel`; el botón cancelar quedaba sin acción. Corregido.
+
+#### Contabilidad — saldo a favor excluido de cobros (`ReportsPage`)
+- `totalCollected` y `totalNetProfit` sumaban `amountPaid` incluyendo créditos de clientes (amountPaid > totalAmount).
+- Ahora se capea `amountPaid` a `totalAmount` en esos cálculos; los saldos a favor no inflan los ingresos.
+
+#### iOS — modal scroll y gestos
+- Múltiples correcciones para modales y bottom sheets en Safari iOS: `position:fixed` en body, `dvh`, `overscroll-contain`, limpieza de transform post-animación.
+- Pull-to-refresh no se activa cuando hay un modal abierto.
+- Sin zoom automático al enfocar inputs (`font-size: 16px`).
+
+---
+
 ## [1.8.0] — 2026-06-19 — Major upgrades, Error Boundary, bundle y xlsx completo
 
 ### Nuevas funcionalidades
