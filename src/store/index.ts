@@ -518,7 +518,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
       });
     // Auto-marcar compra del proveedor como pagada cuando el pedido pasa a por_recoger
-    if (o.status === 'por_recoger' && prev?.status !== 'por_recoger' && prev?.supplierId && prev?.orderNumber) {
+    if (o.status === 'recogido' && prev?.status !== 'recogido' && prev?.supplierId && prev?.orderNumber) {
       const linked = get().purchases.find(p =>
         p.supplierId === prev.supplierId &&
         p.description.startsWith(prev.orderNumber) &&
