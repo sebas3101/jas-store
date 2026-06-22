@@ -58,7 +58,7 @@ async function buildSummary(): Promise<string> {
   return lines.join('\n');
 }
 
-export function startDailyCron(bot: TelegramBot, adminId: number): void {
+export function startDailyCron(bot: TelegramBot, notifyIds: number[]): void {
   let lastSentDate = '';
 
   setInterval(async () => {
@@ -72,13 +72,15 @@ export function startDailyCron(bot: TelegramBot, adminId: number): void {
       lastSentDate = today;
       try {
         const msg = await buildSummary();
-        await bot.sendMessage(adminId, msg, { parse_mode: 'Markdown' });
-        console.log('[CRON] Resumen diario enviado:', today);
+        for (const id of notifyIds) {
+          await bot.sendMessage(id, msg, { parse_mode: 'Markdown' });
+        }
+        console.log(`[CRON] Resumen diario enviado a ${notifyIds.length} usuario(s):`, today);
       } catch (err) {
         console.error('[CRON] Error enviando resumen:', err);
       }
     }
   }, 60_000);
 
-  console.log('[CRON] Resumen diario activo — se enviará a las 8:00 AM Colombia');
+  console.log(`[CRON] Resumen diario activo — se enviará a las 8:00 AM Colombia a ${notifyIds.length} usuario(s)`);
 }

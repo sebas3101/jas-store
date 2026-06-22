@@ -162,17 +162,18 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   // Push notification a todos los suscriptores de la app
   notifyPush(client?.name ?? nombre, ocr.amount);
 
-  // Notificar al admin si el comprobante lo registró otra persona
-  const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
-  if (adminId && adminId !== chatId) {
-    const adminMsg = [
-      `🧾 *Nuevo comprobante registrado*`,
-      `👤 ${client?.name ?? nombre}`,
-      `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
-      ocr.bank ? `🏦 ${ocr.bank}` : null,
-      `\nRevisa el dashboard para confirmar.`,
-    ].filter(Boolean).join('\n');
-    bot.sendMessage(adminId, adminMsg, { parse_mode: 'Markdown' }).catch(() => {});
+  // Notificar a todos los usuarios permitidos excepto quien lo registró
+  const proofMsg = [
+    `🧾 *Nuevo comprobante registrado*`,
+    `👤 ${client?.name ?? nombre}`,
+    `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
+    ocr.bank ? `🏦 ${ocr.bank}` : null,
+    `\nRevisa el dashboard para confirmar.`,
+  ].filter(Boolean).join('\n');
+  for (const id of ALLOWED_IDS) {
+    if (id !== chatId) {
+      bot.sendMessage(id, proofMsg, { parse_mode: 'Markdown' }).catch(() => {});
+    }
   }
 
   await bot.sendMessage(chatId, buildResumen(ocr, client?.name ?? nombre, !!client, advertencias), { parse_mode: 'Markdown' });
@@ -295,13 +296,14 @@ bot.on('message', async msg => {
         return;
       }
       notifyPush(client?.name ?? nombre, ocr.amount);
-      const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
-      if (adminId && adminId !== chatId) {
-        const adminMsg = [`🧾 *Comprobante registrado (duplicado confirmado)*`, `👤 ${client?.name ?? nombre}`,
-          `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
-          ocr.bank ? `🏦 ${ocr.bank}` : null, `\nRevisa el dashboard para confirmar.`]
-          .filter(Boolean).join('\n');
-        bot.sendMessage(adminId, adminMsg, { parse_mode: 'Markdown' }).catch(() => {});
+      const dupMsg = [`🧾 *Comprobante registrado (duplicado confirmado)*`, `👤 ${client?.name ?? nombre}`,
+        `💰 *${ocr.amount!.toLocaleString('es-CO')} COP*`,
+        ocr.bank ? `🏦 ${ocr.bank}` : null, `\nRevisa el dashboard para confirmar.`]
+        .filter(Boolean).join('\n');
+      for (const id of ALLOWED_IDS) {
+        if (id !== chatId) {
+          bot.sendMessage(id, dupMsg, { parse_mode: 'Markdown' }).catch(() => {});
+        }
       }
       await bot.sendMessage(chatId, buildResumen(ocr, client?.name ?? nombre, !!client, advertencias), { parse_mode: 'Markdown' });
     } else {
@@ -355,6 +357,9 @@ bot.on('message', async msg => {
 
 console.log('🤖 JAS Bot iniciado — esperando comprobantes...');
 
-// Resumen diario automático a las 8:00 AM Colombia
-const adminId = parseInt(process.env.ADMIN_CHAT_ID ?? '0', 10);
-if (adminId) startDailyCron(bot, adminId);
+// Resumen diario a las 8:00 AM Colombia → va a todos los usuarios permitidos
+if (ALLOWED_IDS.length > 0) {
+  startDailyCron(bot, ALLOWED_IDS);
+} else {
+  console.warn('[CRON] ALLOWED_CHAT_IDS vacío — resumen diario desactivado');
+}
