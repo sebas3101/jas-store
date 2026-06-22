@@ -369,7 +369,15 @@ function SwipeableOrderCard({ order, client, seller, canEdit, canChangeStatus, a
 
   const { handlers, translateX, isSwiping } = useSwipeCard({
     onSwipeRight: canAdvance ? onAdvance : undefined,
-    onSwipeLeft:  client?.phone ? () => openWhatsApp(client.phone!, '') : undefined,
+    onSwipeLeft: client?.phone ? () => {
+      const { getClientDebt, clients: allClients } = useAppStore.getState();
+      const fullClient = allClients.find(c => c.id === client.id);
+      const previousDebt = fullClient
+        ? Math.max(0, getClientDebt(fullClient.id) - Math.max(0, order.totalAmount - order.amountPaid))
+        : 0;
+      const message = fullClient ? buildOrderConfirmationMessage(fullClient, order, previousDebt) : '';
+      openWhatsApp(client.phone!, message);
+    } : undefined,
   });
 
   const showAdvanceHint = translateX > 30;
