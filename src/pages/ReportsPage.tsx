@@ -62,7 +62,7 @@ export function ReportsPage() {
   });
 
   const totalExpenses    = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalCollectedAll = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + o.amountPaid, 0);
+  const totalCollectedAll = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
   const totalNetProfit   = totalCollectedAll - totalExpenses;
 
   // By category
@@ -106,7 +106,7 @@ export function ReportsPage() {
   // KPIs
   const activeOrders  = orders.filter(o => o.status !== 'cancelado');
   const totalSales    = activeOrders.reduce((s, o) => s + o.totalAmount, 0);
-  const totalCollected = activeOrders.reduce((s, o) => s + o.amountPaid, 0);
+  const totalCollected = activeOrders.reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
   const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
   const totalDebt     = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
   const totalInvestment = purchases.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.cost, 0);
