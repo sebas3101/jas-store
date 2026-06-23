@@ -20,7 +20,7 @@ export type ProductCategory =
   | 'cosmetico'
   | 'otro';
 export type UserRole = 'admin' | 'jennifer' | 'alexis' | 'vendedor' | 'consulta';
-export type SupplierPurchaseStatus = 'pendiente' | 'recogido' | 'pagado' | 'cancelado';
+export type SupplierPurchaseStatus = 'pendiente' | 'recogido' | 'pagado' | 'cancelado' | 'no_disponible';
 export type PublicationChannel =
   | 'whatsapp'
   | 'facebook'

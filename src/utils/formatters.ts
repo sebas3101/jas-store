@@ -110,17 +110,19 @@ export const paymentMethodLabel: Record<PaymentMethod, string> = {
 };
 
 export const supplierPurchaseStatusLabel: Record<SupplierPurchaseStatus, string> = {
-  pendiente: 'Pendiente',
-  recogido: 'Recogido',
-  pagado: 'Pagado',
-  cancelado: 'Cancelado',
+  pendiente:      'Pendiente',
+  recogido:       'Recogido',
+  pagado:         'Pagado',
+  cancelado:      'Cancelado',
+  no_disponible:  'Sin stock',
 };
 
 export const supplierPurchaseStatusColor: Record<SupplierPurchaseStatus, string> = {
-  pendiente: 'badge-yellow',
-  recogido: 'badge-blue',
-  pagado: 'badge-green',
-  cancelado: 'badge-gray',
+  pendiente:     'badge-yellow',
+  recogido:      'badge-blue',
+  pagado:        'badge-green',
+  cancelado:     'badge-gray',
+  no_disponible: 'badge-red',
 };
 
 export const channelLabel: Record<PublicationChannel, string> = {

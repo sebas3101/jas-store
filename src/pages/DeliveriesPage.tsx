@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check, X, ZoomIn, MessageCircle, FileText } from 'lucide-react';
+import { Truck, CheckCircle2, Package, Search, ShoppingBag, Clock, MapPin, Store, ChevronDown, Check, X, ZoomIn, MessageCircle, FileText, AlertCircle, RotateCcw } from 'lucide-react';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -49,11 +49,11 @@ export function DeliveriesPage() {
   // Recogidas: pedidos pendientes de ir a buscar (por_recoger)
   const recogidas = orders.filter(o => o.status === 'por_recoger');
 
-  // Recogidas agrupadas por PROVEEDOR: compras pendientes (sin recoger todavía)
+  // Recogidas agrupadas por PROVEEDOR: compras pendientes o sin stock
   const pendingBySupplier = (() => {
     const map = new Map<string, { supplier?: typeof suppliers[number]; purchases: typeof purchases }>();
     for (const p of purchases) {
-      if (p.status !== 'pendiente' || !p.orderId) continue;
+      if ((p.status !== 'pendiente' && p.status !== 'no_disponible') || !p.orderId) continue;
       const g = map.get(p.supplierId) ?? { supplier: suppliers.find(s => s.id === p.supplierId), purchases: [] };
       g.purchases.push(p);
       map.set(p.supplierId, g);
@@ -118,12 +118,29 @@ export function DeliveriesPage() {
     setAdvancingId(null);
   };
 
-  // Marca una compra como recogida (chulito). El store avanza el pedido a
-  // "recogido" cuando todas sus compras quedan recogidas.
+  // Marca una compra como recogida. El store avanza el pedido a "recogido"
+  // cuando todas sus compras quedan recogidas o canceladas.
   const handleCheckPickup = async (purchaseId: string) => {
     if (checkingId) return;
     setCheckingId(purchaseId);
     await updatePurchase(purchaseId, { status: 'recogido' });
+    setCheckingId(null);
+  };
+
+  // Marca una compra como sin stock (producto no disponible en el proveedor).
+  // El pedido queda en por_recoger hasta que el producto vuelva a estar disponible.
+  const handleMarkUnavailable = async (purchaseId: string) => {
+    if (checkingId) return;
+    setCheckingId(purchaseId);
+    await updatePurchase(purchaseId, { status: 'no_disponible' });
+    setCheckingId(null);
+  };
+
+  // Revierte una compra de sin_stock a pendiente cuando el producto llega.
+  const handleMarkAvailable = async (purchaseId: string) => {
+    if (checkingId) return;
+    setCheckingId(purchaseId);
+    await updatePurchase(purchaseId, { status: 'pendiente' });
     setCheckingId(null);
   };
 
@@ -238,11 +255,33 @@ export function DeliveriesPage() {
                                 )}
                               </div>
                               {can('entregas', 'cambiar_estado') && (
-                                <button type="button" disabled={checkingId === pur.id}
-                                  onClick={() => handleCheckPickup(pur.id)}
-                                  className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60 flex-shrink-0">
-                                  <Check size={13} /> Recogido
-                                </button>
+                                <div className="flex flex-col gap-1 flex-shrink-0">
+                                  {pur.status === 'no_disponible' ? (
+                                    <>
+                                      <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-200">
+                                        <AlertCircle size={11} /> Sin stock
+                                      </span>
+                                      <button type="button" disabled={checkingId === pur.id}
+                                        onClick={() => handleMarkAvailable(pur.id)}
+                                        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60">
+                                        <RotateCcw size={11} /> Llegó
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button type="button" disabled={checkingId === pur.id}
+                                        onClick={() => handleCheckPickup(pur.id)}
+                                        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60">
+                                        <Check size={13} /> Recogido
+                                      </button>
+                                      <button type="button" disabled={checkingId === pur.id}
+                                        onClick={() => handleMarkUnavailable(pur.id)}
+                                        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-60">
+                                        <X size={11} /> Sin stock
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               )}
                             </div>
 

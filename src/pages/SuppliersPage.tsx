@@ -106,7 +106,7 @@ function PurchaseForm({ supplierId, onSave }: {
           <label className="label">Estado</label>
           <select className="input-field" value={form.status}
             onChange={e => set('status', e.target.value as SupplierPurchaseStatus)}>
-            {(['pendiente','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
+            {(['pendiente','no_disponible','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
               <option key={s} value={s}>{supplierPurchaseStatusLabel[s]}</option>
             ))}
           </select>
@@ -200,18 +200,18 @@ export function SuppliersPage() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold text-gray-900">{formatCurrency(totalSpent)}</p>
-                    <p className="text-xs text-gray-400">{supplierPurchases.length} compras</p>
+                    <p className="text-xs text-gray-500">{supplierPurchases.length} compras</p>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
                     {can('proveedores', 'editar') && (
                       <button onClick={() => { setEditing(supplier); setModalOpen(true); }}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600" type="button">
+                        className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-700" type="button">
                         <Edit2 size={13} />
                       </button>
                     )}
                     {can('proveedores', 'eliminar') && (
                       <button onClick={() => setDeleting(supplier)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500" type="button">
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-500" type="button">
                         <Trash2 size={13} />
                       </button>
                     )}
@@ -266,7 +266,7 @@ export function SuppliersPage() {
                                     onChange={e => updatePurchase(purchase.id, { status: e.target.value as SupplierPurchaseStatus })}
                                     className="text-[10px] border border-gray-200 rounded-lg px-1.5 py-0.5 bg-white text-gray-500 focus:outline-none"
                                   >
-                                    {(['pendiente','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
+                                    {(['pendiente','no_disponible','recogido','pagado','cancelado'] as SupplierPurchaseStatus[]).map(s => (
                                       <option key={s} value={s}>{supplierPurchaseStatusLabel[s]}</option>
                                     ))}
                                   </select>
