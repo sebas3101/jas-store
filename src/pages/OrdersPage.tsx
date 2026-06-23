@@ -74,6 +74,7 @@ function OrderForm({ onSave, initial }: {
 
   const addItem = () => setItems(prev => [...prev, {
     productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
+    supplierId: prev[prev.length - 1]?.supplierId,
   }]);
 
   const setItem = (i: number, k: string, v: unknown) => {

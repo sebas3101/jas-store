@@ -278,14 +278,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (data) set({ expenses: cam(data) as Expense[] });
       };
 
+      const refetchPurchases = async () => {
+        const { data } = await supabase.from('supplier_purchases').select('*').order('created_at');
+        if (data) set({ purchases: cam(data) as SupplierPurchase[] });
+      };
+
       _realtimeChannel = supabase
         .channel('jas-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' }, refetchPaymentProofs)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },         refetchOrders)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' },        refetchPayments)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' },         refetchClients)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'warranties' },      refetchWarranties)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' },        refetchExpenses)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' },    refetchPaymentProofs)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' },            refetchOrders)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' },          refetchPayments)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' },           refetchClients)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'warranties' },        refetchWarranties)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' },          refetchExpenses)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'supplier_purchases' },refetchPurchases)
         .subscribe();
 
     } catch (err) {
@@ -415,10 +421,12 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     await supabase.from('reminder_logs').delete().eq('client_id', id);
     const { error } = await supabase.from('clients').delete().eq('id', id);
     if (error) { notifyError('deleteClient'); return; }
+    const clientOrderIds = new Set(clientOrders);
     set(s => ({
-      clients:  s.clients.filter(x => x.id !== id),
-      orders:   s.orders.filter(o => o.clientId !== id),
-      payments: s.payments.filter(p => p.clientId !== id),
+      clients:   s.clients.filter(x => x.id !== id),
+      orders:    s.orders.filter(o => o.clientId !== id),
+      payments:  s.payments.filter(p => p.clientId !== id),
+      purchases: s.purchases.filter(p => !clientOrderIds.has(p.orderId ?? '')),
     }));
   },
 
@@ -544,6 +552,18 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       );
       for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
     }
+    // Al revertir el pedido a por_recoger, resetear sus compras a pendiente
+    // para que vuelvan a aparecer en la vista de Recogidas de Proveedores.
+    if (o.status === 'por_recoger' && prev?.status === 'recogido') {
+      const linked = get().purchases.filter(p =>
+        (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
+        p.status === 'recogido'
+      );
+      for (const p of linked) {
+        await supabase.from('supplier_purchases').update({ status: 'pendiente' }).eq('id', p.id);
+        set(s => ({ purchases: s.purchases.map(x => x.id === p.id ? { ...x, status: 'pendiente' } : x) }));
+      }
+    }
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
       const { clients, orders, payments } = get();
@@ -556,7 +576,12 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const clientId = get().orders.find(x => x.id === id)?.clientId;
     const { error } = await supabase.from('orders').delete().eq('id', id);
     if (error) { notifyError('deleteOrder'); return; }
-    set(s => ({ orders: s.orders.filter(x => x.id !== id) }));
+    // Limpiar también las compras asociadas del estado local
+    // (en BD se borran por CASCADE, pero el estado local no lo sabe)
+    set(s => ({
+      orders: s.orders.filter(x => x.id !== id),
+      purchases: s.purchases.filter(p => p.orderId !== id),
+    }));
     // Resincronizar: eliminar un pedido puede reducir la deuda del cliente
     if (clientId) {
       const { clients, orders, payments } = get();
