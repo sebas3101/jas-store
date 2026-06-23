@@ -283,6 +283,21 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (data) set({ purchases: cam(data) as SupplierPurchase[] });
       };
 
+      const refetchSuppliers = async () => {
+        const { data } = await supabase.from('suppliers').select('*').order('created_at');
+        if (data) set({ suppliers: cam(data) as Supplier[] });
+      };
+
+      const refetchProducts = async () => {
+        const { data } = await supabase.from('products').select('*').order('created_at');
+        if (data) set({ products: cam(data) as Product[] });
+      };
+
+      const refetchPublications = async () => {
+        const { data } = await supabase.from('publications').select('*').order('created_at');
+        if (data) set({ publications: cam(data) as Publication[] });
+      };
+
       _realtimeChannel = supabase
         .channel('jas-realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' },    refetchPaymentProofs)
@@ -292,6 +307,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         .on('postgres_changes', { event: '*', schema: 'public', table: 'warranties' },        refetchWarranties)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' },          refetchExpenses)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'supplier_purchases' },refetchPurchases)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' },         refetchSuppliers)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products' },          refetchProducts)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'publications' },      refetchPublications)
         .subscribe();
 
     } catch (err) {
@@ -309,12 +327,22 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: paymentProofs },
         { data: clients },
         { data: expenses },
+        { data: purchases },
+        { data: suppliers },
+        { data: products },
+        { data: publications },
+        { data: warranties },
       ] = await Promise.all([
         supabase.from('orders').select('*').order('created_at'),
         supabase.from('payments').select('*').order('created_at'),
         supabase.from('payment_proofs').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
         supabase.from('expenses').select('*').order('created_at'),
+        supabase.from('supplier_purchases').select('*').order('created_at'),
+        supabase.from('suppliers').select('*').order('created_at'),
+        supabase.from('products').select('*').order('created_at'),
+        supabase.from('publications').select('*').order('created_at'),
+        supabase.from('warranties').select('*').order('created_at'),
       ]);
       const update: Partial<AppStore> = {};
       if (orders)        update.orders        = cam(orders)        as Order[];
@@ -322,6 +350,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       if (paymentProofs) update.paymentProofs = cam(paymentProofs) as PaymentProof[];
       if (clients)       update.clients       = cam(clients)       as Client[];
       if (expenses)      update.expenses      = cam(expenses)      as Expense[];
+      if (purchases)     update.purchases     = cam(purchases)     as SupplierPurchase[];
+      if (suppliers)     update.suppliers     = cam(suppliers)     as Supplier[];
+      if (products)      update.products      = cam(products)      as Product[];
+      if (publications)  update.publications  = cam(publications)  as Publication[];
+      if (warranties)    update.warranties    = cam(warranties)    as Warranty[];
       set(update);
     } catch (err) {
       console.error('refreshData error:', err);

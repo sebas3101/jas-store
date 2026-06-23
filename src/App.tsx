@@ -80,7 +80,7 @@ function ErrorScreen({ message }: { message: string }) {
 }
 
 export default function App() {
-  const { initialize, initialized, isLoading, error } = useAppStore();
+  const { initialize, initialized, isLoading, error, refreshData } = useAppStore();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -91,6 +91,17 @@ export default function App() {
     registerStoreErrorHandler(msg => toast(msg, 'error'));
     registerWhatsAppNotifier((msg, type) => toast(msg, type ?? 'success'));
   }, [toast]);
+
+  // Re-sincronizar datos cuando la app vuelve al primer plano (PWA en celular)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && initialized) {
+        refreshData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [initialized, refreshData]);
 
   if (isLoading || !initialized) return <LoadingScreen />;
   if (error) return <ErrorScreen message={error} />;
