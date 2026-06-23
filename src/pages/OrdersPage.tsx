@@ -61,6 +61,7 @@ function OrderForm({ onSave, initial }: {
   const [amountPaid, setAmountPaid]   = useState(initial?.amountPaid ?? 0);
   const [notes, setNotes]             = useState(initial?.notes ?? '');
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [formError, setFormError]       = useState('');
   // Abono al proveedor (por proveedor) — solo al crear
   const [supPays, setSupPays] = useState<Record<string, { paid: number; method: 'efectivo' | 'transferencia' }>>({});
 
@@ -128,6 +129,11 @@ function OrderForm({ onSave, initial }: {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (items.some(it => !it.productName.trim())) {
+      setFormError('Todos los productos deben tener nombre.');
+      return;
+    }
+    setFormError('');
     const supplierPayments: SupplierPaymentInput[] = supplierGroups.map(g => ({
       supplierId:    g.supplierId,
       paidAmount:    supPays[g.supplierId]?.paid ?? 0,
@@ -372,6 +378,11 @@ function OrderForm({ onSave, initial }: {
             onChange={e => setNotes(e.target.value)} />
         </div>
       </div>
+      {formError && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          {formError}
+        </p>
+      )}
       <button type="submit" disabled={uploadingIdx !== null} className="btn-primary w-full justify-center disabled:opacity-60">
         {uploadingIdx !== null ? 'Subiendo foto...' : initial ? 'Actualizar pedido' : 'Guardar pedido'}
       </button>

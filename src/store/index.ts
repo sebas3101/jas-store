@@ -3,7 +3,7 @@ import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
   User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
-  Warranty, PaymentProof, Expense, OrderHistory,
+  Warranty, PaymentProof, Expense, OrderHistory, MonthlyGoal,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 
@@ -148,6 +148,12 @@ interface AppStore {
   orderHistory: OrderHistory[];
   getOrderHistory: (orderId: string) => OrderHistory[];
 
+  // Goals (antes en localStorage, ahora en Supabase — compartidas entre dispositivos)
+  goals: MonthlyGoal[];
+  addGoal:    (g: Omit<MonthlyGoal, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateGoal: (id: string, g: Partial<Omit<MonthlyGoal, 'id' | 'createdAt' | 'updatedAt'>>) => Promise<void>;
+  deleteGoal: (id: string) => Promise<void>;
+
   // Manual refresh (pull-to-refresh)
   refreshData: () => Promise<void>;
 
@@ -184,6 +190,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: paymentProofs },
         { data: expenses },
         { data: orderHistory },
+        { data: goals },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -197,6 +204,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('payment_proofs').select('*').order('created_at'),
         supabase.from('expenses').select('*').order('created_at'),
         supabase.from('order_history').select('*').order('created_at'),
+        supabase.from('monthly_goals').select('*').order('created_at'),
       ]);
 
       const loadedClients  = cam(clients  ?? []) as Client[];
@@ -225,6 +233,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
         expenses:      cam(expenses      ?? []) as Expense[],
         orderHistory:  cam(orderHistory  ?? []) as OrderHistory[],
+        goals:         cam(goals         ?? []) as MonthlyGoal[],
         initialized: true,
         isLoading: false,
       });
@@ -298,6 +307,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (data) set({ publications: cam(data) as Publication[] });
       };
 
+      const refetchGoals = async () => {
+        const { data } = await supabase.from('monthly_goals').select('*').order('created_at');
+        if (data) set({ goals: cam(data) as MonthlyGoal[] });
+      };
+
       _realtimeChannel = supabase
         .channel('jas-realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'payment_proofs' },    refetchPaymentProofs)
@@ -310,6 +324,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' },         refetchSuppliers)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' },          refetchProducts)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'publications' },      refetchPublications)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'monthly_goals' },     refetchGoals)
         .subscribe();
 
     } catch (err) {
@@ -332,6 +347,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: products },
         { data: publications },
         { data: warranties },
+        { data: goals },
+        { data: freshUsers },
       ] = await Promise.all([
         supabase.from('orders').select('*').order('created_at'),
         supabase.from('payments').select('*').order('created_at'),
@@ -343,6 +360,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('products').select('*').order('created_at'),
         supabase.from('publications').select('*').order('created_at'),
         supabase.from('warranties').select('*').order('created_at'),
+        supabase.from('monthly_goals').select('*').order('created_at'),
+        supabase.from('app_users').select('*').order('created_at'),
       ]);
       const update: Partial<AppStore> = {};
       if (orders)        update.orders        = cam(orders)        as Order[];
@@ -355,6 +374,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       if (products)      update.products      = cam(products)      as Product[];
       if (publications)  update.publications  = cam(publications)  as Publication[];
       if (warranties)    update.warranties    = cam(warranties)    as Warranty[];
+      if (goals)         update.goals         = cam(goals)         as MonthlyGoal[];
+      if (freshUsers)    update.users         = cam(freshUsers)    as User[];
       set(update);
     } catch (err) {
       console.error('refreshData error:', err);
@@ -831,6 +852,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       remaining -= toApply;
     }
 
+    // 2b. Refrescar orders desde BD para asegurar consistencia tras el FIFO
+    // (si algún updateOrder falla parcialmente, la UI queda sincronizada con lo real)
+    const { data: freshOrders } = await supabase.from('orders').select('*').order('created_at');
+    if (freshOrders) set({ orders: cam(freshOrders) as Order[] });
+
     // 3. Marcar comprobante como confirmado — solo columnas garantizadas en DB
     const confirmedAt = new Date().toISOString();
     const { error } = await supabase
@@ -908,6 +934,32 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { error } = await supabase.from('expenses').delete().eq('id', id);
     if (error) { notifyError('deleteExpense'); return; }
     set(s => ({ expenses: s.expenses.filter(x => x.id !== id) }));
+  },
+
+  // ── Goals ─────────────────────────────────────────────────────────────────
+  goals: [],
+
+  addGoal: async (g) => {
+    const now = new Date().toISOString();
+    const row = toSnake({ ...g, createdAt: now });
+    const { data, error } = await supabase.from('monthly_goals').insert(row).select().single();
+    if (error) { notifyError('addGoal'); return; }
+    set(s => ({ goals: [...s.goals, toCamel(data) as MonthlyGoal] }));
+  },
+
+  updateGoal: async (id, g) => {
+    const row = toSnake({ ...g, updatedAt: new Date().toISOString() });
+    const { error } = await supabase.from('monthly_goals').update(row).eq('id', id);
+    if (error) { notifyError('updateGoal'); return; }
+    set(s => ({
+      goals: s.goals.map(x => x.id === id ? { ...x, ...g, updatedAt: new Date().toISOString() } : x),
+    }));
+  },
+
+  deleteGoal: async (id) => {
+    const { error } = await supabase.from('monthly_goals').delete().eq('id', id);
+    if (error) { notifyError('deleteGoal'); return; }
+    set(s => ({ goals: s.goals.filter(x => x.id !== id) }));
   },
 
   // ── Computed helpers ──────────────────────────────────────────────────────

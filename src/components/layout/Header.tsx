@@ -75,7 +75,7 @@ const severityDotColors: Record<NotifSeverity, string> = {
 };
 
 export function Header() {
-  const { currentUser, orders, clients, paymentProofs, warranties, logout } = useAppStore();
+  const { currentUser, orders, clients, payments, paymentProofs, warranties, logout } = useAppStore();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen]   = useState(false);
@@ -156,12 +156,11 @@ export function Header() {
   // Clientes urgentes para recordatorio
   const [reminderLog, setReminderLog] = useState<import('../../utils/reminders').ReminderLog>({});
   useEffect(() => { getReminderLog().then(setReminderLog); }, []);
-  const { payments: allPayments } = useAppStore.getState();
   const urgentCount = clients.filter(c => {
     const pendingOrds = orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status));
     const debt = pendingOrds.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
     if (debt <= 0) return false;
-    const lp = allPayments
+    const lp = payments
       .filter(p => p.clientId === c.id)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
     const days = lp ? differenceInDays(new Date(), parseISO(lp.date)) : 999;

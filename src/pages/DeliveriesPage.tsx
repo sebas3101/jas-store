@@ -62,7 +62,12 @@ export function DeliveriesPage() {
     return [...map.values()]
       .filter(g => !q
         || (g.supplier?.name ?? '').toLowerCase().includes(q)
-        || g.purchases.some(p => p.description.toLowerCase().includes(q)))
+        || g.purchases.some(p => {
+          if (p.description.toLowerCase().includes(q)) return true;
+          const order = orders.find(o => o.id === p.orderId);
+          const client = clients.find(c => c.id === order?.clientId);
+          return (client?.name ?? '').toLowerCase().includes(q);
+        }))
       .sort((a, b) => (a.supplier?.name ?? '').localeCompare(b.supplier?.name ?? ''));
   })();
   // Entregas pendientes: solo recogido (en camino). Entregados/pagados van al historial.
