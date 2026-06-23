@@ -5,6 +5,7 @@ import { registerWhatsAppNotifier } from './utils/whatsapp';
 import { AppLayout } from './components/layout/AppLayout';
 import { usePermissions } from './hooks/usePermissions';
 import { useToast } from './components/ui/Toast';
+import { UpdatePrompt } from './components/ui/UpdatePrompt';
 import type { PermModule } from './types';
 // LoginPage carga de forma estática — es la primera pantalla, debe estar disponible de inmediato
 import { LoginPage } from './pages/LoginPage';
@@ -131,6 +132,7 @@ export default function App() {
           </Route>
         </Routes>
       </Suspense>
+      <UpdatePrompt />
     </BrowserRouter>
   );
 }

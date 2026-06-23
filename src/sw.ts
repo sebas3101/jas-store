@@ -3,13 +3,19 @@ import { clientsClaim } from 'workbox-core';
 
 declare const self: ServiceWorkerGlobalScope;
 
-self.skipWaiting();
+// No llamar skipWaiting() aquí — el cliente lo dispara cuando el usuario
+// acepta la actualización, para no romper la sesión a la mitad.
 clientsClaim();
 cleanupOutdatedCaches();
 
 // Precache assets injected by vite-plugin-pwa at build time
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 precacheAndRoute((self as any).__WB_MANIFEST ?? []);
+
+// Escuchar el mensaje SKIP_WAITING que envía updateServiceWorker(true)
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+});
 
 self.addEventListener('push', (event) => {
   if (!event.data) return;
