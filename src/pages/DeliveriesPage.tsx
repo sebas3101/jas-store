@@ -384,6 +384,7 @@ export function DeliveriesPage() {
             const client         = clients.find(c => c.id === order.clientId);
             const deliveryPerson = users.find(u => u.id === order.deliveryPersonId);
             const hasAddress     = !!client?.address;
+            const pendingStock   = purchases.filter(p => p.orderId === order.id && p.status === 'no_disponible');
 
             return (
               <div key={order.id}
@@ -400,6 +401,11 @@ export function DeliveriesPage() {
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[order.status]}`}>
                         {orderStatusLabel[order.status]}
                       </span>
+                      {pendingStock.length > 0 && (
+                        <span className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
+                          <AlertCircle size={9} /> {pendingStock.length} sin stock
+                        </span>
+                      )}
                     </div>
                     <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                       <Clock size={9} /> {formatDate(order.orderDate)}

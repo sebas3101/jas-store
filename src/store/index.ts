@@ -548,7 +548,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const linked = get().purchases.filter(p =>
         (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
         p.status !== 'recogido' &&
-        p.status !== 'cancelado'
+        p.status !== 'cancelado' &&
+        p.status !== 'no_disponible'   // no pisar ítems sin stock, siguen pendientes
       );
       for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
     }
@@ -662,7 +663,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { notifyError('updatePurchase'); return; }
     set(s => ({ purchases: s.purchases.map(x => x.id === id ? { ...x, ...p } : x) }));
     // Si la compra pasa a recogido y TODAS las compras del pedido ya están
-    // recogidas (o canceladas), avanzar el pedido a recogido.
+    // resueltas (recogido, cancelado, o sin stock), avanzar el pedido a recogido.
+    // no_disponible = el proveedor no tiene stock; el pedido igual avanza y se
+    // entrega lo que sí hay. El ítem sin stock queda pendiente en Recogidas.
     if (p.status === 'recogido') {
       const purchase = get().purchases.find(x => x.id === id);
       const orderId  = purchase?.orderId;
@@ -670,7 +673,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         const order = get().orders.find(o => o.id === orderId);
         if (order && order.status !== 'recogido') {
           const sibs = get().purchases.filter(x => x.orderId === orderId);
-          const allDone = sibs.every(x => x.status === 'recogido' || x.status === 'cancelado');
+          const allDone = sibs.every(x =>
+            x.status === 'recogido' || x.status === 'cancelado' || x.status === 'no_disponible'
+          );
           if (allDone) await get().updateOrder(orderId, { status: 'recogido' });
         }
       }
