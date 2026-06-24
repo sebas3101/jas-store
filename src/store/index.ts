@@ -6,6 +6,8 @@ import type {
   Warranty, PaymentProof, Expense, OrderHistory, MonthlyGoal,
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
+import { getReminderLog, markReminderSent as dbMarkReminderSent } from '../utils/reminders';
+import type { ReminderLog } from '../utils/reminders';
 
 // ─── Realtime channel (módulo) ────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -213,6 +215,10 @@ interface AppStore {
   // Manual refresh (pull-to-refresh)
   refreshData: () => Promise<void>;
 
+  // Reminder logs (sincronizado via Realtime)
+  reminderLog: ReminderLog;
+  markReminderSent: (clientId: string) => Promise<void>;
+
   // Computed helpers
   getClientDebt:     (clientId: string) => number;
   getClientBalance:  (clientId: string) => number; // positive = credit, negative = debt (net)
@@ -227,6 +233,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   initialized: false,
   isLoading: false,
   error: null,
+  reminderLog: {},
 
   // ── Inicialización: carga todos los datos desde Supabase ─────────────────
   initialize: async () => {
@@ -262,6 +269,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('order_history').select('*').order('created_at'),
         supabase.from('monthly_goals').select('*').order('created_at'),
       ]);
+      const loadedReminderLog = await getReminderLog();
 
       const loadedClients  = cam(clients  ?? []) as Client[];
       const loadedOrders   = cam(orders   ?? []) as Order[];
@@ -290,6 +298,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         expenses:      cam(expenses      ?? []) as Expense[],
         orderHistory:  cam(orderHistory  ?? []) as OrderHistory[],
         goals:         cam(goals         ?? []) as MonthlyGoal[],
+        reminderLog:   loadedReminderLog,
         initialized: true,
         isLoading: false,
       });
@@ -381,12 +390,19 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products' },          refetchProducts)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'publications' },      refetchPublications)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'monthly_goals' },     refetchGoals)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'reminder_logs' },
+          async () => { const log = await getReminderLog(); set({ reminderLog: log }); })
         .subscribe();
 
     } catch (err) {
       set({ error: 'Error al conectar con la base de datos', isLoading: false });
       console.error('initialize error:', err);
     }
+  },
+
+  markReminderSent: async (clientId) => {
+    await dbMarkReminderSent(clientId);
+    set(s => ({ reminderLog: { ...s.reminderLog, [clientId]: new Date().toISOString() } }));
   },
 
   // ── Manual refresh (pull-to-refresh) ─────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, MessageCircle, ArrowRight, Users, DollarSign,
@@ -11,9 +11,8 @@ import { StatCard } from '../components/ui/StatCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, sendClientMessage } from '../utils/whatsapp';
-import {
-  getReminderLog, markReminderSent, daysSinceReminder, type ReminderLog,
-} from '../utils/reminders';
+import { daysSinceReminder } from '../utils/reminders';
+import type { ReminderLog } from '../utils/reminders';
 
 type Tab = 'urgente' | 'todos';
 
@@ -72,14 +71,8 @@ function buildClientData(
 }
 
 export function RecordatoriosPage() {
-  const { clients, orders, payments } = useAppStore();
+  const { clients, orders, payments, reminderLog: log, markReminderSent } = useAppStore();
   const [tab, setTab] = useState<Tab>('urgente');
-  const [log, setLog] = useState<ReminderLog>({});
-
-  // Carga el log desde Supabase al montar
-  useEffect(() => {
-    getReminderLog().then(setLog);
-  }, []);
 
   const all     = buildClientData(clients, orders, payments, log);
   const urgente = all.filter(c => c.needsReminder);
@@ -94,8 +87,7 @@ export function RecordatoriosPage() {
   ) => {
     sendClientMessage(client, message);
     await markReminderSent(client.id);
-    setLog(prev => ({ ...prev, [client.id]: new Date().toISOString() }));
-  }, []);
+  }, [markReminderSent]);
 
   function handleSendAll() {
     urgente.forEach((c, i) => {
@@ -103,7 +95,6 @@ export function RecordatoriosPage() {
       setTimeout(async () => {
         sendClientMessage(c, msg);
         await markReminderSent(c.id);
-        setLog(prev => ({ ...prev, [c.id]: new Date().toISOString() }));
       }, i * 800);
     });
   }
