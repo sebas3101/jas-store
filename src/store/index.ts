@@ -620,9 +620,27 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         purchaseDate: o.orderDate || now,
       });
     }
-    // Resincronizar status del cliente tras agregar un pedido (genera deuda)
-    const { clients, orders, payments } = get();
-    await syncOneClientStatus(o.clientId, clients, orders, payments, set);
+    // Si es histórico y tiene abono, crear el pago automáticamente.
+    // addPayment llama reconcileClientOrders, que actualiza el status del pedido
+    // a 'pagado' si el monto cubre el total, o deja 'pendiente_pago' si es parcial.
+    if (isHistorical && o.amountPaid > 0) {
+      const currentUser = get().currentUser;
+      await get().addPayment({
+        clientId:       o.clientId,
+        orderIds:       [newOrder.id],
+        amount:         o.amountPaid,
+        method:         o.paymentMethod === 'credito' || o.paymentMethod === 'fiado' || o.paymentMethod === 'abono'
+                          ? 'efectivo'
+                          : o.paymentMethod as 'efectivo' | 'transferencia',
+        date:           (o.orderDate || now).slice(0, 10),
+        notes:          'Pago histórico registrado al crear el pedido',
+        registeredById: currentUser?.id ?? '',
+      });
+    } else {
+      // Resincronizar status del cliente tras agregar un pedido (genera deuda)
+      const { clients, orders, payments } = get();
+      await syncOneClientStatus(o.clientId, clients, orders, payments, set);
+    }
   },
 
   updateOrder: async (id, o) => {
