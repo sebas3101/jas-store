@@ -681,9 +681,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       );
       for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
     }
-    // Al revertir el pedido a por_recoger, resetear sus compras a pendiente
-    // para que vuelvan a aparecer en la vista de Recogidas de Proveedores.
-    if (o.status === 'por_recoger' && prev?.status === 'recogido') {
+    // Al revertir el pedido a por_recoger desde cualquier estado posterior,
+    // resetear sus compras a pendiente para que vuelvan a la vista de Recogidas.
+    if (o.status === 'por_recoger' && ['recogido', 'entregado', 'pendiente_pago', 'pagado'].includes(prev?.status ?? '')) {
       const linked = get().purchases.filter(p =>
         (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
         p.status === 'recogido'
