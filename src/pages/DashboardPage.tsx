@@ -10,7 +10,6 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useAppStore } from '../store';
-import { calculateClientDebt } from '../utils/businessLogic';
 import { useGoalsStore } from '../store/goals';
 import { StatCard } from '../components/ui/StatCard';
 import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
@@ -23,7 +22,7 @@ import { useCallback } from 'react';
 type Period = 'hoy' | 'semana' | 'mes' | 'año';
 
 export function DashboardPage() {
-  const { orders, clients, payments, products, currentUser, paymentProofs, refreshData } = useAppStore();
+  const { orders, clients, payments, products, currentUser, paymentProofs, refreshData, getClientDebt } = useAppStore();
   const handleRefresh = useCallback(() => refreshData(), [refreshData]);
   const { goals } = useGoalsStore();
 
@@ -58,9 +57,7 @@ export function DashboardPage() {
   );
 
   // ── KPIs ────────────────────────────────────────────────────────────────────
-  const totalDebt   = clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0);
-  const totalCredit = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + Math.max(0, o.amountPaid - o.totalAmount), 0);
-  const totalPending = Math.max(0, totalDebt - totalCredit);
+  const totalPending = clients.reduce((s, c) => s + getClientDebt(c.id), 0);
 
   const clientsWithDebt = clients.filter(c => c.status === 'mora' || c.status === 'pendiente').length;
   const clientsUpToDate = clients.filter(c => c.status === 'al_dia').length;
@@ -83,7 +80,7 @@ export function DashboardPage() {
   const [reminderLog, setReminderLog] = useState<import('../utils/reminders').ReminderLog>({});
   useEffect(() => { getReminderLog().then(setReminderLog); }, []);
   const urgentReminders = clients.filter(c => {
-    const debt = calculateClientDebt(c.id, orders);
+    const debt = getClientDebt(c.id);
     if (debt <= 0) return false;
     const lastPay = payments
       .filter(p => p.clientId === c.id)
@@ -122,7 +119,7 @@ export function DashboardPage() {
 
   // ── Top deudores ─────────────────────────────────────────────────────────────
   const topDeudores = clients
-    .map(c => ({ ...c, debt: calculateClientDebt(c.id, orders) }))
+    .map(c => ({ ...c, debt: getClientDebt(c.id) }))
     .filter(c => c.debt > 0)
     .sort((a, b) => b.debt - a.debt)
     .slice(0, 5);

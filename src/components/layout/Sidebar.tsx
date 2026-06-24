@@ -9,7 +9,6 @@ import { usePermissions } from '../../hooks/usePermissions';
 import { GlobalSearch } from '../ui/GlobalSearch';
 import logoUrl from '../../assets/logo.jpeg';
 import { roleLabel } from '../../utils/formatters';
-import { calculateClientDebt } from '../../utils/businessLogic';
 
 const NAV_GROUPS = [
   {
@@ -57,7 +56,7 @@ const NAV_GROUPS = [
 ];
 
 export function Sidebar() {
-  const { currentUser, logout, clients, orders } = useAppStore();
+  const { currentUser, logout, clients, getClientDebt } = useAppStore();
   const { filterNavItems } = usePermissions();
 
   const allowedGroups = NAV_GROUPS.map(g => ({
@@ -65,7 +64,7 @@ export function Sidebar() {
     items: filterNavItems(g.items),
   })).filter(g => g.items.length > 0);
 
-  const debtorCount = clients.filter(c => calculateClientDebt(c.id, orders) > 0).length;
+  const debtorCount = clients.filter(c => getClientDebt(c.id) > 0).length;
 
   const initial = currentUser?.name.charAt(0).toUpperCase() ?? '?';
 

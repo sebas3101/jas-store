@@ -1,6 +1,5 @@
 import type { Client, Order, Payment } from '../types';
 import { formatDate } from './formatters';
-import { calculateClientDebt } from './businessLogic';
 import { toCSV, downloadCSV } from './csvExport';
 
 export function exportPagos(payments: Payment[], clients: Client[]) {
@@ -32,9 +31,13 @@ export function exportPedidos(orders: Order[], clients: Client[]) {
   downloadCSV(toCSV(rows), `pedidos_jas_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
-export function exportClientes(clients: Client[], orders: Order[], _payments: Payment[]) {
+export function exportClientes(clients: Client[], orders: Order[], payments: Payment[]) {
   const rows = clients.map(c => {
-    const deuda = calculateClientDebt(c.id, orders);
+    const deliveredTotal = orders
+      .filter(o => o.clientId === c.id && ['entregado', 'pendiente_pago', 'pagado'].includes(o.status))
+      .reduce((s, o) => s + o.totalAmount, 0);
+    const totalPaid = payments.filter(p => p.clientId === c.id).reduce((s, p) => s + p.amount, 0);
+    const deuda = Math.max(0, deliveredTotal - totalPaid);
     const totalCompras = orders
       .filter(o => o.clientId === c.id && o.status !== 'cancelado')
       .reduce((s, o) => s + o.totalAmount, 0);

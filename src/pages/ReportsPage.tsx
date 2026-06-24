@@ -5,7 +5,6 @@ import {
 } from 'recharts';
 import { TrendingUp, DollarSign, Users, ShoppingBag, Package, Percent, ReceiptText, Wallet, Download } from 'lucide-react';
 import { useAppStore } from '../store';
-import { calculateClientDebt } from '../utils/businessLogic';
 import { StatCard } from '../components/ui/StatCard';
 import { aoaToCSV, downloadCSV } from '../utils/csvExport';
 import {
@@ -20,7 +19,7 @@ import type { ProductCategory } from '../types';
 const COLORS = ['#7c3aed','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899'];
 
 export function ReportsPage() {
-  const { orders, clients, payments, purchases, expenses } = useAppStore();
+  const { orders, clients, payments, purchases, expenses, getClientDebt } = useAppStore();
 
   const now = new Date();
 
@@ -100,15 +99,15 @@ export function ReportsPage() {
     name: c.name,
     total: orders.filter(o => o.clientId === c.id && o.status !== 'cancelado')
       .reduce((s, o) => s + o.totalAmount, 0),
-    deuda: calculateClientDebt(c.id, orders),
+    deuda: getClientDebt(c.id),
   })).sort((a, b) => b.total - a.total).slice(0, 5);
 
   // KPIs
   const activeOrders  = orders.filter(o => o.status !== 'cancelado');
   const totalSales    = activeOrders.reduce((s, o) => s + o.totalAmount, 0);
-  const totalCollected = activeOrders.reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
+  const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
   const totalProfit   = activeOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
-  const totalDebt     = Math.max(0, clients.reduce((s, c) => s + calculateClientDebt(c.id, orders), 0) - activeOrders.reduce((s, o) => s + Math.max(0, o.amountPaid - o.totalAmount), 0));
+  const totalDebt     = clients.reduce((s, c) => s + getClientDebt(c.id), 0);
   const totalInvestment = purchases.filter(p => p.status !== 'cancelado').reduce((s, p) => s + p.cost, 0);
 
   // Indicadores de rendimiento

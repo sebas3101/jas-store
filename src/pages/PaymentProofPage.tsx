@@ -595,7 +595,7 @@ export function PaymentProofPage() {
                       {can('comprobantes', 'eliminar') && (
                         <button
                           onClick={() => setDeleting(proof)}
-                          className="p-1.5 hover:bg-red-50 rounded-lg text-gray-300 hover:text-red-500 transition-colors"
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
                           title="Eliminar"
                          type="button">
                           <XCircle size={13} />
@@ -679,7 +679,7 @@ export function PaymentProofPage() {
             </div>
             <p className="text-sm text-gray-600">
               Al confirmar, se registrará el pago y se distribuirá automáticamente
-              entre los pedidos pendientes del cliente (del más antiguo al más reciente).
+              y se reflejará en el saldo pendiente del cliente.
             </p>
             <div className="flex gap-3">
               <button

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, CreditCard, Calendar, CheckCircle2, TrendingUp, Download, Trash2 } from 'lucide-react';
 import { exportPagos } from '../utils/exportExcel';
-import { distributeFifo } from '../utils/businessLogic';
 import { useAppStore } from '../store';
 import { usePermissions } from '../hooks/usePermissions';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -22,7 +21,7 @@ import type { PaymentMethod } from '../types';
 
 // ─── Formulario de pago — fuera del padre para evitar re-mount en cada render
 function PaymentForm({ onClose }: { onClose: () => void }) {
-  const { clients, orders, currentUser, addPayment, updateOrder } = useAppStore();
+  const { clients, orders, currentUser, addPayment, getClientDebt } = useAppStore();
 
   const [clientId, setClientId]     = useState('');
   const [clientSearch, setClientSearch] = useState('');
@@ -31,37 +30,31 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
   const [date, setDate]             = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes]           = useState('');
 
-  // Pedidos pendientes del cliente seleccionado, ordenados FIFO
-  const pendingOrders = orders
+  // Pedidos entregados del cliente — para el registro de auditoría en orderIds
+  const deliveredOrders = orders
     .filter(o =>
       o.clientId === clientId &&
       (o.status === 'entregado' || o.status === 'pendiente_pago')
     )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
-  const deudaTotal = pendingOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+  const deudaTotal = clientId ? getClientDebt(clientId) : 0;
   const [confirming, setConfirming] = useState(false);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!confirming) { setConfirming(true); return; }
 
-    // Registrar el abono vinculado a todos los pedidos pendientes (auditoría)
+    // Registrar abono — addPayment reconcilia automáticamente los pedidos del cliente
     addPayment({
       clientId,
-      orderIds: pendingOrders.map(o => o.id),
+      orderIds: deliveredOrders.map(o => o.id),
       amount,
       method,
       date: new Date(date).toISOString(),
       notes,
       registeredById: currentUser?.id ?? 'u1',
     });
-
-    // Distribuir automáticamente en FIFO entre todos los pedidos pendientes
-    const aplicaciones = distributeFifo(amount, pendingOrders);
-    for (const { orderId, newAmountPaid, newStatus } of aplicaciones) {
-      updateOrder(orderId, { amountPaid: newAmountPaid, status: newStatus });
-    }
 
     onClose();
   };
@@ -110,7 +103,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
             : 'bg-emerald-50 border border-emerald-100 text-emerald-700'
         }`}>
           {deudaTotal > 0
-            ? <>Saldo pendiente: <strong>{formatCurrency(deudaTotal)}</strong> en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''}. El abono se aplicará del más antiguo al más reciente.</>
+            ? <>Saldo pendiente: <strong>{formatCurrency(deudaTotal)}</strong>. El abono reducirá el saldo total del cliente.</>
             : 'Este cliente no tiene saldo pendiente.'
           }
         </div>
@@ -146,8 +139,7 @@ function PaymentForm({ onClose }: { onClose: () => void }) {
             ¿Confirmar pago de <span className="text-amber-900">{formatCurrency(amount)}</span>?
           </p>
           <p className="text-xs text-amber-700">
-            Se distribuirá FIFO en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''} de{' '}
-            <strong>{clients.find(c => c.id === clientId)?.name}</strong>.
+            Se registrará un abono a <strong>{clients.find(c => c.id === clientId)?.name}</strong> que reducirá su saldo pendiente.
           </p>
           <div className="flex gap-2">
             <button type="submit" className="btn-primary flex-1 justify-center">
@@ -317,7 +309,7 @@ export function PaymentsPage() {
                   <button
                     type="button"
                     onClick={() => setDeleting(payment)}
-                    className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
                     title="Eliminar pago"
                   >
                     <Trash2 size={14} />

@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAppStore } from '../../store';
-import { calculateClientDebt } from '../../utils/businessLogic';
 
 const PINNED_ITEMS = [
   { to: '/',              icon: LayoutDashboard, label: 'Inicio'        },
@@ -35,11 +34,11 @@ const MORE_ITEMS = [
 
 export function MobileNav() {
   const { filterNavItems } = usePermissions();
-  const { clients, orders } = useAppStore();
+  const { clients, getClientDebt } = useAppStore();
   const { pathname } = useLocation();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const debtorCount = clients.filter(c => calculateClientDebt(c.id, orders) > 0).length;
+  const debtorCount = clients.filter(c => getClientDebt(c.id) > 0).length;
 
   const allowedPinned = filterNavItems(PINNED_ITEMS);
   const allowedMore   = filterNavItems(MORE_ITEMS);

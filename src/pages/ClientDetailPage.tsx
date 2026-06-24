@@ -27,7 +27,7 @@ import {
 } from '../utils/formatters';
 import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, sendClientMessage } from '../utils/whatsapp';
 import { printDocument } from '../utils/print';
-import { distributeFifo, calculateClientDebt } from '../utils/businessLogic';
+import { calculateClientDebt } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
 import type { Client, Order, Payment, PaymentMethod } from '../types';
 
@@ -160,16 +160,16 @@ function ClientPaymentForm({
   clientId: string;
   onClose: () => void;
 }) {
-  const { orders, clients, currentUser, addPayment, updateOrder } = useAppStore();
+  const { orders, clients, currentUser, addPayment, getClientDebt } = useAppStore();
 
-  const pendingOrders = orders
+  const deliveredOrders = orders
     .filter(o =>
       o.clientId === clientId &&
       (o.status === 'entregado' || o.status === 'pendiente_pago')
     )
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
 
-  const debt = pendingOrders.reduce((sum, o) => sum + (o.totalAmount - o.amountPaid), 0);
+  const debt = getClientDebt(clientId);
 
   const [amount, setAmount]     = useState<number>(debt > 0 ? Math.round(debt) : 0);
   const [method, setMethod]     = useState<PaymentMethod>('transferencia');
@@ -187,17 +187,13 @@ function ClientPaymentForm({
     setSubmitting(true);
     addPayment({
       clientId,
-      orderIds: pendingOrders.map(o => o.id),
+      orderIds: deliveredOrders.map(o => o.id),
       amount,
       method,
       date: new Date(date).toISOString(),
       notes,
       registeredById: currentUser?.id ?? 'u1',
     });
-    const aplicaciones = distributeFifo(amount, pendingOrders);
-    for (const { orderId, newAmountPaid, newStatus } of aplicaciones) {
-      updateOrder(orderId, { amountPaid: newAmountPaid, status: newStatus });
-    }
     onClose();
   };
 
@@ -231,24 +227,13 @@ function ClientPaymentForm({
         <textarea className="input-field resize-none" rows={2} value={notes}
           onChange={e => setNotes(e.target.value)} placeholder="Referencia de transferencia, etc." />
       </div>
-      {pendingOrders.length > 0 && (
-        <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
-          <p className="text-xs font-semibold text-amber-700 mb-1.5">Pedidos que se abonarán (FIFO):</p>
-          {pendingOrders.map(o => (
-            <div key={o.id} className="flex justify-between text-xs text-amber-700 py-0.5">
-              <span>{o.orderNumber}</span>
-              <span>Pendiente: {formatCurrency(o.totalAmount - o.amountPaid)}</span>
-            </div>
-          ))}
-        </div>
-      )}
       {confirming ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
           <p className="text-sm font-semibold text-amber-800">
             ¿Confirmar abono de <span className="text-amber-900">{formatCurrency(amount)}</span>?
           </p>
           <p className="text-xs text-amber-700">
-            Se distribuirá FIFO en {pendingOrders.length} pedido{pendingOrders.length !== 1 ? 's' : ''} de <strong>{clientName}</strong>.
+            Se registrará un abono a <strong>{clientName}</strong> que reducirá su saldo pendiente.
           </p>
           <div className="flex gap-2">
             <button type="submit" disabled={submitting} className="btn-primary flex-1 justify-center disabled:opacity-50">
