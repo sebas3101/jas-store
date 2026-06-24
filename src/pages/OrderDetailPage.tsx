@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store, Printer, History } from 'lucide-react';
+import { ArrowLeft, Package, User, Truck, Calendar, CreditCard, Edit2, Trash2, CheckCircle2, MessageCircle, Store, Printer, History, FastForward } from 'lucide-react';
 import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -57,12 +57,14 @@ function printReceipt(order: Order, clientName: string, payMethod: string) {
 export function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { orders, clients, users, suppliers, purchases, updateOrder, deleteOrder, getOrderHistory } = useAppStore();
+  const { orders, clients, users, suppliers, purchases, updateOrder, deleteOrder, getOrderHistory, markOrderAsHistorical } = useAppStore();
 
   const order = orders.find(o => o.id === id);
-  const [statusModal, setStatusModal]     = useState(false);
-  const [deleteDialog, setDeleteDialog]   = useState(false);
-  const [newStatus, setNewStatus]         = useState<OrderStatus>('entregado');
+  const [statusModal, setStatusModal]           = useState(false);
+  const [deleteDialog, setDeleteDialog]         = useState(false);
+  const [historicalDialog, setHistoricalDialog] = useState(false);
+  const [markingHistorical, setMarkingHistorical] = useState(false);
+  const [newStatus, setNewStatus]               = useState<OrderStatus>('entregado');
   const [availabilityModal, setAvailabilityModal] = useState(false);
 
   if (!order) {
@@ -158,6 +160,11 @@ export function OrderDetailPage() {
           className="btn-primary" type="button">
           <Edit2 size={14} /> Cambiar estado
         </button>
+        {['tomado', 'por_recoger', 'recogido'].includes(order.status) && (
+          <button onClick={() => setHistoricalDialog(true)} className="btn-ghost text-amber-600 border-amber-200 hover:bg-amber-50" type="button">
+            <FastForward size={14} /> Ya entregado
+          </button>
+        )}
         <button
           onClick={() => printReceipt(order, client?.name ?? 'Cliente', paymentMethodLabel[order.paymentMethod])}
           className="btn-ghost"
@@ -483,6 +490,20 @@ export function OrderDetailPage() {
           </div>
         );
       })()}
+
+      <ConfirmDialog
+        isOpen={historicalDialog}
+        onClose={() => setHistoricalDialog(false)}
+        onConfirm={async () => {
+          setHistoricalDialog(false);
+          setMarkingHistorical(true);
+          await markOrderAsHistorical(order.id);
+          setMarkingHistorical(false);
+        }}
+        title="Marcar como ya entregado"
+        message={`El pedido ${order.orderNumber} pasará directamente a «Pendiente de pago» y sus compras de proveedores quedarán marcadas como recogidas. ¿Continuar?`}
+        confirmLabel={markingHistorical ? 'Procesando…' : 'Sí, marcar como entregado'}
+      />
 
       <ConfirmDialog
         isOpen={deleteDialog}

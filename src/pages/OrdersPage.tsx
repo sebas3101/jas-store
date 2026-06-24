@@ -40,7 +40,7 @@ const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
 ];
 
 function OrderForm({ onSave, initial }: {
-  onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: SupplierPaymentInput[]) => void;
+  onSave:   (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: SupplierPaymentInput[], isHistorical?: boolean) => void;
   initial?: Order;
 }) {
   const { clients, products, users, suppliers, currentUser, getClientDebt } = useAppStore();
@@ -62,6 +62,7 @@ function OrderForm({ onSave, initial }: {
   const [notes, setNotes]             = useState(initial?.notes ?? '');
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [formError, setFormError]       = useState('');
+  const [isHistorical, setIsHistorical] = useState(false);
   // Abono al proveedor (por proveedor) — solo al crear
   const [supPays, setSupPays] = useState<Record<string, { paid: number; method: 'efectivo' | 'transferencia' }>>({});
 
@@ -139,6 +140,7 @@ function OrderForm({ onSave, initial }: {
       paidAmount:    supPays[g.supplierId]?.paid ?? 0,
       paymentMethod: supPays[g.supplierId]?.method ?? 'efectivo',
     }));
+    const finalStatus = !initial && isHistorical ? 'pendiente_pago' : status;
     onSave({
       clientId,
       items: items.map((it, i) => ({
@@ -150,14 +152,14 @@ function OrderForm({ onSave, initial }: {
       totalAmount,
       totalCost,
       amountPaid,
-      status,
+      status: finalStatus,
       paymentMethod: payMethod,
       sellerId,
       deliveryPersonId:      deliveryId     || undefined,
       orderDate: new Date(orderDate).toISOString(),
       estimatedDeliveryDate: estDelivery ? new Date(estDelivery).toISOString() : undefined,
       notes,
-    }, supplierPayments);
+    }, supplierPayments, !initial && isHistorical);
   };
 
   return (
@@ -378,6 +380,26 @@ function OrderForm({ onSave, initial }: {
             onChange={e => setNotes(e.target.value)} />
         </div>
       </div>
+      {/* Toggle pedido histórico — solo al crear */}
+      {!initial && (
+        <label className={`flex items-start gap-3 cursor-pointer rounded-xl px-3 py-3 border transition-colors ${isHistorical ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+          <input
+            type="checkbox"
+            checked={isHistorical}
+            onChange={e => setIsHistorical(e.target.checked)}
+            className="mt-0.5 accent-amber-500 w-4 h-4 flex-shrink-0"
+          />
+          <div>
+            <p className={`text-sm font-semibold ${isHistorical ? 'text-amber-800' : 'text-gray-700'}`}>
+              Pedido histórico (ya entregado)
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              El pedido no pasará por el flujo de entregas. Quedará directamente en «Pendiente de pago» listo para recibir abonos.
+            </p>
+          </div>
+        </label>
+      )}
+
       {formError && (
         <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
           {formError}
@@ -394,9 +416,9 @@ function OrderForm({ onSave, initial }: {
 function OrderFormWithWa({ onCreated }: { onCreated: (o: Order) => void }) {
   const { addOrder, orders } = useAppStore();
   return (
-    <OrderForm onSave={async (data, supplierPayments) => {
+    <OrderForm onSave={async (data, supplierPayments, isHistorical) => {
       const prevCount = orders.length;
-      await addOrder(data, supplierPayments);
+      await addOrder(data, supplierPayments, isHistorical);
       // addOrder is async; get the new order from latest store state
       const storeOrders = useAppStore.getState().orders;
       if (storeOrders.length > prevCount) {

@@ -151,9 +151,10 @@ interface AppStore {
 
   // Orders
   orders: Order[];
-  addOrder:    (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: { supplierId: string; paidAmount: number; paymentMethod: 'efectivo' | 'transferencia' }[]) => Promise<void>;
-  updateOrder: (id: string, o: Partial<Order>) => Promise<void>;
-  deleteOrder: (id: string) => Promise<void>;
+  addOrder:              (o: Omit<Order, 'id' | 'orderNumber' | 'createdAt' | 'updatedAt'>, supplierPayments?: { supplierId: string; paidAmount: number; paymentMethod: 'efectivo' | 'transferencia' }[], isHistorical?: boolean) => Promise<void>;
+  updateOrder:           (id: string, o: Partial<Order>) => Promise<void>;
+  deleteOrder:           (id: string) => Promise<void>;
+  markOrderAsHistorical: (id: string) => Promise<void>;
 
   // Payments
   payments: Payment[];
@@ -570,7 +571,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   // ── Orders ────────────────────────────────────────────────────────────────
   orders: [],
 
-  addOrder: async (o, supplierPayments) => {
+  addOrder: async (o, supplierPayments, isHistorical) => {
     const now = new Date().toISOString();
     const orderNumber = genOrderNumber(get().orders);
     const row = toSnake({ ...o, orderNumber, createdAt: now, updatedAt: now });
@@ -615,7 +616,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         cost,
         paidAmount:    pay?.paidAmount ?? 0,
         paymentMethod: pay?.paymentMethod ?? 'efectivo',
-        status: 'pendiente',
+        status: isHistorical ? 'recogido' : 'pendiente',
         purchaseDate: o.orderDate || now,
       });
     }
@@ -705,6 +706,32 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const { clients, orders, payments } = get();
       await syncOneClientStatus(clientId, clients, orders, payments, set);
     }
+  },
+
+  markOrderAsHistorical: async (id) => {
+    const order = get().orders.find(x => x.id === id);
+    if (!order) return;
+    const now = new Date().toISOString();
+    // 1. Pasar el pedido a pendiente_pago (ya entregado)
+    await get().updateOrder(id, { status: 'pendiente_pago', deliveredAt: now });
+    // 2. Marcar todas las compras de proveedores vinculadas como recogidas
+    const linked = get().purchases.filter(
+      p => p.orderId === id && p.status !== 'recogido' && p.status !== 'cancelado'
+    );
+    for (const p of linked) {
+      await supabase.from('supplier_purchases').update({ status: 'recogido' }).eq('id', p.id);
+    }
+    if (linked.length > 0) {
+      set(s => ({
+        purchases: s.purchases.map(p =>
+          linked.some(l => l.id === p.id) ? { ...p, status: 'recogido' } : p
+        ),
+      }));
+    }
+    // 3. Reconciliar pagos del cliente
+    const { clients, orders, payments } = get();
+    await reconcileClientOrders(order.clientId, orders, payments, set);
+    await syncOneClientStatus(order.clientId, clients, orders, payments, set);
   },
 
   // ── Payments ──────────────────────────────────────────────────────────────
