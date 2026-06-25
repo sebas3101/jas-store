@@ -65,24 +65,19 @@ export const buildDebtInfoMessage = (
     .filter(p => p.clientId === client.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  const abonosLines = clientPayments.length > 0
-    ? clientPayments
-        .map(p => `• ${formatDate(p.date)} — *${formatCurrency(p.amount)}*`)
-        .join('\n')
-    : 'Sin abonos registrados.';
-
   const lastPayment = clientPayments[0];
+
+  const lastPaymentLine = lastPayment
+    ? `💵 *Último abono:*\n📅 ${formatDate(lastPayment.date)} — *${formatCurrency(lastPayment.amount)}*`
+    : '💵 *Abonos:* Sin abonos registrados.';
 
   return (
     `Hola ${client.name} 😊, aquí tienes el resumen de tu cuenta en *JAS Store*:\n\n` +
     `💰 *Saldo pendiente total: ${formatCurrency(debt)}*\n\n` +
     (pedidosLines
-      ? `📦 *Pedidos pendientes:*\n${pedidosLines}\n\n`
+      ? `📦 *Pedidos entregados:*\n${pedidosLines}\n\n`
       : '') +
-    `💵 *Abonos registrados:*\n${abonosLines}\n\n` +
-    (lastPayment
-      ? `Último abono:\n📅 ${formatDate(lastPayment.date)}\n💵 *${formatCurrency(lastPayment.amount)}*\n\n`
-      : '') +
+    `${lastPaymentLine}\n\n` +
     `Este mensaje es solo informativo para que tengas claridad sobre tu cuenta.\n` +
     `Cualquier duda estamos a tu disposición. ¡Gracias! 🙏`
   );
