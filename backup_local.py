@@ -65,16 +65,21 @@ def main():
     print("  Backup JAS Store — Supabase")
     print("=" * 50)
 
-    # Leer credenciales desde .env.local (junto a este script)
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    env = leer_env(os.path.join(base_dir, ".env.local"))
+
+    # Leer credenciales: primero backup_config.txt, luego .env.local
+    env = leer_env(os.path.join(base_dir, "backup_config.txt"))
+    if not env:
+        env = leer_env(os.path.join(base_dir, ".env.local"))
 
     supabase_url = env.get("VITE_SUPABASE_URL", "")
     supabase_key = env.get("VITE_SUPABASE_SERVICE_KEY", "")
 
     if not supabase_url or not supabase_key:
-        print("\nERROR: No se encontraron las credenciales en .env.local")
-        print("Asegurate de tener VITE_SUPABASE_URL y VITE_SUPABASE_SERVICE_KEY en ese archivo.")
+        print("\nERROR: No se encontraron las credenciales.")
+        print("Crea un archivo backup_config.txt con:")
+        print("  VITE_SUPABASE_URL=https://...")
+        print("  VITE_SUPABASE_SERVICE_KEY=tu_clave")
         input("\nPresiona Enter para cerrar...")
         return
 
