@@ -52,3 +52,6 @@ supabase/.temp/
 
 # Backups automáticos — los maneja GitHub Actions, no el dev local
 backups/
+
+# Credenciales de backup para otros PCs — nunca subir al repo
+backup_config.txt
