@@ -1,6 +1,8 @@
 import type { Client, Order, Payment } from '../types';
 import { formatCurrency, formatDate } from './formatters';
 
+const firstName = (name: string) => name.trim().split(/\s+/)[0];
+
 // ─── Mensaje de cobro (recordatorio) con último abono ────────────────────────
 
 export const buildDebtReminderMessage = (
@@ -28,7 +30,7 @@ export const buildDebtReminderMessage = (
     : 'Aún no registramos abonos para este pedido.';
 
   return (
-    `Hola ${client.name} 😊, esperamos que estés muy bien.\n\n` +
+    `Hola ${firstName(client.name)} 😊, esperamos que estés muy bien.\n\n` +
     `Te recordamos que tienes un *saldo pendiente de ${formatCurrency(debt)}*` +
     (pendingOrders ? ` correspondiente a tu(s) pedido(s): ${pendingOrders}` : '') +
     `.\n\n${lastPaymentLine}\n\n` +
@@ -72,7 +74,7 @@ export const buildDebtInfoMessage = (
     : '💵 *Abonos:* Sin abonos registrados.';
 
   return (
-    `Hola ${client.name} 😊, aquí tienes el resumen de tu cuenta en *JAS Store*:\n\n` +
+    `Hola ${firstName(client.name)} 😊, aquí tienes el resumen de tu cuenta en *JAS Store*:\n\n` +
     (pedidosLines
       ? `📦 *Pedidos entregados:*\n${pedidosLines}\n\n`
       : '') +
@@ -105,7 +107,7 @@ export const buildOrderConfirmationMessage = (
   if (isCredit) {
     const totalDebt = previousDebt + orderBalance;
     return (
-      `Hola ${client.name} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
+      `Hola ${firstName(client.name)} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
       `📦 *Pedido ${order.orderNumber}*\n` +
       (items ? `${items}\n\n` : '') +
       `💰 Valor del pedido: *${formatCurrency(order.totalAmount)}*\n` +
@@ -120,7 +122,7 @@ export const buildOrderConfirmationMessage = (
 
   // Pago directo
   return (
-    `Hola ${client.name} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
+    `Hola ${firstName(client.name)} 😊, tu pedido en *JAS Store* ha sido registrado.\n\n` +
     `📦 *Pedido ${order.orderNumber}*\n` +
     (items ? `${items}\n\n` : '') +
     `💰 Valor del pedido: *${formatCurrency(order.totalAmount)}*\n` +
@@ -144,7 +146,7 @@ export const buildAvailabilityMessage = (client: Client, order: Order) => {
     .join('\n');
 
   return (
-    `Hola ${client.name} 😊, te confirmamos que tu pedido *#${order.orderNumber}* ya se encuentra disponible.\n\n` +
+    `Hola ${firstName(client.name)} 😊, te confirmamos que tu pedido *#${order.orderNumber}* ya se encuentra disponible.\n\n` +
     `📦 *Productos:*\n${items || `• ${order.items[0]?.productName ?? 'Pedido'}`}\n\n` +
     `💰 Valor: *${formatCurrency(order.totalAmount)}*\n\n` +
     `Vamos a proceder con la recogida de la mercancía. Te estaremos informando cuando esté lista para entrega.\n\n` +
