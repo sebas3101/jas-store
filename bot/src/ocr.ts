@@ -59,7 +59,7 @@ function parse(text: string): ExtractedPayment | null {
   } catch { return null; }
 }
 
-// Usa el Edge Function de Supabase (Claude → Groq → Gemini, con API keys seguras)
+// Usa el Edge Function de Supabase (Gemini → Groq, con API keys seguras)
 async function tryEdgeFunction(imageBase64: string, mimeType: string): Promise<ExtractedPayment | null> {
   const url    = process.env.SUPABASE_URL;
   const apiKey = process.env.SUPABASE_SERVICE_KEY;
@@ -89,7 +89,6 @@ async function tryEdgeFunction(imageBase64: string, mimeType: string): Promise<E
 // Fallback directo a Groq (en caso de que el Edge Function no esté disponible)
 const GROQ_MODELS = [
   'meta-llama/llama-4-scout-17b-16e-instruct',
-  'meta-llama/llama-4-maverick-17b-128e-instruct',
 ];
 
 async function tryGroqModel(imageBase64: string, mimeType: string, model: string, key: string): Promise<ExtractedPayment | null> {
@@ -128,7 +127,7 @@ export async function extractPaymentData(
   mimeType = 'image/jpeg',
 ): Promise<ExtractedPayment | null> {
 
-  // Primero: Edge Function (tiene Claude + Groq + Gemini con keys seguras)
+  // Primero: Edge Function (Gemini + Groq con keys seguras)
   const edgeResult = await tryEdgeFunction(imageBase64, mimeType);
   if (edgeResult && (edgeResult.amount || edgeResult.reference)) {
     return edgeResult;

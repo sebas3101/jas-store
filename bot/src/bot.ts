@@ -124,8 +124,7 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
   if (!ocr.reference) advertencias.push('referencia no detectada — revisa en el dashboard');
   if (ocr.confidence === 'baja') advertencias.push('imagen difícil de leer');
 
-  // Detección de duplicado por referencia — BLOQUEA el guardado
-  // Sin referencia no se puede detectar duplicados de forma confiable
+  // Detección de duplicado por referencia — chequeo fuerte
   if (ocr.reference) {
     const esDuplicado = await checkDuplicateByRef(ocr.reference);
     if (esDuplicado) {
@@ -140,6 +139,23 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
         (ocr.date ? `📅 Fecha: ${ocr.date}\n` : '') +
         (ocr.bank ? `🏦 Banco: ${ocr.bank}\n` : '') +
         `\n¿Es un pago diferente? Responde *sí* para registrar o *no* para descartar.`,
+        { parse_mode: 'Markdown' },
+      );
+      return;
+    }
+  } else {
+    // Sin referencia: chequeo débil por monto+fecha
+    const esDuplicado = await checkDuplicateByAmount(ocr.amount, ocr.date);
+    if (esDuplicado) {
+      session.phase          = 'waiting_dup_confirm';
+      session.resolvedClient = client;
+      session.resolvedOcr    = ocr;
+      session.ts             = Date.now();
+      await bot.sendMessage(
+        chatId,
+        `⚠️ *Posible duplicado*\n\nYa existe un comprobante de *${ocr.amount.toLocaleString('es-CO')} COP*` +
+        (ocr.date ? ` del ${ocr.date}` : '') +
+        `.\n\n¿Es un pago diferente? Responde *sí* para registrar o *no* para descartar.`,
         { parse_mode: 'Markdown' },
       );
       return;

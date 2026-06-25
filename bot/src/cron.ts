@@ -68,7 +68,7 @@ export function startDailyCron(bot: TelegramBot, notifyIds: number[]): void {
     // Colombia = UTC-5 → 8:00 AM Colombia = 13:00 UTC
     const today   = now.toISOString().slice(0, 10);
 
-    if (utcHour === 13 && utcMin === 0 && lastSentDate !== today) {
+    if (utcHour === 13 && utcMin < 2 && lastSentDate !== today) {
       lastSentDate = today;
       try {
         const msg = await buildSummary();
