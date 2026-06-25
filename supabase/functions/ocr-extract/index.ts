@@ -7,17 +7,19 @@ const corsHeaders = {
 
 const PROMPT = `Eres un experto en leer comprobantes de pago colombianos (Nequi, Bancolombia, Daviplata, PSE, transferencias, Efecty, etc).
 
+La imagen puede estar comprimida o pixelada (foto de WhatsApp reenviada a Telegram). Haz tu mejor esfuerzo para extraer los datos aunque la imagen no sea perfecta.
+
 Extrae SOLO los datos visibles en este comprobante. Responde ÚNICAMENTE con un JSON así:
 {"amount":150000,"date":"2024-01-15","bank":"Nequi","reference":"123456789","senderName":"Juan Pérez","confidence":"alta","notes":null}
 
 Reglas:
-- amount: número entero en pesos colombianos, sin puntos ni comas
+- amount: número entero en pesos colombianos, sin puntos ni comas. En Nequi Android el monto aparece grande en la pantalla de confirmación (ej: "$150.000" o "150.000"). Busca el número más prominente de la pantalla. Si hay un monto parcialmente legible, intenta inferirlo.
 - date: formato YYYY-MM-DD (fecha de la transacción, NO la fecha actual)
-- bank: nombre del banco o billetera (Nequi, Bancolombia, Daviplata, etc)
-- reference: número de referencia, aprobación o transacción
+- bank: nombre del banco o billetera. Si ves el logo o color verde/morado de Nequi, pon "Nequi". Si ves Bancolombia, pon "Bancolombia".
+- reference: número de referencia, aprobación, código de transacción o número largo. En Nequi suele aparecer como "# XXXX" o "Número de transacción".
 - senderName: nombre completo del remitente (quien envió el dinero)
-- confidence: "alta" si todo está claro, "media" si hay dudas, "baja" si el comprobante es ilegible
-- notes: observación si algo es dudoso o ambiguo, sino null
+- confidence: "alta" si ves el monto claro, "media" si hay algo borroso pero el monto es legible, "baja" si no puedes leer el monto
+- notes: si la imagen está comprimida o hay campos que no puedes leer con certeza, mencionarlo aquí. Sino null.
 Si un campo no es visible, ponlo como null. SOLO el JSON, nada más.`;
 
 function parseResult(text: string) {
@@ -41,7 +43,7 @@ async function extractWithClaude(imageBase64: string, mimeType: string): Promise
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-6',
         max_tokens: 512,
         messages: [{
           role: 'user',

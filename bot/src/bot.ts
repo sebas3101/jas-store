@@ -106,7 +106,12 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
     sessions.delete(chatId);
     await bot.sendMessage(
       chatId,
-      '📷 No pude leer el *monto* del comprobante.\n\nVerifica que la imagen sea clara, esté bien iluminada y sin recortes, luego envíala de nuevo.',
+      '📷 No pude leer el *monto* del comprobante.\n\n' +
+      'Si el pantallazo viene de WhatsApp, prueba así:\n' +
+      '1. En Telegram toca el clip 📎\n' +
+      '2. Elige *Archivo* (no Foto/Galería)\n' +
+      '3. Busca el pantallazo y envíalo\n\n' +
+      '_Enviarlo como archivo evita la doble compresión y mejora la lectura._',
       { parse_mode: 'Markdown' },
     );
     return;
