@@ -31,71 +31,6 @@ function parseResult(text: string) {
   }
 }
 
-async function extractWithClaude(imageBase64: string, mimeType: string): Promise<{ result: unknown; error?: string }> {
-  const apiKey = Deno.env.get('ANTHROPIC_KEY');
-  if (!apiKey) return { result: null, error: 'ANTHROPIC_KEY no configurada' };
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 512,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType, data: imageBase64 } },
-            { type: 'text', text: PROMPT },
-          ],
-        }],
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      return { result: null, error: `Claude HTTP ${res.status}: ${body}` };
-    }
-    const data = await res.json();
-    return { result: parseResult(data.content?.[0]?.text ?? '') };
-  } catch (e) {
-    return { result: null, error: `Claude exception: ${e}` };
-  }
-}
-
-async function extractWithGroq(imageBase64: string, mimeType: string): Promise<{ result: unknown; error?: string }> {
-  const apiKey = Deno.env.get('GROQ_KEY');
-  if (!apiKey) return { result: null, error: 'GROQ_KEY no configurada' };
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
-            { type: 'text', text: PROMPT },
-          ],
-        }],
-        max_tokens: 512,
-        temperature: 0,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      return { result: null, error: `Groq HTTP ${res.status}: ${body}` };
-    }
-    const data = await res.json();
-    return { result: parseResult(data.choices?.[0]?.message?.content ?? '') };
-  } catch (e) {
-    return { result: null, error: `Groq exception: ${e}` };
-  }
-}
-
 async function extractWithGemini(imageBase64: string, mimeType: string): Promise<{ result: unknown; error?: string }> {
   const apiKey = Deno.env.get('GEMINI_KEY');
   if (!apiKey) return { result: null, error: 'GEMINI_KEY no configurada' };
@@ -122,6 +57,37 @@ async function extractWithGemini(imageBase64: string, mimeType: string): Promise
   }
 }
 
+async function extractWithGroq(imageBase64: string, mimeType: string): Promise<{ result: unknown; error?: string }> {
+  const apiKey = Deno.env.get('GROQ_KEY');
+  if (!apiKey) return { result: null, error: 'GROQ_KEY no configurada' };
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-maverick-17b-128e-instruct',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${mimeType};base64,${imageBase64}` } },
+            { type: 'text', text: PROMPT },
+          ],
+        }],
+        max_tokens: 512,
+        temperature: 0,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      return { result: null, error: `Groq HTTP ${res.status}: ${body}` };
+    }
+    const data = await res.json();
+    return { result: parseResult(data.choices?.[0]?.message?.content ?? '') };
+  } catch (e) {
+    return { result: null, error: `Groq exception: ${e}` };
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -138,25 +104,7 @@ serve(async (req) => {
 
     const errors: string[] = [];
 
-    // Claude primero (más confiable para visión)
-    const claude = await extractWithClaude(imageBase64, mimeType);
-    if (claude.result) {
-      return new Response(JSON.stringify(claude.result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (claude.error) errors.push(claude.error);
-
-    // Groq como segundo intento
-    const groq = await extractWithGroq(imageBase64, mimeType);
-    if (groq.result) {
-      return new Response(JSON.stringify(groq.result), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (groq.error) errors.push(groq.error);
-
-    // Gemini como último fallback
+    // Gemini primero — mejor visión con imágenes comprimidas, capa gratuita generosa
     const gemini = await extractWithGemini(imageBase64, mimeType);
     if (gemini.result) {
       return new Response(JSON.stringify(gemini.result), {
@@ -165,7 +113,15 @@ serve(async (req) => {
     }
     if (gemini.error) errors.push(gemini.error);
 
-    // Todos fallaron — devolver errores para diagnóstico
+    // Groq como fallback — también gratuito
+    const groq = await extractWithGroq(imageBase64, mimeType);
+    if (groq.result) {
+      return new Response(JSON.stringify(groq.result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (groq.error) errors.push(groq.error);
+
     return new Response(JSON.stringify({ error: 'Todos los proveedores fallaron', details: errors }), {
       status: 502,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
