@@ -1,0 +1,13 @@
+name: Keep-alive bot Render
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # cada 5 minutos
+  workflow_dispatch:        # permite correrlo manualmente
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health check
+        run: curl -sf ${{ secrets.RENDER_BOT_URL }} || true
