@@ -73,11 +73,11 @@ export const buildDebtInfoMessage = (
 
   return (
     `Hola ${client.name} 😊, aquí tienes el resumen de tu cuenta en *JAS Store*:\n\n` +
-    `💰 *Saldo pendiente total: ${formatCurrency(debt)}*\n\n` +
     (pedidosLines
       ? `📦 *Pedidos entregados:*\n${pedidosLines}\n\n`
       : '') +
     `${lastPaymentLine}\n\n` +
+    `💰 *Saldo pendiente total: ${formatCurrency(debt)}*\n\n` +
     `Este mensaje es solo informativo para que tengas claridad sobre tu cuenta.\n` +
     `Cualquier duda estamos a tu disposición. ¡Gracias! 🙏`
   );
