@@ -1,5 +1,6 @@
 import TelegramBot from 'node-telegram-bot-api';
 import 'dotenv/config';
+import { createServer } from 'http';
 import { extractPaymentData, type ExtractedPayment } from './ocr';
 import { searchClients, savePaymentProof, checkDuplicateByRef, checkDuplicateByAmount, type DbClient } from './db';
 import { startDailyCron } from './cron';
@@ -361,6 +362,13 @@ bot.on('message', async msg => {
 });
 
 console.log('🤖 JAS Bot iniciado — esperando comprobantes...');
+
+// Health check HTTP para Render.com (evita que el servicio se apague)
+const PORT = process.env.PORT ?? 3000;
+createServer((_, res) => {
+  res.writeHead(200);
+  res.end('ok');
+}).listen(PORT, () => console.log(`[HTTP] Health check en puerto ${PORT}`));
 
 // Resumen diario a las 8:00 AM Colombia → va a todos los usuarios permitidos
 if (ALLOWED_IDS.length > 0) {

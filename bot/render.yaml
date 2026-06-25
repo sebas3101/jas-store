@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: jas-store-bot
+    runtime: node
+    rootDir: .
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: GROQ_KEY
+        sync: false
+      - key: GEMINI_KEY
+        sync: false
+      - key: ALLOWED_CHAT_IDS
+        sync: false
