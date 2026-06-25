@@ -49,3 +49,6 @@ skills-lock.json
 
 # Supabase temp
 supabase/.temp/
+
+# Backups automáticos — los maneja GitHub Actions, no el dev local
+backups/

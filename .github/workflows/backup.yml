@@ -1,0 +1,60 @@
+name: Backup semanal Supabase
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'  # Domingos 00:00 AM Colombia (UTC-5 → 05:00 UTC)
+  workflow_dispatch:       # Permite ejecutar manualmente desde GitHub
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Exportar tablas como CSV
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          DIR="backups/$DATE"
+          mkdir -p "$DIR"
+
+          TABLES="clients orders payments payment_proofs supplier_purchases suppliers expenses"
+
+          for TABLE in $TABLES; do
+            HTTP=$(curl -sf -w "%{http_code}" \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              -H "Accept: text/csv" \
+              "$SUPABASE_URL/rest/v1/$TABLE?select=*&limit=50000" \
+              -o "$DIR/$TABLE.csv")
+            if [ "$HTTP" = "200" ]; then
+              ROWS=$(tail -n +2 "$DIR/$TABLE.csv" | wc -l)
+              echo "✓ $TABLE — $ROWS filas"
+            else
+              echo "✗ $TABLE falló (HTTP $HTTP)"
+            fi
+          done
+
+      - name: Eliminar backups de más de 8 semanas
+        run: |
+          cd backups 2>/dev/null || exit 0
+          ls -d */ 2>/dev/null | sort -r | tail -n +9 | xargs rm -rf
+          echo "Backups conservados: $(ls -d */ 2>/dev/null | wc -l)"
+
+      - name: Guardar en el repositorio
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add backups/
+          if git diff --cached --quiet; then
+            echo "Sin cambios nuevos"
+          else
+            git commit -m "backup: exportación automática $DATE"
+            git push
+          fi
