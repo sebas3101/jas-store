@@ -47,11 +47,10 @@ export async function checkDuplicateByRef(reference: string): Promise<boolean> {
 }
 
 /**
- * Detecta duplicado por monto + fecha cuando no hay referencia disponible.
- * Busca comprobantes del mismo monto en las últimas 24 h.
+ * Detecta duplicado por monto + fecha + cliente cuando no hay referencia.
+ * Solo compara contra comprobantes del mismo cliente para evitar falsos positivos.
  */
-export async function checkDuplicateByAmount(amount: number, date?: string): Promise<boolean> {
-  // Ventana de ±24 h alrededor de la fecha del comprobante (o las últimas 24 h si no hay fecha)
+export async function checkDuplicateByAmount(amount: number, clientId: string, date?: string): Promise<boolean> {
   const base = date ? new Date(date) : new Date();
   const from = new Date(base); from.setHours(0, 0, 0, 0);
   const to   = new Date(base); to.setHours(23, 59, 59, 999);
@@ -60,6 +59,7 @@ export async function checkDuplicateByAmount(amount: number, date?: string): Pro
     .from('payment_proofs')
     .select('id')
     .eq('amount', amount)
+    .eq('client_id', clientId)
     .gte('date', from.toISOString().slice(0, 10))
     .lte('date', to.toISOString().slice(0, 10))
     .neq('status', 'rechazado')

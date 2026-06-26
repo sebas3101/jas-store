@@ -143,9 +143,9 @@ async function guardar(chatId: number, session: Session, client: DbClient | null
       );
       return;
     }
-  } else {
-    // Sin referencia: chequeo débil por monto+fecha
-    const esDuplicado = await checkDuplicateByAmount(ocr.amount, ocr.date);
+  } else if (client?.id) {
+    // Sin referencia: chequeo débil por monto+fecha, solo si hay cliente identificado
+    const esDuplicado = await checkDuplicateByAmount(ocr.amount, client.id, ocr.date);
     if (esDuplicado) {
       session.phase          = 'waiting_dup_confirm';
       session.resolvedClient = client;
@@ -379,12 +379,22 @@ bot.on('message', async msg => {
 
 console.log('🤖 JAS Bot iniciado — esperando comprobantes...');
 
-// Health check HTTP para Render.com (evita que el servicio se apague)
+// Health check HTTP para Render.com
 const PORT = process.env.PORT ?? 3000;
-createServer((_, res) => {
+const server = createServer((_, res) => {
   res.writeHead(200);
   res.end('ok');
-}).listen(PORT, () => console.log(`[HTTP] Health check en puerto ${PORT}`));
+});
+server.listen(PORT, () => console.log(`[HTTP] Health check en puerto ${PORT}`));
+
+// Auto-ping cada 10 min para evitar que Render apague el servicio por inactividad
+// (el cron de GitHub Actions no es confiable en repos de baja actividad)
+const SELF_URL = process.env.RENDER_EXTERNAL_HOSTNAME
+  ? `https://${process.env.RENDER_EXTERNAL_HOSTNAME}`
+  : `http://localhost:${PORT}`;
+setInterval(() => {
+  fetch(SELF_URL).catch(() => {});
+}, 10 * 60_000);
 
 // Resumen diario a las 8:00 AM Colombia → va a todos los usuarios permitidos
 if (ALLOWED_IDS.length > 0) {
