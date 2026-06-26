@@ -185,22 +185,28 @@ export function ClientsPage() {
 
   useEffect(() => { setPage(1); }, [search, filterStatus, filterType]);
 
-  // Cartera vencida: clientes con deuda > 0 y al menos un pedido con más de 15 días sin pagar
+  // Cartera pendiente: clientes con pedidos entregados/pendiente_pago sin pagar completamente
   const today = new Date();
   const carteraVencida = clients
     .map(c => {
-      const debt = getClientDebt(c.id);
-      if (debt <= 0) return null;
-      const oldestUnpaid = orders
-        .filter(o => o.clientId === c.id && o.status !== 'pagado' && o.status !== 'cancelado')
-        .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())[0];
-      if (!oldestUnpaid) return null;
-      const days = differenceInDays(today, parseISO(oldestUnpaid.orderDate));
-      if (days < 1) return null;
+      const unpaidOrders = orders.filter(o =>
+        o.clientId === c.id &&
+        (o.status === 'entregado' || o.status === 'pendiente_pago') &&
+        o.totalAmount > o.amountPaid
+      );
+      if (!unpaidOrders.length) return null;
+      const debt = unpaidOrders.reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+      const oldest = [...unpaidOrders].sort((a, b) =>
+        new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime()
+      )[0];
+      const days = differenceInDays(today, parseISO(oldest.orderDate));
       return { client: c, debt, days };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null)
     .sort((a, b) => b.days - a.days);
+
+  const moraCount           = clients.filter(c => c.status === 'mora').length;
+  const creditoExcedidoCount = clients.filter(c => c.status === 'credito_excedido').length;
 
   const filtered = clients.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -255,8 +261,7 @@ export function ClientsPage() {
       {carteraVencida.length > 0 && (() => {
         const totalCartera = carteraVencida.reduce((s, x) => s + x.debt, 0);
         const mayorDeuda   = carteraVencida[0];
-        const masAntigua   = [...carteraVencida].sort((a, b) => b.days - a.days)[0];
-        const visible      = showAllCartera ? carteraVencida : carteraVencida.slice(0, 5);
+const visible      = showAllCartera ? carteraVencida : carteraVencida.slice(0, 5);
         return (
           <div className="bg-red-50 border border-red-100 rounded-2xl p-4 space-y-3">
             {/* Encabezado */}
@@ -272,18 +277,21 @@ export function ClientsPage() {
                 <p className="text-sm font-bold text-red-700 mt-0.5">{formatCurrency(totalCartera)}</p>
               </div>
               <div className="bg-red-50 rounded-xl px-3 py-2">
-                <p className="text-[10px] text-red-400 font-medium">Clientes en mora</p>
+                <p className="text-[10px] text-red-400 font-medium">Cartera pendiente</p>
                 <p className="text-sm font-bold text-red-700 mt-0.5">{carteraVencida.length} cliente{carteraVencida.length !== 1 ? 's' : ''}</p>
               </div>
-              <div className="bg-orange-50 rounded-xl px-3 py-2 col-span-2 sm:col-span-1">
-                <p className="text-[10px] text-orange-400 font-medium">Mayor deuda</p>
-                <p className="text-xs font-bold text-orange-700 truncate mt-0.5">{mayorDeuda.client.name}</p>
-                <p className="text-[10px] text-orange-500">{formatCurrency(mayorDeuda.debt)}</p>
+              <div className="bg-red-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-red-400 font-medium">En mora</p>
+                <p className="text-sm font-bold text-red-700 mt-0.5">{moraCount} cliente{moraCount !== 1 ? 's' : ''}</p>
               </div>
-              <div className="bg-orange-50 rounded-xl px-3 py-2 col-span-2 sm:col-span-1">
-                <p className="text-[10px] text-orange-400 font-medium">Más antigua</p>
-                <p className="text-xs font-bold text-orange-700 truncate mt-0.5">{masAntigua.client.name}</p>
-                <p className="text-[10px] text-orange-500">{masAntigua.days} días sin pagar</p>
+              <div className="bg-orange-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-orange-500 font-medium">Cupo excedido</p>
+                <p className="text-sm font-bold text-orange-700 mt-0.5">{creditoExcedidoCount} cliente{creditoExcedidoCount !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="bg-orange-50 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-orange-500 font-medium">Mayor deuda</p>
+                <p className="text-xs font-bold text-orange-700 truncate mt-0.5">{mayorDeuda.client.name}</p>
+                <p className="text-[10px] text-orange-600">{formatCurrency(mayorDeuda.debt)}</p>
               </div>
             </div>
 
