@@ -9,7 +9,7 @@ export type OrderStatus =
   | 'pagado'
   | 'pendiente_pago'
   | 'cancelado';
-export type ClientStatus = 'al_dia' | 'pendiente' | 'mora' | 'credito_cerrado';
+export type ClientStatus = 'al_dia' | 'pendiente' | 'mora' | 'credito_excedido' | 'credito_cerrado';
 export type ProductStatus = 'disponible' | 'agotado' | 'por_encargo' | 'publicado';
 export type ProductCategory =
   | 'ropa_dama'

@@ -167,17 +167,39 @@ describe('deriveClientStatus', () => {
     expect(deriveClientStatus(client, orders)).toBe('pendiente');
   });
 
-  it('devuelve mora cuando la deuda supera el límite de crédito', () => {
+  it('devuelve credito_excedido cuando la deuda supera el límite (dentro de 18 días)', () => {
     const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 100_000 });
-    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado' })];
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado', orderDate: recentDate })];
+    expect(deriveClientStatus(client, orders)).toBe('credito_excedido');
+  });
+
+  it('devuelve mora cuando llevan más de 18 días sin abono', () => {
+    const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 500_000 });
+    const oldDate = new Date(Date.now() - 20 * 86_400_000).toISOString();
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 0, status: 'entregado', orderDate: oldDate })];
+    expect(deriveClientStatus(client, orders)).toBe('mora');
+  });
+
+  it('un abono reciente reinicia el reloj — no mora aunque el pedido sea antiguo', () => {
+    const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 500_000 });
+    const oldDate  = new Date(Date.now() - 40 * 86_400_000).toISOString();
+    const recentPaymentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const orders   = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, amountPaid: 30_000, status: 'entregado', orderDate: oldDate })];
+    const payments = [{ id: 'p1', clientId: 'c1', orderId: 'o1', orderIds: ['o1'], amount: 30_000, date: recentPaymentDate, method: 'efectivo' as const, notes: '', registeredById: 'u1', createdAt: recentPaymentDate }];
+    expect(deriveClientStatus(client, orders, payments)).toBe('pendiente');
+  });
+
+  it('mora tiene prioridad sobre credito_excedido', () => {
+    const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: 50_000 });
+    const oldDate = new Date(Date.now() - 25 * 86_400_000).toISOString();
+    const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 200_000, amountPaid: 0, status: 'entregado', orderDate: oldDate })];
     expect(deriveClientStatus(client, orders)).toBe('mora');
   });
 
   it('nunca cambia credito_cerrado sin importar la deuda', () => {
     const client = makeClient({ id: 'c1', status: 'credito_cerrado' });
-    // Sin deuda
     expect(deriveClientStatus(client, [])).toBe('credito_cerrado');
-    // Con deuda alta
     const orders = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 500_000, amountPaid: 0 })];
     expect(deriveClientStatus(client, orders)).toBe('credito_cerrado');
   });
@@ -185,9 +207,9 @@ describe('deriveClientStatus', () => {
   it('usa 200.000 como límite por defecto cuando creditLimit es null', () => {
     const client = makeClient({ id: 'c1', status: 'al_dia', creditLimit: undefined });
     const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
-    const ordersEnMora = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado' })];
+    const ordersExcedido  = [makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 250_000, amountPaid: 0, status: 'entregado', orderDate: recentDate })];
     const ordersEnPendiente = [makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 100_000, amountPaid: 0, status: 'entregado', orderDate: recentDate })];
-    expect(deriveClientStatus(client, ordersEnMora)).toBe('mora');
+    expect(deriveClientStatus(client, ordersExcedido)).toBe('credito_excedido');
     expect(deriveClientStatus(client, ordersEnPendiente)).toBe('pendiente');
   });
 });

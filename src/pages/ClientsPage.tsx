@@ -21,18 +21,20 @@ import type { Client, ClientStatus } from '../types';
 const PER_PAGE = 20;
 
 const STATUSES: { value: ClientStatus | 'all'; label: string }[] = [
-  { value: 'all',           label: 'Todos'       },
-  { value: 'al_dia',        label: 'Al día'      },
-  { value: 'pendiente',     label: 'Pendiente'   },
-  { value: 'mora',          label: 'En mora'     },
-  { value: 'credito_cerrado', label: 'Crédito cerrado' },
+  { value: 'all',              label: 'Todos'           },
+  { value: 'al_dia',           label: 'Al día'          },
+  { value: 'pendiente',        label: 'Pendiente'       },
+  { value: 'mora',             label: 'En mora'         },
+  { value: 'credito_excedido', label: 'Cupo excedido'  },
+  { value: 'credito_cerrado',  label: 'Crédito cerrado' },
 ];
 
 const STATUS_AVATAR: Record<ClientStatus, { bg: string; text: string; dot: string }> = {
-  al_dia:          { bg: 'bg-emerald-50',  text: 'text-emerald-700', dot: 'bg-emerald-400' },
-  pendiente:       { bg: 'bg-amber-50',    text: 'text-amber-700',   dot: 'bg-amber-400'   },
-  mora:            { bg: 'bg-red-50',      text: 'text-red-700',     dot: 'bg-red-500'     },
-  credito_cerrado: { bg: 'bg-gray-100',    text: 'text-gray-600',    dot: 'bg-gray-400'    },
+  al_dia:           { bg: 'bg-emerald-50',  text: 'text-emerald-700', dot: 'bg-emerald-400' },
+  pendiente:        { bg: 'bg-amber-50',    text: 'text-amber-700',   dot: 'bg-amber-400'   },
+  mora:             { bg: 'bg-red-50',      text: 'text-red-700',     dot: 'bg-red-500'     },
+  credito_excedido: { bg: 'bg-orange-50',   text: 'text-orange-700',  dot: 'bg-orange-500'  },
+  credito_cerrado:  { bg: 'bg-gray-100',    text: 'text-gray-600',    dot: 'bg-gray-400'    },
 };
 
 function ClientForm({

@@ -67,17 +67,19 @@ export const orderStatusColor: Record<OrderStatus, string> = {
 };
 
 export const clientStatusLabel: Record<ClientStatus, string> = {
-  al_dia: 'Al día',
-  pendiente: 'Pendiente',
-  mora: 'En mora',
-  credito_cerrado: 'Crédito cerrado',
+  al_dia:           'Al día',
+  pendiente:        'Pendiente',
+  mora:             'En mora',
+  credito_excedido: 'Cupo excedido',
+  credito_cerrado:  'Crédito cerrado',
 };
 
 export const clientStatusColor: Record<ClientStatus, string> = {
-  al_dia: 'badge-green',
-  pendiente: 'badge-yellow',
-  mora: 'badge-red',
-  credito_cerrado: 'badge-gray',
+  al_dia:           'badge-green',
+  pendiente:        'badge-yellow',
+  mora:             'badge-red',
+  credito_excedido: 'badge-orange',
+  credito_cerrado:  'badge-gray',
 };
 
 export const productStatusLabel: Record<ProductStatus, string> = {

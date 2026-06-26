@@ -57,12 +57,13 @@ export function distributeFifo(amount: number, orders: Order[]): FifoApplication
 /**
  * Determina el estado correcto de un cliente según su deuda real.
  *
- * Reglas:
+ * Reglas (en orden de prioridad):
  * - 'credito_cerrado' nunca se modifica automáticamente.
  * - Sin deuda → 'al_dia'.
- * - Con deuda Y deuda > límite de crédito → 'mora'.
- * - Con deuda Y último abono hace >30 días (o sin abonos y pedido entregado >30 días) → 'mora'.
- * - Con deuda reciente → 'pendiente'.
+ * - Con deuda Y último abono hace >18 días (o sin abonos y pedido entregado >18 días) → 'mora'.
+ *   El abono reinicia el reloj de 18 días.
+ * - Con deuda Y deuda > límite de crédito → 'credito_excedido' (se mantiene hasta pagar o subir el cupo).
+ * - Con deuda reciente y dentro del límite → 'pendiente'.
  */
 export function deriveClientStatus(
   client: Client,
@@ -74,10 +75,8 @@ export function deriveClientStatus(
   const debt = calculateClientDebt(client.id, orders);
   if (debt <= 0) return 'al_dia';
 
-  // Mora inmediata si supera el límite de crédito
-  if (debt > (client.creditLimit ?? 200_000)) return 'mora';
-
-  // Calcular días desde el último abono o desde el pedido entregado más antiguo sin pagar
+  // Reloj de mora: corre desde el último abono. Si nunca abonó, desde el pedido entregado más antiguo.
+  // Un abono reinicia los 18 días sin importar si cubrió el pedido o no.
   const clientPayments = payments
     .filter(p => p.clientId === client.id)
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -95,17 +94,16 @@ export function deriveClientStatus(
     .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime())[0]
     ?.orderDate;
 
-  // El reloj de mora corre desde la fecha del pedido más antiguo sin pagar.
-  // Un abono reciente NO reinicia el reloj — solo reduces la deuda.
-  // Si el último abono cubrió TODO lo de ese pedido, el siguiente pedido más antiguo toma el reloj.
-  const referenceDate = oldestUnpaidDate
-    ? new Date(oldestUnpaidDate)
-    : lastPaymentDate;
+  // Si hay abono reciente, el reloj corre desde ese abono.
+  // Si nunca abonó, corre desde el pedido sin pagar más antiguo.
+  const referenceDate = lastPaymentDate ?? (oldestUnpaidDate ? new Date(oldestUnpaidDate) : null);
   if (referenceDate) {
-    const diffMs   = Date.now() - referenceDate.getTime();
-    const diffDays = diffMs / (1000 * 60 * 60 * 24);
-    if (diffDays > 30) return 'mora';
+    const diffDays = (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays > 18) return 'mora';
   }
+
+  // Crédito excedido: deuda supera el límite asignado (o $200.000 por defecto)
+  if (debt > (client.creditLimit ?? 200_000)) return 'credito_excedido';
 
   return 'pendiente';
 }

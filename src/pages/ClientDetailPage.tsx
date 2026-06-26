@@ -305,10 +305,11 @@ export function ClientDetailPage() {
   };
 
   const statusColors: Record<string, string> = {
-    al_dia:          'text-emerald-600 bg-emerald-50',
-    pendiente:       'text-amber-600 bg-amber-50',
-    mora:            'text-red-600 bg-red-50',
-    credito_cerrado: 'text-gray-600 bg-gray-100',
+    al_dia:           'text-emerald-600 bg-emerald-50',
+    pendiente:        'text-amber-600 bg-amber-50',
+    mora:             'text-red-600 bg-red-50',
+    credito_excedido: 'text-orange-600 bg-orange-50',
+    credito_cerrado:  'text-gray-600 bg-gray-100',
   };
 
   return (

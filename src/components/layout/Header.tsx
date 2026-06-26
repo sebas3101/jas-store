@@ -103,6 +103,20 @@ export function Header() {
     });
   });
 
+  clients.filter(c => c.status === 'credito_excedido').forEach(c => {
+    const debt = orders
+      .filter(o => o.clientId === c.id && !['pagado', 'cancelado'].includes(o.status))
+      .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+    if (debt > 0) all.push({
+      id: `cupo_${c.id}`,
+      title: 'Cupo excedido',
+      description: `${c.name} — debe ${formatCurrency(debt)} (supera su cupo)`,
+      severity: 'medium',
+      link: `/clientes/${c.id}`,
+      icon: AlertTriangle,
+    });
+  });
+
   const porRecoger = orders.filter(o => o.status === 'por_recoger').length;
   if (porRecoger > 0) all.push({
     id: 'por_recoger',
