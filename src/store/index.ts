@@ -202,6 +202,9 @@ interface AppStore {
   updateExpense: (id: string, e: Partial<Expense>) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
 
+  // Store settings
+  openingBalance: number;
+
   // Order history
   orderHistory: OrderHistory[];
   getOrderHistory: (orderId: string) => OrderHistory[];
@@ -254,6 +257,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         { data: expenses },
         { data: orderHistory },
         { data: goals },
+        { data: settingsRows },
       ] = await Promise.all([
         supabase.from('app_users').select('*').order('created_at'),
         supabase.from('clients').select('*').order('created_at'),
@@ -268,6 +272,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('expenses').select('*').order('created_at'),
         supabase.from('order_history').select('*').order('created_at'),
         supabase.from('monthly_goals').select('*').order('created_at'),
+        supabase.from('store_settings').select('opening_balance').limit(1),
       ]);
       const loadedReminderLog = await getReminderLog();
 
@@ -295,10 +300,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         publications:  cam(publications  ?? []) as Publication[],
         warranties:    cam(warranties    ?? []) as Warranty[],
         paymentProofs: cam(paymentProofs ?? []) as PaymentProof[],
-        expenses:      cam(expenses      ?? []) as Expense[],
-        orderHistory:  cam(orderHistory  ?? []) as OrderHistory[],
-        goals:         cam(goals         ?? []) as MonthlyGoal[],
-        reminderLog:   loadedReminderLog,
+        expenses:       cam(expenses      ?? []) as Expense[],
+        orderHistory:   cam(orderHistory  ?? []) as OrderHistory[],
+        goals:          cam(goals         ?? []) as MonthlyGoal[],
+        openingBalance: (settingsRows?.[0] as { opening_balance?: number } | undefined)?.opening_balance ?? 0,
+        reminderLog:    loadedReminderLog,
         initialized: true,
         isLoading: false,
       });
@@ -1052,6 +1058,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { notifyError('deleteExpense'); return; }
     set(s => ({ expenses: s.expenses.filter(x => x.id !== id) }));
   },
+
+  // ── Store settings ────────────────────────────────────────────────────────
+  openingBalance: 0,
 
   // ── Goals ─────────────────────────────────────────────────────────────────
   goals: [],

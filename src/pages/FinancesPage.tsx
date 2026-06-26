@@ -18,7 +18,7 @@ import { aoaToCSV, downloadCSV } from '../utils/csvExport';
 type ViewMode = 'month' | 'range';
 
 export function FinancesPage() {
-  const { orders, payments, purchases, expenses } = useAppStore();
+  const { orders, payments, purchases, expenses, openingBalance } = useAppStore();
   const { can } = usePermissions();
 
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -57,7 +57,7 @@ export function FinancesPage() {
   const totalCollected = rangePayments.reduce((s, p) => s + p.amount, 0);
   const totalPurchases = rangePurchases.reduce((s, p) => s + p.cost, 0);
   const totalExpenses  = rangeExpenses.reduce((s, e) => s + e.amount, 0);
-  const netBalance     = totalCollected - totalPurchases - totalExpenses;
+  const netBalance     = totalCollected - totalPurchases - totalExpenses + openingBalance;
   // Solo pedidos entregados/pendiente_pago generan deuda real
   const totalDebt = rangeOrders
     .filter(o => o.status === 'entregado' || o.status === 'pendiente_pago')
@@ -85,6 +85,7 @@ export function FinancesPage() {
       ['Ventas brutas (pedidos)',    totalSales],
       ['Costo de pedidos',          totalCost],
       ['Ganancia bruta',            grossProfit],
+      ['Capital inicial',           openingBalance],
       ['Recaudo (pagos recibidos)', totalCollected],
       ['Compras a proveedores',     totalPurchases],
       ['Gastos operativos',         totalExpenses],
@@ -189,7 +190,8 @@ export function FinancesPage() {
           <h2 className="section-title flex items-center gap-2"><Calendar size={16} /> Flujo de caja</h2>
           <div className="space-y-2">
             {[
-              { label: 'Recaudo clientes',   value: totalCollected,  color: 'text-emerald-600' },
+              ...(openingBalance > 0 ? [{ label: 'Capital inicial', value: openingBalance, color: 'text-indigo-600' }] : []),
+              { label: 'Recaudo clientes',    value: totalCollected,  color: 'text-emerald-600' },
               { label: 'Compras proveedores', value: totalPurchases,  color: 'text-red-500'    },
               { label: 'Gastos operativos',   value: totalExpenses,   color: 'text-orange-500' },
               { label: 'Saldo neto',          value: netBalance,      color: netBalance >= 0 ? 'text-emerald-700' : 'text-red-700' },
