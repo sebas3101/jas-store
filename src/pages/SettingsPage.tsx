@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw, Download, Bell, BellOff, BellRing } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Shield, Edit2, Key, UserCheck, UserX, CheckSquare, Square, RotateCcw, Download, Bell, BellOff, BellRing, QrCode, Upload, X as XIcon } from 'lucide-react';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { format } from 'date-fns';
 import { useAppStore } from '../store';
@@ -327,6 +327,56 @@ function PushSection() {
 
 // ─── Página principal de Configuración ───────────────────────────────────────
 
+// ─── Sección imagen de cuenta / QR ───────────────────────────────────────────
+
+function PaymentImageSection() {
+  const { paymentImageUrl, updatePaymentImageUrl } = useAppStore();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setUploading(true);
+    const { uploadImage } = await import('../utils/storage');
+    const url = await uploadImage(file, 'pedidos');
+    if (url) await updatePaymentImageUrl(url);
+    setUploading(false);
+  };
+
+  return (
+    <div className="card !p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <QrCode size={16} className="text-primary-600" />
+        <p className="text-sm font-semibold text-gray-800">Imagen de cuenta / QR de pago</p>
+      </div>
+      <p className="text-xs text-gray-500">
+        Esta imagen se comparte junto a los mensajes de cobro por WhatsApp. Sube una foto con los datos bancarios y el código QR.
+      </p>
+      {paymentImageUrl ? (
+        <div className="space-y-2">
+          <img src={paymentImageUrl} alt="QR de pago" className="w-40 h-auto rounded-xl border border-gray-200 object-contain" />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+              className="btn-ghost text-xs">
+              <Upload size={13} /> Cambiar imagen
+            </button>
+            <button type="button" onClick={() => updatePaymentImageUrl(null)}
+              className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-colors">
+              <XIcon size={13} /> Eliminar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
+          className="btn-primary text-sm">
+          <Upload size={14} /> {uploading ? 'Subiendo…' : 'Subir imagen de cuenta / QR'}
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+    </div>
+  );
+}
+
 export function SettingsPage() {
   const { users, currentUser, addUser, updateUser, deleteUser,
     clients, orders, payments, products, suppliers, purchases, expenses, warranties } = useAppStore();
@@ -554,6 +604,9 @@ export function SettingsPage() {
           </button>
         </div>
       )}
+
+      {/* Imagen de cuenta / QR de pago */}
+      {isAdmin && <PaymentImageSection />}
 
       {/* Notificaciones push */}
       <PushSection />

@@ -172,6 +172,24 @@ export const buildDataUpdateMessage = (client?: { name?: string }) => {
   );
 };
 
+/**
+ * Comparte la imagen de datos de pago/QR usando el menú nativo del dispositivo
+ * (Web Share API). Si no está disponible, abre la imagen en una nueva pestaña.
+ */
+export async function sharePaymentImage(imageUrl: string): Promise<void> {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const ext  = blob.type.split('/')[1] ?? 'jpg';
+    const file = new File([blob], `cuenta-jas.${ext}`, { type: blob.type });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Datos de pago — JAS Store' });
+      return;
+    }
+  } catch { /* si falla el fetch o share, cae al fallback */ }
+  window.open(imageUrl, '_blank');
+}
+
 export const openWhatsApp = (phone: string, message: string) => {
   if (!phone?.trim()) return;
   const cleaned = phone.replace(/\D/g, '');

@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Bell, MessageCircle, ArrowRight, Users, DollarSign,
-  CheckCircle2, AlertTriangle, Clock, Send,
+  CheckCircle2, AlertTriangle, Clock, Send, QrCode,
 } from 'lucide-react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { useAppStore } from '../store';
@@ -10,7 +10,7 @@ import type { Client } from '../types';
 import { StatCard } from '../components/ui/StatCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency } from '../utils/formatters';
-import { buildDebtReminderMessage, buildDebtInfoMessage, sendClientMessage } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, sendClientMessage, sharePaymentImage } from '../utils/whatsapp';
 import { daysSinceReminder } from '../utils/reminders';
 import type { ReminderLog } from '../utils/reminders';
 
@@ -71,7 +71,7 @@ function buildClientData(
 }
 
 export function RecordatoriosPage() {
-  const { clients, orders, payments, reminderLog: log, markReminderSent } = useAppStore();
+  const { clients, orders, payments, reminderLog: log, markReminderSent, paymentImageUrl } = useAppStore();
   const [tab, setTab] = useState<Tab>('urgente');
 
   const all     = buildClientData(clients, orders, payments, log);
@@ -236,7 +236,7 @@ export function RecordatoriosPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-gray-100">
+                <div className="flex gap-2 pt-2 border-t border-gray-100 flex-wrap">
                   <button
                     onClick={() => handleSend(c, waReminder)}
                     className="flex-1 text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
@@ -247,8 +247,16 @@ export function RecordatoriosPage() {
                     onClick={() => handleSend(c, waInfo)}
                     className="flex-1 text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl flex items-center justify-center gap-1.5 font-medium transition-colors"
                    type="button">
-                    <MessageCircle size={12} /> Detalle deuda
+                    <MessageCircle size={12} /> Detalle
                   </button>
+                  {paymentImageUrl && (
+                    <button
+                      onClick={() => sharePaymentImage(paymentImageUrl)}
+                      className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
+                     type="button" title="Compartir imagen de cuenta/QR">
+                      <QrCode size={12} /> QR
+                    </button>
+                  )}
                   <Link
                     to={`/clientes/${c.id}`}
                     className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-xl flex items-center justify-center transition-colors"

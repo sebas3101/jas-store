@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   FileText,
   RefreshCw,
+  QrCode,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAppStore } from '../store';
@@ -25,7 +26,7 @@ import {
   paymentMethodLabel,
   clientStatusLabel,
 } from '../utils/formatters';
-import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, sendClientMessage } from '../utils/whatsapp';
+import { buildDebtReminderMessage, buildDebtInfoMessage, buildDataUpdateMessage, sendClientMessage, sharePaymentImage } from '../utils/whatsapp';
 import { printDocument } from '../utils/print';
 import { calculateClientDebt } from '../utils/businessLogic';
 import { CurrencyInput } from '../components/ui/CurrencyInput';
@@ -262,6 +263,7 @@ export function ClientDetailPage() {
     payments,
     getClientDebt,
     getClientBalance,
+    paymentImageUrl,
   } = useAppStore();
 
   const client = clients.find(c => c.id === id);
@@ -441,6 +443,14 @@ export function ClientDetailPage() {
                type="button">
                 <MessageCircle size={12} /> WhatsApp
               </button>
+              {paymentImageUrl && (
+                <button
+                  onClick={() => sharePaymentImage(paymentImageUrl)}
+                  className="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                 type="button" title="Compartir imagen de cuenta/QR">
+                  <QrCode size={12} /> QR
+                </button>
+              )}
             </div>
           </div>
           <p className="text-xs text-gray-600 bg-white rounded-xl p-3 whitespace-pre-line border border-gray-100">
@@ -471,6 +481,14 @@ export function ClientDetailPage() {
                type="button">
                 <MessageCircle size={12} /> WhatsApp
               </button>
+              {paymentImageUrl && (
+                <button
+                  onClick={() => sharePaymentImage(paymentImageUrl)}
+                  className="text-xs bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-colors"
+                 type="button" title="Compartir imagen de cuenta/QR">
+                  <QrCode size={12} /> QR
+                </button>
+              )}
             </div>
           </div>
           <p className="text-xs text-gray-600 bg-white rounded-xl p-3 whitespace-pre-line border border-gray-100">

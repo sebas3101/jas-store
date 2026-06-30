@@ -204,6 +204,8 @@ interface AppStore {
 
   // Store settings
   openingBalance: number;
+  paymentImageUrl: string | null;
+  updatePaymentImageUrl: (url: string | null) => Promise<void>;
 
   // Order history
   orderHistory: OrderHistory[];
@@ -272,7 +274,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from('expenses').select('*').order('created_at'),
         supabase.from('order_history').select('*').order('created_at'),
         supabase.from('monthly_goals').select('*').order('created_at'),
-        supabase.from('store_settings').select('opening_balance').limit(1),
+        supabase.from('store_settings').select('opening_balance, payment_image_url').limit(1),
       ]);
       const loadedReminderLog = await getReminderLog();
 
@@ -303,7 +305,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         expenses:       cam(expenses      ?? []) as Expense[],
         orderHistory:   cam(orderHistory  ?? []) as OrderHistory[],
         goals:          cam(goals         ?? []) as MonthlyGoal[],
-        openingBalance: (settingsRows?.[0] as { opening_balance?: number } | undefined)?.opening_balance ?? 0,
+        openingBalance:   (settingsRows?.[0] as { opening_balance?: number } | undefined)?.opening_balance ?? 0,
+        paymentImageUrl: (settingsRows?.[0] as { payment_image_url?: string | null } | undefined)?.payment_image_url ?? null,
         reminderLog:    loadedReminderLog,
         initialized: true,
         isLoading: false,
@@ -1061,6 +1064,13 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   // ── Store settings ────────────────────────────────────────────────────────
   openingBalance: 0,
+  paymentImageUrl: null,
+
+  updatePaymentImageUrl: async (url) => {
+    const { error } = await supabase.from('store_settings').update({ payment_image_url: url }).limit(1);
+    if (error) { notifyError('updatePaymentImageUrl'); return; }
+    set({ paymentImageUrl: url });
+  },
 
   // ── Goals ─────────────────────────────────────────────────────────────────
   goals: [],
