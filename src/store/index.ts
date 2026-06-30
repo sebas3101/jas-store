@@ -1097,10 +1097,22 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   addGoal: async (g) => {
     const now = new Date().toISOString();
-    const row = toSnake({ ...g, createdAt: now });
-    const { data, error } = await supabase.from('monthly_goals').insert(row).select().single();
+    const row = toSnake({ ...g, createdAt: now, updatedAt: now });
+    const { data, error } = await supabase
+      .from('monthly_goals')
+      .upsert(row, { onConflict: 'month' })
+      .select()
+      .single();
     if (error) { notifyError('addGoal'); return; }
-    set(s => ({ goals: [...s.goals, toCamel(data) as MonthlyGoal] }));
+    const goal = toCamel(data) as MonthlyGoal;
+    set(s => {
+      const exists = s.goals.some(x => x.month === g.month);
+      return {
+        goals: exists
+          ? s.goals.map(x => x.month === g.month ? goal : x)
+          : [...s.goals, goal],
+      };
+    });
   },
 
   updateGoal: async (id, g) => {
