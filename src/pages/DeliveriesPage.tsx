@@ -87,6 +87,9 @@ export function DeliveriesPage() {
 
   const assignableUsers = users.filter(u => u.active);
 
+  // Per-item sin_stock: Record<purchaseId, Set<itemIndex>>
+  const [sinStockItems, setSinStockItems] = useState<Record<string, Set<number>>>({});
+
   const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [confirmingOrder, setConfirmingOrder] = useState<Order | null>(null);
 
@@ -132,13 +135,20 @@ export function DeliveriesPage() {
     setCheckingId(null);
   };
 
-  // Marca una compra como sin stock (producto no disponible en el proveedor).
-  // El pedido queda en por_recoger hasta que el producto vuelva a estar disponible.
-  const handleMarkUnavailable = async (purchaseId: string) => {
+  // Alterna sin_stock para un ítem específico.
+  // Cuando TODOS los ítems de la compra están sin stock → marca la compra como no_disponible.
+  const handleToggleItemSinStock = async (purchaseId: string, itemIdx: number, totalItems: number) => {
     if (checkingId) return;
-    setCheckingId(purchaseId);
-    await updatePurchase(purchaseId, { status: 'no_disponible' });
-    setCheckingId(null);
+    const current = sinStockItems[purchaseId] ?? new Set<number>();
+    const isAlready = current.has(itemIdx);
+    const next = new Set(current);
+    isAlready ? next.delete(itemIdx) : next.add(itemIdx);
+    setSinStockItems(prev => ({ ...prev, [purchaseId]: next }));
+    if (next.size === totalItems) {
+      setCheckingId(purchaseId);
+      await updatePurchase(purchaseId, { status: 'no_disponible' });
+      setCheckingId(null);
+    }
   };
 
   // Revierte una compra de sin_stock a pendiente cuando el producto llega.
@@ -146,6 +156,7 @@ export function DeliveriesPage() {
     if (checkingId) return;
     setCheckingId(purchaseId);
     await updatePurchase(purchaseId, { status: 'pendiente' });
+    setSinStockItems(prev => { const n = { ...prev }; delete n[purchaseId]; return n; });
     setCheckingId(null);
   };
 
@@ -234,6 +245,8 @@ export function DeliveriesPage() {
                         const paid     = pur.paidAmount ?? 0;
                         const saldo    = Math.max(0, pur.cost - paid);
                         const totalItems = supItems.reduce((s, it) => s + it.quantity, 0);
+                        const itemSinStock = sinStockItems[pur.id] ?? new Set<number>();
+                        const allSinStock  = pur.status === 'no_disponible';
                         return (
                           <div key={pur.id} className="bg-amber-50 rounded-xl overflow-hidden border border-amber-100">
 
@@ -245,6 +258,11 @@ export function DeliveriesPage() {
                                   {totalItems > 0 && (
                                     <span className="text-[10px] font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
                                       {totalItems} {totalItems === 1 ? 'prenda' : 'prendas'}
+                                    </span>
+                                  )}
+                                  {allSinStock && (
+                                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full border border-red-200">
+                                      <AlertCircle size={9} /> Sin stock
                                     </span>
                                   )}
                                 </div>
@@ -261,30 +279,18 @@ export function DeliveriesPage() {
                               </div>
                               {can('entregas', 'cambiar_estado') && (
                                 <div className="flex flex-col gap-1 flex-shrink-0">
-                                  {pur.status === 'no_disponible' ? (
-                                    <>
-                                      <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-lg border border-red-200">
-                                        <AlertCircle size={11} /> Sin stock
-                                      </span>
-                                      <button type="button" disabled={checkingId === pur.id}
-                                        onClick={() => handleMarkAvailable(pur.id)}
-                                        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60">
-                                        <RotateCcw size={11} /> Llegó
-                                      </button>
-                                    </>
+                                  {allSinStock ? (
+                                    <button type="button" disabled={checkingId === pur.id}
+                                      onClick={() => handleMarkAvailable(pur.id)}
+                                      className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-60">
+                                      <RotateCcw size={11} /> Todo llegó
+                                    </button>
                                   ) : (
-                                    <>
-                                      <button type="button" disabled={checkingId === pur.id}
-                                        onClick={() => handleCheckPickup(pur.id)}
-                                        className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60">
-                                        <Check size={13} /> Recogido
-                                      </button>
-                                      <button type="button" disabled={checkingId === pur.id}
-                                        onClick={() => handleMarkUnavailable(pur.id)}
-                                        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-60">
-                                        <X size={11} /> Sin stock
-                                      </button>
-                                    </>
+                                    <button type="button" disabled={checkingId === pur.id}
+                                      onClick={() => handleCheckPickup(pur.id)}
+                                      className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-60">
+                                      <Check size={13} /> Recogido
+                                    </button>
                                   )}
                                 </div>
                               )}
@@ -292,27 +298,29 @@ export function DeliveriesPage() {
 
                             {/* ── Ítems ── */}
                             <div className="px-3 pb-2 space-y-2">
-                              {supItems.map((it, idx) => (
-                                <div key={idx} className="flex gap-3">
+                              {supItems.map((it, idx) => {
+                                const isSinStock = allSinStock || itemSinStock.has(idx);
+                                return (
+                                <div key={idx} className={`flex gap-3 rounded-lg transition-colors ${isSinStock ? 'opacity-60' : ''}`}>
                                   {/* Foto portrait */}
                                   {it.imageUrl ? (
                                     <button type="button" onClick={() => setPhotoModal(it.imageUrl!)}
                                       className="relative flex-shrink-0 group">
                                       <img src={it.imageUrl} alt=""
-                                        className="w-16 h-20 rounded-xl object-cover border border-amber-200 shadow-sm" />
+                                        className={`w-16 h-20 rounded-xl object-cover border shadow-sm ${isSinStock ? 'border-red-200 grayscale' : 'border-amber-200'}`} />
                                       <span className="absolute inset-0 flex items-center justify-center bg-black/25 rounded-xl opacity-0 group-active:opacity-100 transition-opacity">
                                         <ZoomIn size={18} className="text-white drop-shadow" />
                                       </span>
                                     </button>
                                   ) : (
-                                    <div className="w-16 h-20 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
-                                      <Package size={20} className="text-amber-400" />
+                                    <div className={`w-16 h-20 rounded-xl border flex items-center justify-center flex-shrink-0 ${isSinStock ? 'bg-red-50 border-red-200' : 'bg-amber-100 border-amber-200'}`}>
+                                      <Package size={20} className={isSinStock ? 'text-red-300' : 'text-amber-400'} />
                                     </div>
                                   )}
 
                                   {/* Info del ítem */}
                                   <div className="flex-1 min-w-0 pt-0.5 space-y-0.5">
-                                    <p className="text-xs font-bold text-gray-900 leading-snug">{it.productName}</p>
+                                    <p className={`text-xs font-bold leading-snug ${isSinStock ? 'text-red-500 line-through' : 'text-gray-900'}`}>{it.productName}</p>
                                     <div className="flex flex-wrap gap-1">
                                       {it.size  && (
                                         <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
@@ -333,9 +341,23 @@ export function DeliveriesPage() {
                                         Costo: <span className="font-semibold text-gray-700">{formatCurrency(it.costPrice * it.quantity)}</span>
                                       </p>
                                     )}
+                                    {/* Botón sin stock por ítem */}
+                                    {can('entregas', 'cambiar_estado') && !allSinStock && (
+                                      <button type="button"
+                                        disabled={checkingId === pur.id}
+                                        onClick={() => handleToggleItemSinStock(pur.id, idx, supItems.length)}
+                                        className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition-colors disabled:opacity-50 ${
+                                          isSinStock
+                                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                            : 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500'
+                                        }`}>
+                                        <X size={9} /> {isSinStock ? 'Sin stock' : 'Sin stock'}
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
 
                             {/* ── Nota del pedido ── */}

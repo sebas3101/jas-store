@@ -50,7 +50,7 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
 
   jennifer: {
     dashboard:     { ver: true },
-    clientes:      { ver: true, crear: true, editar: true, ver_financiero: true },
+    clientes:      { ver: true, crear: true, editar: true, eliminar: true, ver_financiero: true },
     pedidos:       { ver: true, crear: true, editar: true, cambiar_estado: true },
     pagos:         { ver: true, registrar_pago: true, registrar_abono: true, ver_financiero: true },
     entregas:      { ver: true },
@@ -64,6 +64,7 @@ export const PERMISSION_TEMPLATES: Record<string, UserPermissions> = {
 
   alexis: {
     dashboard:    { ver: true },
+    clientes:     { ver: true, eliminar: true },
     pedidos:      { ver: true, cambiar_estado: true },
     entregas:     { ver: true, cambiar_estado: true },
     garantias:    { ver: true },

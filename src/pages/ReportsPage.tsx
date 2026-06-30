@@ -20,6 +20,7 @@ const COLORS = ['#7c3aed','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899'];
 
 export function ReportsPage() {
   const { orders, clients, payments, purchases, expenses, getClientDebt } = useAppStore();
+  const activePurchases = purchases.filter(p => p.status !== 'cancelado');
 
   const now = new Date();
 
@@ -49,20 +50,28 @@ export function ReportsPage() {
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
     }).reduce((s, p) => s + p.amount, 0);
-    const gastos  = monthExpenses.reduce((s, e) => s + e.amount, 0);
+    const gastos   = monthExpenses.reduce((s, e) => s + e.amount, 0);
+    const compras  = activePurchases.filter(p => {
+      try {
+        const d = parseISO(p.purchaseDate);
+        return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
+      } catch { return false; }
+    }).reduce((s, p) => s + p.cost, 0);
     return {
       mes:      format(month, 'MMM', { locale: es }),
       ventas:   monthOrders.reduce((s, o) => s + o.totalAmount, 0),
       cobrado,
       ganancia: monthOrders.reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0),
       gastos,
-      utilidad: cobrado - gastos,
+      compras,
+      utilidad: cobrado - compras - gastos,
     };
   });
 
-  const totalExpenses    = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalExpenses     = expenses.reduce((s, e) => s + e.amount, 0);
   const totalCollectedAll = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
-  const totalNetProfit   = totalCollectedAll - totalExpenses;
+  const totalPurchasesAll = activePurchases.reduce((s, p) => s + p.cost, 0);
+  const totalNetProfit    = totalCollectedAll - totalPurchasesAll - totalExpenses;
 
   // By category
   const byCategory = Object.entries(
@@ -126,8 +135,8 @@ export function ReportsPage() {
 
   const handleExport = () => {
     const rows: unknown[][] = [
-      ['Mes', 'Ventas ($)', 'Cobrado ($)', 'Ganancia ($)', 'Gastos ($)', 'Utilidad ($)'],
-      ...monthlySales.map(m => [m.mes, m.ventas, m.cobrado, m.ganancia, m.gastos, m.utilidad]),
+      ['Mes', 'Ventas ($)', 'Cobrado ($)', 'Ganancia ($)', 'Compras ($)', 'Gastos ($)', 'Utilidad ($)'],
+      ...monthlySales.map(m => [m.mes, m.ventas, m.cobrado, m.ganancia, m.compras, m.gastos, m.utilidad]),
     ];
     downloadCSV(aoaToCSV(rows), `JAS-Reportes-${format(now, 'yyyy-MM')}.csv`);
   };
@@ -156,15 +165,19 @@ export function ReportsPage() {
       <div className="card !p-4">
         <div className="flex items-center gap-2 mb-4">
           <Wallet size={16} className="text-emerald-600" />
-          <h2 className="section-title">Utilidad neta (cobrado − gastos)</h2>
+          <h2 className="section-title">Utilidad neta (cobrado − compras − gastos)</h2>
         </div>
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <div className="bg-emerald-50 rounded-xl p-3 text-center">
             <p className="text-[10px] text-emerald-600 font-medium uppercase tracking-wide">Total cobrado</p>
             <p className="text-base font-bold text-emerald-700 mt-1">{formatCurrency(totalCollectedAll)}</p>
           </div>
+          <div className="bg-orange-50 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-orange-500 font-medium uppercase tracking-wide">Compras prov.</p>
+            <p className="text-base font-bold text-orange-600 mt-1">{formatCurrency(totalPurchasesAll)}</p>
+          </div>
           <div className="bg-red-50 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-red-500 font-medium uppercase tracking-wide">Gastos operativos</p>
+            <p className="text-[10px] text-red-500 font-medium uppercase tracking-wide">Gastos operat.</p>
             <p className="text-base font-bold text-red-600 mt-1">{formatCurrency(totalExpenses)}</p>
           </div>
           <div className={`rounded-xl p-3 text-center ${totalNetProfit >= 0 ? 'bg-primary-50' : 'bg-amber-50'}`}>
@@ -173,18 +186,24 @@ export function ReportsPage() {
           </div>
         </div>
         <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={monthlySales} barSize={16}>
+          <BarChart data={monthlySales} barSize={14}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
             <XAxis dataKey="mes" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false}
               tickFormatter={v => v >= 1000000 ? `$${(v/1000000).toFixed(1)}M` : v >= 1000 ? `$${(v/1000).toFixed(0)}k` : `$${v}`} />
             <Tooltip
               formatter={(v: number, name: string) => [formatCurrency(v),
-                name === 'cobrado' ? 'Cobrado' : name === 'gastos' ? 'Gastos' : 'Utilidad']}
+                name === 'cobrado' ? 'Cobrado' :
+                name === 'compras' ? 'Compras' :
+                name === 'gastos'  ? 'Gastos'  : 'Utilidad']}
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
             />
-            <Legend formatter={v => v === 'cobrado' ? 'Cobrado' : v === 'gastos' ? 'Gastos' : 'Utilidad'} />
+            <Legend formatter={v =>
+              v === 'cobrado' ? 'Cobrado' :
+              v === 'compras' ? 'Compras' :
+              v === 'gastos'  ? 'Gastos'  : 'Utilidad'} />
             <Bar dataKey="cobrado"  fill="#10b981" radius={[4,4,0,0]} />
+            <Bar dataKey="compras"  fill="#f97316" radius={[4,4,0,0]} />
             <Bar dataKey="gastos"   fill="#ef4444" radius={[4,4,0,0]} />
             <Bar dataKey="utilidad" fill="#7c3aed" radius={[4,4,0,0]} />
           </BarChart>
