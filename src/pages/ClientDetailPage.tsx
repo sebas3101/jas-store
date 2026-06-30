@@ -20,7 +20,6 @@ import { EmptyState } from '../components/ui/EmptyState';
 import {
   formatCurrency,
   formatDate,
-  formatDateTime,
   orderStatusLabel,
   orderStatusColor,
   paymentMethodLabel,
@@ -552,7 +551,7 @@ export function ClientDetailPage() {
                   <p className="text-sm font-semibold text-gray-800">
                     {paymentMethodLabel[p.method]}
                   </p>
-                  <p className="text-xs text-gray-400">{formatDateTime(p.date)}</p>
+                  <p className="text-xs text-gray-400">{formatDate(p.date)}</p>
                   {p.notes && <p className="text-xs text-gray-500 mt-0.5">{p.notes}</p>}
                 </div>
                 <p className="text-sm font-bold text-emerald-600 tabular-nums flex-shrink-0">{formatCurrency(p.amount)}</p>

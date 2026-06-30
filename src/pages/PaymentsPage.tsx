@@ -13,7 +13,7 @@ const PER_PAGE = 25;
 import { StatCard } from '../components/ui/StatCard';
 import {
   formatCurrency,
-  formatDateTime,
+  formatDate,
   paymentMethodLabel,
 } from '../utils/formatters';
 import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
@@ -288,7 +288,7 @@ export function PaymentsPage() {
                     {client?.name ?? 'Cliente'}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {paymentMethodLabel[payment.method]} · {formatDateTime(payment.date)}
+                    {paymentMethodLabel[payment.method]} · {formatDate(payment.date)}
                     {registeredBy && ` · Registrado por ${registeredBy.name}`}
                   </p>
                   {payment.notes && (
