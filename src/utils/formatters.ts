@@ -21,9 +21,11 @@ export const formatCurrency = (amount: number) =>
 
 export const formatDate = (dateStr: string) => {
   try {
-    // Fechas solo-fecha (YYYY-MM-DD) las parseamos al mediodía local para evitar
-    // que UTC las desplace al día anterior en Colombia (UTC-5)
-    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? `${dateStr}T12:00:00` : dateStr;
+    // Normalizar al mediodía local para evitar que UTC desplace al día anterior
+    // en Colombia (UTC-5). Aplica tanto a "YYYY-MM-DD" como a timestamps ISO
+    // con esa fecha (ej. "2026-06-30T00:00:00+00:00" que guarda Supabase).
+    const datePart = dateStr.slice(0, 10);
+    const normalized = /^\d{4}-\d{2}-\d{2}$/.test(datePart) ? `${datePart}T12:00:00` : dateStr;
     return format(parseISO(normalized), 'dd/MM/yyyy', { locale: es });
   } catch {
     return dateStr;
