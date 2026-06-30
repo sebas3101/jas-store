@@ -291,8 +291,22 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         (c, i) => c.status !== loadedClients[i].status
       );
 
+      // Refrescar permisos del usuario activo con datos frescos de la BD,
+      // por si cambiaron desde el último login (sin requerir cierre de sesión).
+      const loadedUsers = cam(users ?? []) as User[];
+      const storedUser  = get().currentUser;
+      let freshCurrentUser = storedUser;
+      if (storedUser) {
+        const dbUser = loadedUsers.find(u => u.id === storedUser.id);
+        if (dbUser) {
+          const { password: _pw, ...safeDbUser } = dbUser as User & { password?: string };
+          freshCurrentUser = safeDbUser as User;
+          localStorage.setItem('jas_user', JSON.stringify(safeDbUser));
+        }
+      }
+
       set({
-        users:         cam(users         ?? []) as User[],
+        users:         loadedUsers,
         clients:       syncedClients,
         products:      cam(products      ?? []) as Product[],
         orders:        loadedOrders,
@@ -308,6 +322,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         openingBalance:   (settingsRows?.[0] as { opening_balance?: number } | undefined)?.opening_balance ?? 0,
         paymentImageUrl: (settingsRows?.[0] as { payment_image_url?: string | null } | undefined)?.payment_image_url ?? null,
         reminderLog:    loadedReminderLog,
+        currentUser:    freshCurrentUser,
         initialized: true,
         isLoading: false,
       });
