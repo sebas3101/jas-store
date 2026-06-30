@@ -333,12 +333,18 @@ function PaymentImageSection() {
   const { paymentImageUrl, updatePaymentImageUrl } = useAppStore();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const handleFile = async (file: File) => {
     setUploading(true);
+    setUploadError('');
     const { uploadImage } = await import('../utils/storage');
     const url = await uploadImage(file, 'pedidos');
-    if (url) await updatePaymentImageUrl(url);
+    if (url) {
+      await updatePaymentImageUrl(url);
+    } else {
+      setUploadError('No se pudo subir la imagen. Verifica tu conexión e intenta de nuevo.');
+    }
     setUploading(false);
   };
 
@@ -351,6 +357,9 @@ function PaymentImageSection() {
       <p className="text-xs text-gray-500">
         Esta imagen se comparte junto a los mensajes de cobro por WhatsApp. Sube una foto con los datos bancarios y el código QR.
       </p>
+      {uploadError && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{uploadError}</p>
+      )}
       {paymentImageUrl ? (
         <div className="space-y-2">
           <img src={paymentImageUrl} alt="QR de pago" className="w-40 h-auto rounded-xl border border-gray-200 object-contain" />
