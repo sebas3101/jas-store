@@ -11,8 +11,9 @@ import {
   formatCurrency,
   categoryLabel,
   paymentMethodLabel,
+  parseDateOnly,
 } from '../utils/formatters';
-import { format, parseISO, eachMonthOfInterval, subMonths } from 'date-fns';
+import { format, eachMonthOfInterval, subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { ProductCategory } from '../types';
 
@@ -33,27 +34,27 @@ export function ReportsPage() {
   const monthlySales = last6Months.map(month => {
     const monthOrders = orders.filter(o => {
       try {
-        const d = parseISO(o.orderDate);
+        const d = parseDateOnly(o.orderDate);
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear()
           && o.status !== 'cancelado';
       } catch { return false; }
     });
     const monthExpenses = expenses.filter(e => {
       try {
-        const d = parseISO(e.date);
+        const d = parseDateOnly(e.date);
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
     });
     const cobrado = payments.filter(p => {
       try {
-        const d = parseISO(p.date);
+        const d = parseDateOnly(p.date);
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
     }).reduce((s, p) => s + p.amount, 0);
     const gastos   = monthExpenses.reduce((s, e) => s + e.amount, 0);
     const compras  = activePurchases.filter(p => {
       try {
-        const d = parseISO(p.purchaseDate);
+        const d = parseDateOnly(p.purchaseDate);
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
     }).reduce((s, p) => s + p.cost, 0);

@@ -15,6 +15,7 @@ import {
   formatCurrency,
   formatDate,
   paymentMethodLabel,
+  parseDateOnly,
 } from '../utils/formatters';
 import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from 'date-fns';
 import type { PaymentMethod } from '../types';
@@ -194,7 +195,7 @@ export function PaymentsPage() {
   const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
   const thisMonthPayments = payments.filter(p => {
     try {
-      const d = parseISO(p.date);
+      const d = parseDateOnly(p.date);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     } catch { return false; }
   }).reduce((s, p) => s + p.amount, 0);

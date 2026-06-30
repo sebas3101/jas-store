@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
 import {
   startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek,
-  format, addMonths, subMonths, isSameMonth, isToday, parseISO, isSameDay,
+  format, addMonths, subMonths, isSameMonth, isToday, isSameDay,
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useAppStore } from '../store';
-import { orderStatusColor, orderStatusLabel } from '../utils/formatters';
+import { orderStatusColor, orderStatusLabel, parseDateOnly } from '../utils/formatters';
 import type { Order } from '../types';
 
 const DAY_LABELS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
@@ -28,12 +28,12 @@ export function CalendarPage() {
 
   const getOrdersForDay = (day: Date): Order[] =>
     relevantOrders.filter(o => {
-      try { return isSameDay(parseISO(o.estimatedDeliveryDate!), day); }
+      try { return isSameDay(parseDateOnly(o.estimatedDeliveryDate!), day); }
       catch { return false; }
     });
 
   const monthOrders = relevantOrders.filter(o => {
-    try { return isSameMonth(parseISO(o.estimatedDeliveryDate!), currentMonth); }
+    try { return isSameMonth(parseDateOnly(o.estimatedDeliveryDate!), currentMonth); }
     catch { return false; }
   });
 

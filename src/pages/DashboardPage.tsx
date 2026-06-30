@@ -12,7 +12,7 @@ import {
 import { useAppStore } from '../store';
 import { useGoalsStore } from '../store/goals';
 import { StatCard } from '../components/ui/StatCard';
-import { formatCurrency, formatDate, orderStatusLabel } from '../utils/formatters';
+import { formatCurrency, formatDate, orderStatusLabel, parseDateOnly } from '../utils/formatters';
 import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, eachDayOfInterval, differenceInDays, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { getReminderLog, daysSinceReminder } from '../utils/reminders';
@@ -67,7 +67,7 @@ export function DashboardPage() {
   // ── Proyección de cobranza ───────────────────────────────────────────────────
   const cobradoMes = payments.filter(p => {
     try {
-      const d = parseISO(p.date);
+      const d = parseDateOnly(p.date);
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     } catch { return false; }
   }).reduce((s, p) => s + p.amount, 0);
@@ -145,7 +145,7 @@ export function DashboardPage() {
     const dayStr   = format(day, 'EEE', { locale: es });
     const dayTotal = payments
       .filter(p => {
-        try { return format(parseISO(p.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'); }
+        try { return format(parseDateOnly(p.date), 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'); }
         catch { return false; }
       })
       .reduce((s, p) => s + p.amount, 0);

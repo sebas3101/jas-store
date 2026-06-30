@@ -19,6 +19,15 @@ export const formatCurrency = (amount: number) =>
     maximumFractionDigits: 0,
   }).format(amount);
 
+// Parsea un campo fecha-only de Supabase (timestamptz medianoche UTC) al mediodía
+// local para que isSameDay / isSameMonth / getMonth() den el día correcto en Colombia.
+export const parseDateOnly = (dateStr: string): Date => {
+  const datePart = dateStr.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(datePart)
+    ? parseISO(`${datePart}T12:00:00`)
+    : parseISO(dateStr);
+};
+
 export const formatDate = (dateStr: string) => {
   try {
     // Normalizar al mediodía local para evitar que UTC desplace al día anterior
