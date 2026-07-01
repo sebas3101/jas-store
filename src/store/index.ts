@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase, toCamel, toSnake } from '../lib/supabase';
 import type {
-  User, Client, Product, Order, OrderItem, OrderStatus,
+  User, Client, Product, Order, OrderItem,
   Payment, Supplier, SupplierPurchase, Publication,
   Warranty, PaymentProof, Expense, OrderHistory, MonthlyGoal,
 } from '../types';
@@ -34,61 +34,6 @@ const genOrderNumber = (orders: Order[]) => {
   return `JAS-${String(maxNum + 1).padStart(3, '0')}`;
 };
 
-
-// Reconcilia amountPaid y status de todos los pedidos entregados de un cliente
-// basándose en el total acumulado de pagos (FIFO desde el más antiguo).
-// Garantiza coherencia: si el total de pagos supera la suma de pedidos, queda como saldo a favor
-// (visible en getClientBalance). Nunca guarda amountPaid > totalAmount en BD.
-async function reconcileClientOrders(
-  clientId: string,
-  orders: Order[],
-  payments: Payment[],
-  setStore: (fn: (s: { orders: Order[] }) => Partial<{ orders: Order[] }>) => void
-) {
-  const deliveredOrders = orders
-    .filter(o => o.clientId === clientId &&
-      ['entregado', 'pendiente_pago', 'pagado'].includes(o.status))
-    .sort((a, b) => new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime());
-
-  const totalPaid = payments
-    .filter(p => p.clientId === clientId)
-    .reduce((s, p) => s + p.amount, 0);
-
-  let remaining = totalPaid;
-  const updates: { id: string; amountPaid: number; status: OrderStatus }[] = [];
-
-  for (const order of deliveredOrders) {
-    const toApply = Math.min(remaining, order.totalAmount);
-    const newStatus: OrderStatus = toApply >= order.totalAmount
-      ? 'pagado'
-      : (order.status === 'pagado' ? 'pendiente_pago' : order.status as OrderStatus);
-    updates.push({ id: order.id, amountPaid: toApply, status: newStatus });
-    remaining -= toApply;
-  }
-
-  const changedUpdates = updates.filter(u => {
-    const o = orders.find(x => x.id === u.id);
-    return o && (o.amountPaid !== u.amountPaid || o.status !== u.status);
-  });
-
-  if (changedUpdates.length === 0) return;
-
-  const now = new Date().toISOString();
-  await Promise.all(
-    changedUpdates.map(u =>
-      supabase.from('orders')
-        .update(toSnake({ amountPaid: u.amountPaid, status: u.status, updatedAt: now }))
-        .eq('id', u.id)
-    )
-  );
-
-  setStore(s => ({
-    orders: s.orders.map(o => {
-      const u = updates.find(x => x.id === o.id);
-      return u ? { ...o, amountPaid: u.amountPaid, status: u.status, updatedAt: now } : o;
-    }),
-  }));
-}
 
 // Sincroniza el status de UN cliente contra Supabase si cambió.
 // Actualiza el estado local inmediatamente; la llamada a Supabase es fire-and-forget.
@@ -663,8 +608,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       });
     }
     // Si es histórico y tiene abono, crear el pago automáticamente.
-    // addPayment llama reconcileClientOrders, que actualiza el status del pedido
-    // a 'pagado' si el monto cubre el total, o deja 'pendiente_pago' si es parcial.
     if (isHistorical && o.amountPaid > 0) {
       const currentUser = get().currentUser;
       await get().addPayment({
@@ -735,14 +678,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         set(s => ({ purchases: s.purchases.map(x => x.id === p.id ? { ...x, status: 'pendiente' } : x) }));
       }
     }
-    // Si el pedido pasa a un estado que genera deuda, reconciliar los pagos acumulados
-    // para que el crédito previo del cliente se aplique automáticamente.
-    if (clientId && o.status !== undefined &&
-        ['entregado', 'pendiente_pago'].includes(o.status) &&
-        !['entregado', 'pendiente_pago', 'pagado'].includes(prev?.status ?? '')) {
-      const { orders: currentOrders, payments } = get();
-      await reconcileClientOrders(clientId, currentOrders, payments, set);
-    }
     // Resincronizar status del cliente si cambia amountPaid o status del pedido
     if (clientId && (o.amountPaid !== undefined || o.status !== undefined)) {
       const { clients, orders: latestOrders, payments } = get();
@@ -788,9 +723,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         ),
       }));
     }
-    // 3. Reconciliar pagos del cliente
     const { clients, orders, payments } = get();
-    await reconcileClientOrders(order.clientId, orders, payments, set);
     await syncOneClientStatus(order.clientId, clients, orders, payments, set);
   },
 
@@ -802,12 +735,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const { data, error } = await supabase.from('payments').insert(row).select().single();
     if (error) { notifyError('addPayment'); return; }
     set(s => ({ payments: [...s.payments, toCamel(data) as Payment] }));
-    // Reconciliar pedidos basándose en el total acumulado de pagos del cliente
-    const { orders, payments: updatedPayments } = get();
-    await reconcileClientOrders(p.clientId, orders, updatedPayments, set);
-    // Re-sincronizar estado del cliente
-    const { clients, orders: reconciledOrders, payments: currentPayments } = get();
-    await syncOneClientStatus(p.clientId, clients, reconciledOrders, currentPayments, set);
+    const { clients, orders, payments: currentPayments } = get();
+    await syncOneClientStatus(p.clientId, clients, orders, currentPayments, set);
   },
 
   updatePayment: async (id, p) => {
@@ -816,10 +745,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { notifyError('updatePayment'); return; }
     set(s => ({ payments: s.payments.map(x => x.id === id ? { ...x, ...p } : x) }));
     if (clientId) {
-      const { orders, payments: updatedPayments } = get();
-      await reconcileClientOrders(clientId, orders, updatedPayments, set);
-      const { clients, orders: reconciledOrders, payments: currentPayments } = get();
-      await syncOneClientStatus(clientId, clients, reconciledOrders, currentPayments, set);
+      const { clients, orders, payments: currentPayments } = get();
+      await syncOneClientStatus(clientId, clients, orders, currentPayments, set);
     }
   },
 
@@ -829,10 +756,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { notifyError('deletePayment'); return; }
     set(s => ({ payments: s.payments.filter(x => x.id !== id) }));
     if (clientId) {
-      const { orders, payments } = get();
-      await reconcileClientOrders(clientId, orders, payments, set);
-      const { clients, orders: reconciledOrders, payments: currentPayments } = get();
-      await syncOneClientStatus(clientId, clients, reconciledOrders, currentPayments, set);
+      const { clients, orders, payments: currentPayments } = get();
+      await syncOneClientStatus(clientId, clients, orders, currentPayments, set);
     }
   },
 

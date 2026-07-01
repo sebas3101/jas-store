@@ -124,15 +124,15 @@ export function OrderDetailPage() {
   ];
 
   const handleStatusUpdate = () => {
-    // Bloquear si se intenta marcar como pagado con deuda pendiente real
-    if (newStatus === 'pagado' && balance > 0) return;
     const updates: Partial<typeof order> = { status: newStatus };
     if (newStatus === 'entregado' || newStatus === 'pagado') {
       updates.deliveredAt = new Date().toISOString();
     }
+    if (newStatus === 'pagado') {
+      updates.amountPaid = order.totalAmount;
+    }
     updateOrder(order.id, updates);
     setStatusModal(false);
-    // Al pasar a 'por_recoger', ofrecer enviar mensaje de disponibilidad
     if (newStatus === 'por_recoger' && client?.phone) {
       setAvailabilityModal(true);
     }
@@ -392,16 +392,9 @@ export function OrderDetailPage() {
               ✓ Al guardar, podrás enviar un WhatsApp de disponibilidad a {client.name}.
             </div>
           )}
-          {newStatus === 'pagado' && balance > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 space-y-1">
-              <p className="font-semibold">No se puede marcar como pagado</p>
-              <p>El cliente aún debe <strong>{formatCurrency(balance)}</strong>. Registra el pago en la sección de cobros primero — la app cambiará el estado automáticamente.</p>
-            </div>
-          )}
           <button
             onClick={handleStatusUpdate}
-            disabled={newStatus === 'pagado' && balance > 0}
-            className="btn-primary w-full justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-primary w-full justify-center"
             type="button">
             Actualizar estado
           </button>
