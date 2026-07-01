@@ -59,9 +59,9 @@ export function FinancesPage() {
     .reduce((s, p) => s + (p.paidAmount ?? 0), 0);
   const allExpenses          = (expenses ?? []).reduce((s, e) => s + e.amount, 0);
   const cajaReal             = openingBalance + allCollected - allPaidToSuppliers - allExpenses;
-  // Cuánto se le debe todavía a proveedores (costo registrado − lo ya pagado)
+  // Cuánto se le debe todavía a proveedores (excluye cancelado y no_disponible — no hubo entrega)
   const deudaProveedores     = purchases
-    .filter(p => p.status !== 'cancelado')
+    .filter(p => p.status !== 'cancelado' && p.status !== 'no_disponible')
     .reduce((s, p) => s + Math.max(0, p.cost - (p.paidAmount ?? 0)), 0);
 
   // ── KPIs del período seleccionado ──
@@ -329,7 +329,9 @@ export function FinancesPage() {
                   <td className="py-2 px-2 text-right font-bold text-emerald-600">
                     {formatCurrency(rangeOrders.reduce((s, o) => s + o.amountPaid, 0))}
                   </td>
-                  <td className="py-2 px-2 text-right font-bold text-red-500">{formatCurrency(totalDebt)}</td>
+                  <td className="py-2 px-2 text-right font-bold text-red-500">
+                    {formatCurrency(rangeOrders.reduce((s, o) => s + Math.max(0, o.totalAmount - o.amountPaid), 0))}
+                  </td>
                 </tr>
               </tfoot>
             </table>
