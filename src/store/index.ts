@@ -662,9 +662,18 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
         p.status !== 'recogido' &&
         p.status !== 'cancelado' &&
-        p.status !== 'no_disponible'   // no pisar ítems sin stock, siguen pendientes
+        p.status !== 'no_disponible'
       );
       for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
+    }
+    // Al pasar el pedido a entregado, marcar las compras recogidas como pagadas.
+    // Las que están no_disponible o cancelado se dejan como están.
+    if (o.status === 'entregado' && prev?.status !== 'entregado') {
+      const linked = get().purchases.filter(p =>
+        (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
+        p.status === 'recogido'
+      );
+      for (const p of linked) await get().updatePurchase(p.id, { status: 'pagado' });
     }
     // Al revertir el pedido a por_recoger desde cualquier estado posterior,
     // resetear sus compras a pendiente para que vuelvan a la vista de Recogidas.
