@@ -50,7 +50,7 @@ function OrderForm({ onSave, initial }: {
       productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
     }]
   );
-  const [status, setStatus]           = useState<OrderStatus>(initial?.status ?? 'tomado');
+  const [status]                       = useState<OrderStatus>(initial?.status ?? 'tomado');
   const [payMethod, setPayMethod]     = useState<PaymentMethod>(initial?.paymentMethod ?? 'credito');
   const [sellerId, setSellerId]       = useState(initial?.sellerId ?? currentUser?.id ?? '');
   const [deliveryId, setDeliveryId]   = useState(initial?.deliveryPersonId ?? '');
@@ -318,15 +318,6 @@ function OrderForm({ onSave, initial }: {
           </div>
         )}
 
-        <div>
-          <label className="label">Estado</label>
-          <select className="input-field" value={status}
-            onChange={e => setStatus(e.target.value as OrderStatus)}>
-            {STATUS_FILTERS.filter(s => s.value !== 'all').map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="label">Forma de pago</label>
           <select className="input-field" value={payMethod}
