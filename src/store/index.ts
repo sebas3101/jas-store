@@ -61,7 +61,7 @@ async function reconcileClientOrders(
     const toApply = Math.min(remaining, order.totalAmount);
     const newStatus: OrderStatus = toApply >= order.totalAmount
       ? 'pagado'
-      : (order.status === 'pagado' ? 'entregado' : order.status as OrderStatus);
+      : (order.status === 'pagado' ? 'pendiente_pago' : order.status as OrderStatus);
     updates.push({ id: order.id, amountPaid: toApply, status: newStatus });
     remaining -= toApply;
   }
