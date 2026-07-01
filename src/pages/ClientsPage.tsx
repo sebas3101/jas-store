@@ -473,7 +473,7 @@ const visible      = showAllCartera ? carteraVencida : carteraVencida.slice(0, 5
                         Editar
                       </button>
                     )}
-                    {isAdmin && (
+                    {can('clientes', 'eliminar') && (
                       <button
                         onClick={() => setDeleting(client)}
                         className="p-2 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-colors"
