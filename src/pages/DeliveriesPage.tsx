@@ -346,12 +346,12 @@ export function DeliveriesPage() {
                                       <button type="button"
                                         disabled={checkingId === pur.id}
                                         onClick={() => handleToggleItemSinStock(pur.id, idx, supItems.length)}
-                                        className={`mt-0.5 flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full transition-colors disabled:opacity-50 ${
+                                        className={`mt-1 flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-lg border transition-colors disabled:opacity-50 ${
                                           isSinStock
-                                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                            : 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-500'
+                                            ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+                                            : 'bg-red-50 text-red-500 border-red-100 hover:bg-red-100 hover:text-red-700'
                                         }`}>
-                                        <X size={9} /> {isSinStock ? 'Sin stock' : 'Sin stock'}
+                                        <X size={10} /> {isSinStock ? 'Sin stock ✓' : 'Sin stock'}
                                       </button>
                                     )}
                                   </div>
