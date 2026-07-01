@@ -2,7 +2,6 @@ export type PaymentMethod = 'transferencia' | 'efectivo' | 'credito' | 'fiado' |
 export type SupplierPaymentStatus = 'pendiente' | 'pagado';
 export type SupplierPaymentMethod = 'efectivo' | 'transferencia';
 export type OrderStatus =
-  | 'tomado'
   | 'por_recoger'
   | 'recogido'
   | 'entregado'

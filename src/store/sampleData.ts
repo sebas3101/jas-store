@@ -448,7 +448,7 @@ export const sampleOrders: Order[] = [
     totalAmount: 75000,
     totalCost: 42000,
     amountPaid: 0,
-    status: 'tomado',
+    status: 'por_recoger',
     paymentMethod: 'transferencia',
     sellerId: 'u2',
     orderDate: '2024-06-12T09:00:00Z',

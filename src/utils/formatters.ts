@@ -58,7 +58,6 @@ export const formatRelative = (dateStr: string) => {
 };
 
 export const orderStatusLabel: Record<OrderStatus, string> = {
-  tomado: 'Pedido tomado',
   por_recoger: 'Por recoger',
   recogido: 'Recogido',
   entregado: 'Entregado',
@@ -68,7 +67,6 @@ export const orderStatusLabel: Record<OrderStatus, string> = {
 };
 
 export const orderStatusColor: Record<OrderStatus, string> = {
-  tomado: 'badge-blue',
   por_recoger: 'badge-yellow',
   recogido: 'badge-purple',
   entregado: 'badge-green',

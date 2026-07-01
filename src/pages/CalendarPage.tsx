@@ -136,7 +136,7 @@ export function CalendarPage() {
         <div className="card !p-4 space-y-2">
           <p className="text-xs font-semibold text-gray-500">Colores por estado</p>
           <div className="flex flex-wrap gap-2">
-            {(['tomado','por_recoger','recogido','entregado','pendiente_pago'] as const).map(s => (
+            {(['por_recoger','recogido','entregado','pendiente_pago'] as const).map(s => (
               <span key={s} className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${orderStatusColor[s]}`}>
                 {orderStatusLabel[s]}
               </span>

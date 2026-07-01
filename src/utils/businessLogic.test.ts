@@ -8,7 +8,7 @@ function makeOrder(overrides: Partial<Order> & { id: string; clientId: string })
   return {
     orderNumber: 'JAS-001',
     orderDate: '2024-01-01T00:00:00.000Z',
-    status: 'tomado',
+    status: 'por_recoger',
     totalAmount: 100_000,
     amountPaid: 0,
     totalCost: 0,
@@ -83,10 +83,10 @@ describe('calculateClientDebt', () => {
     expect(calculateClientDebt('c1', orders, [])).toBe(0);
   });
 
-  it('excluye pedidos no entregados (tomado, por_recoger, recogido)', () => {
+  it('excluye pedidos no entregados (por_recoger, recogido)', () => {
     const orders = [
-      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, status: 'tomado' }),
-      makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 80_000,  status: 'por_recoger' }),
+      makeOrder({ id: 'o1', clientId: 'c1', totalAmount: 100_000, status: 'por_recoger' }),
+      makeOrder({ id: 'o2', clientId: 'c1', totalAmount: 80_000,  status: 'recogido' }),
     ];
     expect(calculateClientDebt('c1', orders, [])).toBe(0);
   });

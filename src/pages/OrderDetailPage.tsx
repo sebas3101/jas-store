@@ -120,7 +120,7 @@ export function OrderDetailPage() {
   const countAsDebt = order.status === 'entregado' || order.status === 'pendiente_pago';
 
   const STATUS_FLOW: OrderStatus[] = [
-    'tomado', 'por_recoger', 'recogido', 'entregado', 'pagado', 'pendiente_pago', 'cancelado',
+    'por_recoger', 'recogido', 'entregado', 'pagado', 'pendiente_pago', 'cancelado',
   ];
 
   const handleStatusUpdate = () => {
@@ -159,7 +159,7 @@ export function OrderDetailPage() {
           className="btn-primary" type="button">
           <Edit2 size={14} /> Cambiar estado
         </button>
-        {['tomado', 'por_recoger', 'recogido'].includes(order.status) && (
+        {['por_recoger', 'recogido'].includes(order.status) && (
           <button onClick={() => setHistoricalDialog(true)} className="btn-ghost text-amber-600 border-amber-200 hover:bg-amber-50" type="button">
             <FastForward size={14} /> Ya entregado
           </button>

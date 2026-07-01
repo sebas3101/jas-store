@@ -134,7 +134,7 @@ export const buildOrderConfirmationMessage = (
   );
 };
 
-// ─── Mensaje de disponibilidad al pasar de tomado → por recoger ──────────────
+// ─── Mensaje de disponibilidad al pasar a por_recoger ────────────────────────
 
 export const buildAvailabilityMessage = (client: Client, order: Order) => {
   const items = order.items

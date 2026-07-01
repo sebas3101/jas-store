@@ -50,9 +50,9 @@ export function DashboardPage() {
     .filter(o => ['entregado', 'pagado', 'pendiente_pago'].includes(o.status))
     .reduce((s, o) => s + (o.totalAmount - (o.totalCost ?? 0)), 0);
 
-  // ── Pedidos estancados (tomado/por_recoger hace >7 días) ─────────────────────
+  // ── Pedidos estancados (por_recoger hace >7 días) ────────────────────────────
   const staleOrders = orders.filter(o =>
-    ['tomado', 'por_recoger'].includes(o.status) &&
+    o.status === 'por_recoger' &&
     differenceInDays(now, parseISO(o.orderDate)) > 7
   );
 
@@ -156,7 +156,7 @@ export function DashboardPage() {
   const statusGroups = [
     { name: 'Entregado/Pagado', value: deliveredOrders, color: '#10b981' },
     { name: 'Pendiente',        value: orders.filter(o => o.status === 'pendiente_pago').length, color: '#f59e0b' },
-    { name: 'En proceso',       value: orders.filter(o => ['tomado','recogido','por_recoger'].includes(o.status)).length, color: '#7c3aed' },
+    { name: 'En proceso',       value: orders.filter(o => ['recogido','por_recoger'].includes(o.status)).length, color: '#7c3aed' },
     { name: 'Cancelado',        value: orders.filter(o => o.status === 'cancelado').length, color: '#e5e7eb' },
   ].filter(g => g.value > 0);
 

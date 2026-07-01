@@ -2,7 +2,6 @@ import { ChevronRight, Loader2 } from 'lucide-react';
 import type { Order, OrderStatus } from '../../types';
 
 export const NEXT_STATUS: Partial<Record<OrderStatus, { status: OrderStatus; label: string }>> = {
-  tomado:         { status: 'por_recoger',    label: 'Por recoger'  },
   por_recoger:    { status: 'recogido',       label: 'Recogido'     },
   recogido:       { status: 'entregado',      label: 'Entregado'    },
   entregado:      { status: 'pendiente_pago', label: 'Pend. pago'   },

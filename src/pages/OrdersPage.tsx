@@ -30,7 +30,6 @@ import type { Order, OrderStatus, PaymentMethod, OrderItem } from '../types';
 
 const STATUS_FILTERS: { value: OrderStatus | 'all'; label: string }[] = [
   { value: 'all',           label: 'Todos'          },
-  { value: 'tomado',        label: 'Tomado'         },
   { value: 'por_recoger',   label: 'Por recoger'    },
   { value: 'recogido',      label: 'Recogido'       },
   { value: 'entregado',     label: 'Entregado'      },
