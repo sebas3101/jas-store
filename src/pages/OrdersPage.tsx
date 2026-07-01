@@ -50,7 +50,7 @@ function OrderForm({ onSave, initial }: {
       productId: '', productName: '', category: 'otro', quantity: 1, salePrice: 0, costPrice: 0,
     }]
   );
-  const [status]                       = useState<OrderStatus>(initial?.status ?? 'tomado');
+  const [status]                       = useState<OrderStatus>(initial?.status ?? 'por_recoger');
   const [payMethod, setPayMethod]     = useState<PaymentMethod>(initial?.paymentMethod ?? 'credito');
   const [sellerId, setSellerId]       = useState(initial?.sellerId ?? currentUser?.id ?? '');
   const [deliveryId, setDeliveryId]   = useState(initial?.deliveryPersonId ?? '');
