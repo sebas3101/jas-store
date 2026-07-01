@@ -57,7 +57,7 @@ export function ReportsPage() {
         const d = parseDateOnly(p.purchaseDate);
         return d.getMonth() === month.getMonth() && d.getFullYear() === month.getFullYear();
       } catch { return false; }
-    }).reduce((s, p) => s + p.cost, 0);
+    }).reduce((s, p) => s + (p.paidAmount ?? 0), 0);
     return {
       mes:      format(month, 'MMM', { locale: es }),
       ventas:   monthOrders.reduce((s, o) => s + o.totalAmount, 0),
@@ -70,8 +70,10 @@ export function ReportsPage() {
   });
 
   const totalExpenses     = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalCollectedAll = orders.filter(o => o.status !== 'cancelado').reduce((s, o) => s + Math.min(o.amountPaid, o.totalAmount), 0);
-  const totalPurchasesAll = activePurchases.reduce((s, p) => s + p.cost, 0);
+  // Usa la tabla payments (fuente de verdad), no orders.amountPaid
+  const totalCollectedAll = payments.reduce((s, p) => s + p.amount, 0);
+  // Usa paidAmount (lo realmente pagado al proveedor), no cost
+  const totalPurchasesAll = activePurchases.reduce((s, p) => s + (p.paidAmount ?? 0), 0);
   const totalNetProfit    = totalCollectedAll - totalPurchasesAll - totalExpenses;
 
   // By category
@@ -166,7 +168,7 @@ export function ReportsPage() {
       <div className="card !p-4">
         <div className="flex items-center gap-2 mb-4">
           <Wallet size={16} className="text-emerald-600" />
-          <h2 className="section-title">Utilidad neta (cobrado − compras − gastos)</h2>
+          <h2 className="section-title">Utilidad neta (cobrado − pagado a proveedores − gastos)</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <div className="bg-emerald-50 rounded-xl p-3 text-center">
@@ -174,7 +176,7 @@ export function ReportsPage() {
             <p className="text-base font-bold text-emerald-700 mt-1">{formatCurrency(totalCollectedAll)}</p>
           </div>
           <div className="bg-orange-50 rounded-xl p-3 text-center">
-            <p className="text-[10px] text-orange-500 font-medium uppercase tracking-wide">Compras prov.</p>
+            <p className="text-[10px] text-orange-500 font-medium uppercase tracking-wide">Abonado prov.</p>
             <p className="text-base font-bold text-orange-600 mt-1">{formatCurrency(totalPurchasesAll)}</p>
           </div>
           <div className="bg-red-50 rounded-xl p-3 text-center">
@@ -426,8 +428,10 @@ export function ReportsPage() {
         <h2 className="section-title mb-4 text-red-600">Clientes con deuda</h2>
         {(() => {
           const debtors = clients.map(c => {
-            const debt = orders.filter(o => o.clientId === c.id && !['pagado','cancelado'].includes(o.status))
-              .reduce((s, o) => s + (o.totalAmount - o.amountPaid), 0);
+            // Solo pedidos entregados o pendiente_pago generan deuda real al cliente
+            const debt = orders
+              .filter(o => o.clientId === c.id && (o.status === 'entregado' || o.status === 'pendiente_pago'))
+              .reduce((s, o) => s + Math.max(0, o.totalAmount - o.amountPaid), 0);
             return { ...c, debt };
           }).filter(c => c.debt > 0).sort((a, b) => b.debt - a.debt);
 

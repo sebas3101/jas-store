@@ -6,6 +6,8 @@ import {
   Download,
   Calendar,
   BarChart3,
+  Banknote,
+  AlertCircle,
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -50,14 +52,30 @@ export function FinancesPage() {
   // Expenses in range
   const rangeExpenses = (expenses ?? []).filter(e => inRange(e.date));
 
-  // KPIs
+  // ── Caja real acumulada (histórico completo, independiente del filtro de período) ──
+  const allCollected         = payments.reduce((s, p) => s + p.amount, 0);
+  const allPaidToSuppliers   = purchases
+    .filter(p => p.status !== 'cancelado')
+    .reduce((s, p) => s + (p.paidAmount ?? 0), 0);
+  const allExpenses          = (expenses ?? []).reduce((s, e) => s + e.amount, 0);
+  const cajaReal             = openingBalance + allCollected - allPaidToSuppliers - allExpenses;
+  // Cuánto se le debe todavía a proveedores (costo registrado − lo ya pagado)
+  const deudaProveedores     = purchases
+    .filter(p => p.status !== 'cancelado')
+    .reduce((s, p) => s + Math.max(0, p.cost - (p.paidAmount ?? 0)), 0);
+
+  // ── KPIs del período seleccionado ──
   const totalSales     = rangeOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalCost      = rangeOrders.reduce((s, o) => s + (o.totalCost ?? 0), 0);
   const grossProfit    = totalSales - totalCost;
   const totalCollected = rangePayments.reduce((s, p) => s + p.amount, 0);
-  const totalPurchases = rangePurchases.reduce((s, p) => s + p.cost, 0);
+  // Usa paidAmount (lo realmente pagado al proveedor) no cost
+  const totalPaidToSuppliers = rangePurchases
+    .filter(p => p.status !== 'cancelado')
+    .reduce((s, p) => s + (p.paidAmount ?? 0), 0);
   const totalExpenses  = rangeExpenses.reduce((s, e) => s + e.amount, 0);
-  const netBalance     = totalCollected - totalPurchases - totalExpenses + openingBalance;
+  // Resultado del período = cobrado − abonado a proveedores − gastos (sin saldo inicial)
+  const periodBalance  = totalCollected - totalPaidToSuppliers - totalExpenses;
   // Solo pedidos entregados/pendiente_pago generan deuda real
   const totalDebt = rangeOrders
     .filter(o => o.status === 'entregado' || o.status === 'pendiente_pago')
@@ -82,15 +100,24 @@ export function FinancesPage() {
       ['Período', periodo],
       [],
       ['Indicador', 'Valor'],
-      ['Ventas brutas (pedidos)',    totalSales],
-      ['Costo de pedidos',          totalCost],
-      ['Ganancia bruta',            grossProfit],
-      ['Capital inicial',           openingBalance],
-      ['Recaudo (pagos recibidos)', totalCollected],
-      ['Compras a proveedores',     totalPurchases],
-      ['Gastos operativos',         totalExpenses],
-      ['Saldo neto',                netBalance],
-      ['Deuda pendiente clientes',  totalDebt],
+      ['Ventas brutas (pedidos)',       totalSales],
+      ['Costo de pedidos',             totalCost],
+      ['Ganancia bruta estimada',      grossProfit],
+      [],
+      ['--- CAJA REAL (histórico total) ---', ''],
+      ['Capital inicial',              openingBalance],
+      ['Total cobrado a clientes',     allCollected],
+      ['Total abonado a proveedores',  allPaidToSuppliers],
+      ['Total gastos operativos',      allExpenses],
+      ['Caja disponible hoy',          cajaReal],
+      ['Deuda pendiente a proveedores',deudaProveedores],
+      [],
+      ['--- PERÍODO SELECCIONADO ---', ''],
+      ['Recaudo clientes (período)',    totalCollected],
+      ['Abonado a proveedores (perd.)', totalPaidToSuppliers],
+      ['Gastos operativos (período)',   totalExpenses],
+      ['Resultado del período',         periodBalance],
+      ['Deuda pendiente clientes',      totalDebt],
       [],
       ['=== PEDIDOS ==='],
       ['Pedido', 'Fecha', 'Total', 'Pagado', 'Pendiente', 'Estado'],
@@ -106,9 +133,10 @@ export function FinancesPage() {
       ]),
       [],
       ['=== COMPRAS ==='],
-      ['Fecha', 'Descripción', 'Costo', 'Estado'],
+      ['Fecha', 'Descripción', 'Costo total', 'Abonado al proveedor', 'Saldo pendiente', 'Estado'],
       ...rangePurchases.map(p => [
-        formatDate(p.purchaseDate), p.description, p.cost, p.status,
+        formatDate(p.purchaseDate), p.description, p.cost,
+        p.paidAmount ?? 0, Math.max(0, p.cost - (p.paidAmount ?? 0)), p.status,
       ]),
       ...(rangeExpenses.length > 0 ? [
         [],
@@ -175,7 +203,33 @@ export function FinancesPage() {
         )}
       </div>
 
-      {/* KPIs */}
+      {/* Caja real hoy — histórico completo, independiente del período */}
+      <div className="card !p-4 border border-emerald-200 bg-emerald-50">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-1.5 mb-1">
+              <Banknote size={15} className="text-emerald-600" />
+              <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">Caja disponible hoy</p>
+            </div>
+            <p className="text-3xl font-bold text-emerald-700">{formatCurrency(cajaReal)}</p>
+            <p className="text-[11px] text-emerald-600 mt-1">
+              Capital inicial + todo lo cobrado − todo lo pagado a proveedores − gastos
+            </p>
+          </div>
+          {deudaProveedores > 0 && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold text-amber-700">Deuda a proveedores</p>
+                <p className="text-base font-bold text-amber-700">{formatCurrency(deudaProveedores)}</p>
+                <p className="text-[10px] text-amber-600">pendiente de pagar</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* KPIs del período */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Ventas"         value={formatCurrency(totalSales)}     icon={TrendingUp}   color="green" />
         <StatCard title="Recaudo"        value={formatCurrency(totalCollected)}  icon={DollarSign}   color="blue" />
@@ -185,22 +239,33 @@ export function FinancesPage() {
 
       {/* Desglose */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Compras vs Recaudo */}
+        {/* Flujo de caja del período */}
         <div className="card space-y-3">
-          <h2 className="section-title flex items-center gap-2"><Calendar size={16} /> Flujo de caja</h2>
+          <h2 className="section-title flex items-center gap-2"><Calendar size={16} /> Flujo del período</h2>
           <div className="space-y-2">
             {[
-              ...(openingBalance > 0 ? [{ label: 'Capital inicial', value: openingBalance, color: 'text-indigo-600' }] : []),
-              { label: 'Recaudo clientes',    value: totalCollected,  color: 'text-emerald-600' },
-              { label: 'Compras proveedores', value: totalPurchases,  color: 'text-red-500'    },
-              { label: 'Gastos operativos',   value: totalExpenses,   color: 'text-orange-500' },
-              { label: 'Saldo neto',          value: netBalance,      color: netBalance >= 0 ? 'text-emerald-700' : 'text-red-700' },
+              { label: 'Recaudo clientes',         value: totalCollected,        color: 'text-emerald-600', sign: '+' },
+              { label: 'Abonado a proveedores',     value: totalPaidToSuppliers,  color: 'text-red-500',     sign: '−' },
+              { label: 'Gastos operativos',         value: totalExpenses,         color: 'text-orange-500',  sign: '−' },
             ].map(row => (
               <div key={row.label} className="flex justify-between items-center gap-2 text-sm py-0.5">
-                <span className="text-gray-600 text-xs sm:text-sm">{row.label}</span>
+                <span className="text-gray-500 text-xs sm:text-sm">
+                  <span className="font-medium mr-1">{row.sign}</span>{row.label}
+                </span>
                 <span className={`font-bold text-sm flex-shrink-0 ${row.color}`}>{formatCurrency(row.value)}</span>
               </div>
             ))}
+            <div className="border-t border-gray-100 pt-2 flex justify-between items-center gap-2">
+              <span className="text-gray-700 text-xs sm:text-sm font-semibold">Resultado del período</span>
+              <span className={`font-bold text-sm flex-shrink-0 ${periodBalance >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {formatCurrency(periodBalance)}
+              </span>
+            </div>
+            {openingBalance > 0 && (
+              <p className="text-[10px] text-gray-400 pt-1">
+                Capital inicial ${openingBalance.toLocaleString('es-CO')} — incluido en "Caja disponible hoy"
+              </p>
+            )}
           </div>
         </div>
 
