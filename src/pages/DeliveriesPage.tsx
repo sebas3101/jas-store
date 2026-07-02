@@ -131,7 +131,7 @@ export function DeliveriesPage() {
   const handleCheckPickup = async (purchaseId: string) => {
     if (checkingId) return;
     setCheckingId(purchaseId);
-    await updatePurchase(purchaseId, { status: 'recogido' });
+    await updatePurchase(purchaseId, { status: 'pagado' });
     setCheckingId(null);
   };
 
