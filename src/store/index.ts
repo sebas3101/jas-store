@@ -655,32 +655,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (he) { console.error('orderHistory insert:', he); return; }
         if (hd) set(s => ({ orderHistory: [...s.orderHistory, toCamel(hd) as OrderHistory] }));
       });
-    // Al pasar el pedido a recogido, marcar todas sus compras como recogidas.
-    // (un pedido puede tener varias compras, una por proveedor)
+    // Al pasar el pedido a recogido, marcar las compras pendientes como pagadas.
+    // Las que están no_disponible o cancelado se dejan como están.
     if (o.status === 'recogido' && prev?.status !== 'recogido') {
       const linked = get().purchases.filter(p =>
         (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
-        p.status !== 'recogido' &&
-        p.status !== 'cancelado' &&
-        p.status !== 'no_disponible'
-      );
-      for (const p of linked) await get().updatePurchase(p.id, { status: 'recogido' });
-    }
-    // Al pasar el pedido a entregado, marcar las compras recogidas como pagadas.
-    // Las que están no_disponible o cancelado se dejan como están.
-    if (o.status === 'entregado' && prev?.status !== 'entregado') {
-      const linked = get().purchases.filter(p =>
-        (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
-        p.status === 'recogido'
+        p.status === 'pendiente'
       );
       for (const p of linked) await get().updatePurchase(p.id, { status: 'pagado' });
     }
-    // Al revertir el pedido a por_recoger desde cualquier estado posterior,
-    // resetear sus compras a pendiente para que vuelvan a la vista de Recogidas.
+    // Al revertir el pedido a por_recoger, resetear las compras pagadas a pendiente.
     if (o.status === 'por_recoger' && ['recogido', 'entregado', 'pendiente_pago', 'pagado'].includes(prev?.status ?? '')) {
       const linked = get().purchases.filter(p =>
         (p.orderId ? p.orderId === id : !!prev?.orderNumber && p.description.startsWith(`${prev.orderNumber} —`)) &&
-        p.status === 'recogido'
+        p.status === 'pagado'
       );
       for (const p of linked) {
         await supabase.from('supplier_purchases').update({ status: 'pendiente' }).eq('id', p.id);
@@ -718,17 +706,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const now = new Date().toISOString();
     // 1. Pasar el pedido a pendiente_pago (ya entregado)
     await get().updateOrder(id, { status: 'pendiente_pago', deliveredAt: now });
-    // 2. Marcar todas las compras de proveedores vinculadas como recogidas
+    // 2. Marcar todas las compras de proveedores vinculadas como pagadas
     const linked = get().purchases.filter(
-      p => p.orderId === id && p.status !== 'recogido' && p.status !== 'cancelado'
+      p => p.orderId === id && p.status !== 'pagado' && p.status !== 'cancelado'
     );
     for (const p of linked) {
-      await supabase.from('supplier_purchases').update({ status: 'recogido' }).eq('id', p.id);
+      await supabase.from('supplier_purchases').update({ status: 'pagado' }).eq('id', p.id);
     }
     if (linked.length > 0) {
       set(s => ({
         purchases: s.purchases.map(p =>
-          linked.some(l => l.id === p.id) ? { ...p, status: 'recogido' } : p
+          linked.some(l => l.id === p.id) ? { ...p, status: 'pagado' } : p
         ),
       }));
     }
@@ -816,7 +804,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     // resueltas (recogido, cancelado, o sin stock), avanzar el pedido a recogido.
     // no_disponible = el proveedor no tiene stock; el pedido igual avanza y se
     // entrega lo que sí hay. El ítem sin stock queda pendiente en Recogidas.
-    if (p.status === 'recogido') {
+    if (p.status === 'pagado') {
       const purchase = get().purchases.find(x => x.id === id);
       const orderId  = purchase?.orderId;
       if (orderId) {
@@ -824,7 +812,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         if (order && order.status !== 'recogido') {
           const sibs = get().purchases.filter(x => x.orderId === orderId);
           const allDone = sibs.every(x =>
-            x.status === 'recogido' || x.status === 'cancelado' || x.status === 'no_disponible'
+            x.status === 'pagado' || x.status === 'cancelado' || x.status === 'no_disponible'
           );
           if (allDone) await get().updateOrder(orderId, { status: 'recogido' });
         }
