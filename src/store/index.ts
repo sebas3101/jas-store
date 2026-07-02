@@ -7,6 +7,8 @@ import type {
 } from '../types';
 import { deriveClientStatus } from '../utils/businessLogic';
 import { getReminderLog, markReminderSent as dbMarkReminderSent } from '../utils/reminders';
+import { sendPush } from '../utils/push';
+import { orderStatusLabel } from '../utils/formatters';
 import type { ReminderLog } from '../utils/reminders';
 
 // ─── Realtime channel (módulo) ────────────────────────────────────────────────
@@ -566,6 +568,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (error) { notifyError('addOrder'); return; }
     const newOrder = toCamel(data) as Order;
     set(s => ({ orders: [...s.orders, newOrder] }));
+    // Notificación push
+    const clientName = get().clients.find(c => c.id === o.clientId)?.name ?? 'Cliente';
+    sendPush('🛍️ Nuevo pedido', `${newOrder.orderNumber} — ${clientName}`, '/pedidos');
     // Log history
     const userName = get().currentUser?.name ?? 'sistema';
     supabase.from('order_history').insert(toSnake({
@@ -640,6 +645,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         x.id === id ? { ...x, ...o, updatedAt: new Date().toISOString() } : x
       ),
     }));
+    // Notificación push al cambiar estado
+    if (o.status && o.status !== prev?.status) {
+      const client = get().clients.find(c => c.id === prev?.clientId);
+      sendPush(
+        `📦 ${prev?.orderNumber ?? ''} → ${orderStatusLabel[o.status]}`,
+        client?.name ?? '',
+        `/pedidos/${id}`
+      );
+    }
     // Log history
     const userName = get().currentUser?.name ?? 'sistema';
     const action = o.status !== undefined && o.status !== prev?.status
